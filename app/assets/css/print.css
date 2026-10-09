@@ -1,99 +1,123 @@
 /* ============================================================
-   BUMI SURABAYA — PRINT CSS v5.0
-   Styling khusus cetak stiker meja / QR card tent
+   BUMI SURABAYA — PRINT CSS v6.0
+   Styling cetak stiker meja, QR tent card, dan print massal
    ============================================================ */
 
 @media print {
-  body { background: #fff !important; }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
 
-  .no-print, .bs-hero, .bs-review-section, .bs-promos-grid,
-  .bs-wa-section, .bs-social-section, .bs-footer, nav, header {
+  /* Sembunyikan elemen non-cetak dari tampilan tamu & admin */
+  .no-print, 
+  .bs-top-bar, .bs-hero, .bs-review-section, .bs-promos-section,
+  .bs-wa-section, .bs-social-section, .bs-footer, .bs-mobile-action-bar,
+  .adm-sidebar, .adm-topbar, .adm-card-header, .adm-login-screen,
+  .adm-toast, .adm-modal-overlay, nav, header, aside {
     display: none !important;
   }
 
-  .print-card {
+  .adm-main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+  .adm-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  /* ── KARTU STIKER MEJA (85 x 54 mm) ── */
+  .print-card, .adm-print-card-sample {
     page-break-inside: avoid;
     break-inside: avoid;
     width: 85mm;
     height: 54mm;
-    margin: 5mm auto;
-    border: 1px solid #c9a96e;
-    border-radius: 6mm;
-    padding: 6mm;
+    margin: 4mm auto;
+    border: 1.5px solid #c9a96e !important;
+    border-radius: 4mm;
+    padding: 4mm;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     font-family: 'Playfair Display', Georgia, serif;
+    background: #fff !important;
+    color: #1a3c2a !important;
+    box-shadow: none !important;
   }
 
-  .print-card-logo {
-    font-size: 10pt;
+  .print-card-logo, .adm-pc-logo {
+    margin-bottom: 2mm;
+  }
+  .print-card-logo img, .adm-pc-logo img {
+    max-height: 8mm;
+    width: auto;
+  }
+
+  .print-card-name, .adm-pc-title {
+    font-size: 9.5pt;
     font-weight: bold;
-    color: #1a3c2a;
-    margin-bottom: 4mm;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    color: #1a3c2a !important;
+    margin-bottom: 1.5mm;
+    line-height: 1.1;
+    text-align: center;
   }
 
-  .print-card-name {
-    font-size: 9pt;
-    color: #2c2c2c;
-    margin-bottom: 4mm;
-    font-style: italic;
-  }
-
-  .print-card-qr {
-    width: 28mm;
-    height: 28mm;
-    margin-bottom: 3mm;
+  .print-card-qr, .adm-pc-qr {
+    width: 24mm;
+    height: 24mm;
+    margin-bottom: 2mm;
+    border: none !important;
+    padding: 0 !important;
   }
   .print-card-qr img,
-  .print-card-qr canvas {
-    width: 100%;
-    height: 100%;
+  .print-card-qr canvas,
+  .adm-pc-qr img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
   }
 
-  .print-card-url {
-    font-family: 'Courier New', monospace;
-    font-size: 5pt;
-    color: #4a4a4a;
-    word-break: break-all;
-    text-align: center;
-    max-width: 73mm;
-  }
-
-  .print-card-tagline {
-    font-size: 6.5pt;
-    color: #c9a96e;
-    margin-top: 2mm;
-    text-align: center;
+  .print-card-sub, .adm-pc-sub {
+    font-size: 7.5pt;
+    color: #8b6d34 !important;
     font-style: italic;
+    margin-bottom: 1.5mm;
   }
 
-  /* Grid layout for multiple cards per page */
-  .print-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 85mm);
-    gap: 5mm;
-    justify-content: center;
-    padding: 5mm;
+  .print-card-url, .adm-pc-inst {
+    font-size: 6pt;
+    color: #4a4a4a !important;
+    text-align: center;
+    line-height: 1.2;
   }
 
-  /* Horizontal tent card (foldable) */
+  /* ── GRID MULTI-KARTU PER HALAMAN ── */
+  .print-cards-grid, .adm-bulk-preview-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 85mm) !important;
+    gap: 6mm !important;
+    justify-content: center !important;
+    padding: 4mm !important;
+  }
+
+  /* ── TABLE TENT LIPAT (100 x 70 mm) ── */
   .print-tent-card {
     page-break-inside: avoid;
     break-inside: avoid;
     width: 100mm;
     height: 70mm;
     margin: 5mm auto;
-    border: 1px solid #c9a96e;
+    border: 1.5px solid #c9a96e !important;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-around;
     padding: 4mm;
     position: relative;
+    background: #fff !important;
   }
   .print-tent-card::after {
     content: '';
@@ -110,5 +134,7 @@
     height: 50%;
     width: 100%;
   }
-  .print-tent-half.flip { transform: rotate(180deg); }
+  .print-tent-half.flip { 
+    transform: rotate(180deg); 
+  }
 }
