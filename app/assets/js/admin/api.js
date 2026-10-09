@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v5.0
+ * BUMI SURABAYA v6.0
  * api.js — Admin API client to Google Apps Script
  *
  * Seluruh request admin menggunakan POST dengan token di BODY (bukan URL).
@@ -18,13 +18,13 @@
 
   /**
    * POST request terproteksi ke GAS.
-   * @param {object} body - payload (token ditambahkan otomatis)
+   * @param {object} body - payload (token ditambahkan otomatis jika belum ada)
    * @returns {Promise<object>}
    */
   function post(body) {
     var url = getGasUrl();
-    if (!url) return Promise.reject(new Error('Backend URL belum dikonfigurasi'));
-    body.token = getToken();
+    if (!url) return Promise.reject(new Error('Backend URL belum dikonfigurasi.'));
+    if (!body.token) body.token = getToken();
     return fetch(url, {
       method:  'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -34,6 +34,11 @@
       return r.json();
     }).then(function(resp) {
       if (resp && resp.error === 'Unauthorized') throw new Error('Unauthorized');
+      if (resp && resp.must_change) {
+        var err = new Error(resp.error || 'Wajib mengganti kata sandi terlebih dahulu.');
+        err.must_change = true;
+        throw err;
+      }
       return resp;
     });
   }
@@ -43,13 +48,29 @@
    */
   function get(params) {
     var url   = getGasUrl();
-    if (!url) return Promise.reject(new Error('Backend URL belum dikonfigurasi'));
+    if (!url) return Promise.reject(new Error('Backend URL belum dikonfigurasi.'));
     var query = Object.keys(params || {}).map(function(k) {
       return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
     }).join('&');
     return fetch(url + (query ? '?' + query : ''), {
       method: 'GET'
     }).then(function(r) { return r.json(); });
+  }
+
+  /** Login via API */
+  function login(username, password) {
+    if (window.BSAuth && typeof BSAuth.login === 'function') {
+      return BSAuth.login(username, password);
+    }
+    return post({ action: 'login', username: username, password: password });
+  }
+
+  /** Ganti password admin via API */
+  function changePassword(oldPassword, newPassword) {
+    if (window.BSAuth && typeof BSAuth.changePassword === 'function') {
+      return BSAuth.changePassword(oldPassword, newPassword);
+    }
+    return post({ action: 'change_password', old_password: oldPassword, new_password: newPassword });
   }
 
   /** Simpan semua konfigurasi + sources + staff_devices ke Sheets */
@@ -70,6 +91,8 @@
   window.BSApi = {
     post:             post,
     get:              get,
+    login:            login,
+    changePassword:   changePassword,
     saveAllAdminData: saveAllAdminData,
     getEventsData:    getEventsData,
     getPublicConfig:  getPublicConfig
