@@ -32,6 +32,7 @@
     var lc = code.toLowerCase();
     for (var i = 0; i < _sources.length; i++) {
       var s = _sources[i];
+      if (s.active === false) continue;
       if ((s.code || '').toLowerCase() === lc) return s;
       // Cek legacy_codes juga
       if (s.legacy_codes) {
@@ -67,7 +68,7 @@
       // Sumber dikenali
       var st = _sourceObj.type || 'staff';
       var msg = '';
-      if (st === 'staff') {
+      if (st === 'staff' || st === 'sales') {
         msg = 'Halo! Anda saat ini dilayani dengan tulus oleh <strong>' +
               (_sourceObj.name || 'Tim Kami') + '</strong>' +
               (_sourceObj.role ? ' (' + _sourceObj.role + ')' : '') +
@@ -105,27 +106,50 @@
 
     // Tombol Google Review
     var reviewBtn = $('#bs-btn-review');
+    var reviewLink = $('#bs-review-link');
+    var mobReview = $('.bs-mob-review');
+    var reviewUrl = (rev && rev.review_url) || gen.google_review_url || '#';
+    var reviewTxt = (rev && rev.button_text) || 'Berikan Ulasan di Google ⭐';
+
     if (reviewBtn) {
-      var reviewUrl = (rev && rev.review_url) || gen.google_review_url || '#';
-      var reviewTxt = (rev && rev.button_text) || 'Berikan Ulasan di Google ⭐';
       reviewBtn.href = reviewUrl;
       reviewBtn.textContent = reviewTxt;
       if (sec && sec.show_review === false) hide(reviewBtn.closest('.bs-hero-cta-review'));
     }
+    if (mobReview) mobReview.href = reviewUrl;
 
-    // Tombol WhatsApp
-    var waBtn = $('#bs-btn-wa');
-    if (waBtn) {
-      var waNum = (ws && ws.number) || gen.whatsapp || '628113388523';
-      var waMsg = '';
-      if (_sourceObj && _sourceObj.type === 'staff') {
-        waMsg = ((ws && ws.template_staff) || 'Halo Bumi Surabaya, saya tamu yang dilayani oleh {staff_name}.')
+    // Tombol WhatsApp (Hero, Concierge card, & Floating Mobile bar)
+    function cleanPhone(num) {
+      if (!num) return '';
+      var clean = String(num).replace(/[^0-9]/g, '');
+      if (clean.indexOf('0') === 0) clean = '62' + clean.substring(1);
+      return clean;
+    }
+
+    var waNum = '';
+    var waMsg = '';
+
+    if (_sourceObj && _sourceObj.whatsapp && cleanPhone(_sourceObj.whatsapp)) {
+      waNum = cleanPhone(_sourceObj.whatsapp);
+      waMsg = 'Halo, saya tamu Bumi Surabaya. Saya dilayani oleh ' + (_sourceObj.name || 'staf') + '.';
+    } else {
+      waNum = cleanPhone((ws && ws.number) || gen.whatsapp || '628113388523');
+      if (_sourceObj && (_sourceObj.type === 'staff' || _sourceObj.type === 'sales')) {
+        waMsg = ((ws && ws.template_staff) || 'Halo, saya tamu Bumi Surabaya. Saya dilayani oleh {staff_name}.')
                 .replace('{staff_name}', _sourceObj.name || 'tim kami');
       } else {
-        waMsg = (ws && ws.template_general) || 'Halo Bumi Surabaya, saya ingin informasi reservasi.';
+        waMsg = (ws && ws.template_general) || 'Halo Bumi Surabaya, saya ingin informasi mengenai reservasi dan layanan hotel.';
       }
-      waBtn.href = 'https://wa.me/' + waNum + '?text=' + encodeURIComponent(waMsg);
     }
+
+    var waUrl = 'https://wa.me/' + waNum + '?text=' + encodeURIComponent(waMsg);
+
+    var waBtn  = $('#bs-btn-wa');
+    var waLink = $('#bs-wa-link');
+    var mobWa  = $('.bs-mob-wa');
+    if (waBtn)  waBtn.href  = waUrl;
+    if (waLink) waLink.href = waUrl;
+    if (mobWa)  mobWa.href  = waUrl;
   }
 
   // ── Render seksi Google Review ────────────────────────────
@@ -213,10 +237,24 @@
 
     var html = outlets.map(function(o) {
       return '<div class="bs-outlet-card" tabindex="0" data-outlet-id="' + (o.id || '') + '">' +
-        '<div class="bs-outlet-icon">' + (o.emoji || '🍽️') + '</div>' +
-        '<div class="bs-outlet-name">' + (o.name || '') + '</div>' +
-        '<div class="bs-outlet-type">' + (o.type || '') + '</div>' +
-        '<div class="bs-outlet-desc">' + (o.description || '') + '</div>' +
+        '<div class="bs-outlet-img-wrap">' +
+          (o.image_url
+            ? '<img src="' + o.image_url + '" alt="' + (o.name || '') + '" loading="lazy">'
+            : '<div class="bs-outlet-img-placeholder">' + (o.emoji || '🍽️') + '</div>') +
+          (o.highlight ? '<span class="bs-outlet-badge">' + o.highlight + '</span>' : '') +
+        '</div>' +
+        '<div class="bs-outlet-content">' +
+          '<div class="bs-outlet-header-row">' +
+            '<div class="bs-outlet-name">' + (o.name || '') + '</div>' +
+            '<span class="bs-outlet-icon-inline" aria-hidden="true">' + (o.emoji || '') + '</span>' +
+          '</div>' +
+          '<div class="bs-outlet-type">' + (o.type || '') + '</div>' +
+          '<div class="bs-outlet-desc">' + (o.description || '') + '</div>' +
+          (o.hours ? '<div class="bs-outlet-hours"><span class="bs-time-icon">🕒</span> ' + o.hours + '</div>' : '') +
+          '<div class="bs-outlet-footer">' +
+            '<span class="bs-outlet-action-btn">Eksplorasi Gerai &amp; Reservasi →</span>' +
+          '</div>' +
+        '</div>' +
       '</div>';
     }).join('');
 
@@ -305,22 +343,20 @@
   // ── Binding CTA event tracking ────────────────────────────
   function bindCtaTracking() {
     var reviewBtn = $('#bs-btn-review');
-    if (reviewBtn) {
-      reviewBtn.addEventListener('click', function() {
-        if (window.BSTracker) BSTracker.track('google_review_click', {});
-      });
-    }
-
     var reviewLink = $('#bs-review-link');
-    if (reviewLink) {
-      reviewLink.addEventListener('click', function() {
-        if (window.BSTracker) BSTracker.track('google_review_click', {});
-      });
-    }
+    var mobReview = $('.bs-mob-review');
+    [reviewBtn, reviewLink, mobReview].forEach(function(btn) {
+      if (btn) {
+        btn.addEventListener('click', function() {
+          if (window.BSTracker) BSTracker.track('google_review_click', {});
+        });
+      }
+    });
 
     var waBtn  = $('#bs-btn-wa');
     var waBtn2 = $('#bs-wa-link');
-    [waBtn, waBtn2].forEach(function(btn) {
+    var mobWa  = $('.bs-mob-wa');
+    [waBtn, waBtn2, mobWa].forEach(function(btn) {
       if (btn) {
         btn.addEventListener('click', function() {
           if (window.BSTracker) BSTracker.track('whatsapp_click', {});
