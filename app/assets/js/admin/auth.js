@@ -1,27 +1,34 @@
 /**
- * BUMI SURABAYA v5.0
- * auth.js — Login session & READ_TOKEN management
+ * BUMI SURABAYA v6.0
+ * auth.js — Login session & credentials management
  *
- * - Token disimpan di sessionStorage (tidak pernah di localStorage atau URL)
+ * - Autentikasi berbasis Username & Password (tab Sheets 'Users')
+ * - Token sesi acak 32 hex disimpan di sessionStorage (TTL 6 jam di GAS, 8 jam client)
  * - Brute-force protection: maks 5 kali gagal / 15 menit
- * - Role: super_admin, manager
+ * - Alur paksa ganti password jika must_change=TRUE
  */
 
 (function(window) {
   'use strict';
 
-  var TOKEN_KEY   = 'bs_admin_token';
-  var ROLE_KEY    = 'bs_admin_role';
-  var LOGIN_TIME  = 'bs_admin_login_ts';
-  var BF_KEY      = 'bs_login_fails';
-  var BF_TS_KEY   = 'bs_login_fails_ts';
+  var TOKEN_KEY       = 'bs_admin_token';
+  var ROLE_KEY        = 'bs_admin_role';
+  var USERNAME_KEY    = 'bs_admin_username';
+  var MUST_CHANGE_KEY = 'bs_admin_must_change';
+  var LOGIN_TIME      = 'bs_admin_login_ts';
+  var BF_KEY          = 'bs_login_fails';
+  var BF_TS_KEY       = 'bs_login_fails_ts';
 
   var MAX_FAILS   = 5;
   var LOCKOUT_MS  = 15 * 60 * 1000;  // 15 menit
   var SESSION_TTL = 8 * 60 * 60 * 1000; // 8 jam
 
-  function getToken()  { return sessionStorage.getItem(TOKEN_KEY) || ''; }
-  function getRole()   { return sessionStorage.getItem(ROLE_KEY)  || ''; }
+  function getToken()       { return sessionStorage.getItem(TOKEN_KEY) || ''; }
+  function getRole()        { return sessionStorage.getItem(ROLE_KEY)  || ''; }
+  function getUsername()    { return sessionStorage.getItem(USERNAME_KEY) || 'Administrator'; }
+  function isMustChange()   { return sessionStorage.getItem(MUST_CHANGE_KEY) === 'true'; }
+  function setMustChange(v) { sessionStorage.setItem(MUST_CHANGE_KEY, String(!!v)); }
+
   function isLoggedIn() {
     var token = getToken();
     if (!token) return false;
@@ -30,20 +37,24 @@
     return true;
   }
 
-  function saveSession(token, role) {
-    sessionStorage.setItem(TOKEN_KEY,  token);
-    sessionStorage.setItem(ROLE_KEY,   role || 'manager');
-    sessionStorage.setItem(LOGIN_TIME, String(Date.now()));
+  function saveSession(token, role, username, mustChange) {
+    sessionStorage.setItem(TOKEN_KEY,       token);
+    sessionStorage.setItem(ROLE_KEY,        role || 'super_admin');
+    sessionStorage.setItem(USERNAME_KEY,    username || 'widi');
+    sessionStorage.setItem(MUST_CHANGE_KEY, String(!!mustChange));
+    sessionStorage.setItem(LOGIN_TIME,      String(Date.now()));
   }
 
   function logout() {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(ROLE_KEY);
+    sessionStorage.removeItem(USERNAME_KEY);
+    sessionStorage.removeItem(MUST_CHANGE_KEY);
     sessionStorage.removeItem(LOGIN_TIME);
     if (window.BSConfig) window.BSConfig.clearCache();
   }
 
-  // Brute-force tracking (di sessionStorage karena per-tab)
+  // Brute-force tracking (di sessionStorage per-tab/browser session)
   function getFailCount() {
     var ts   = parseInt(sessionStorage.getItem(BF_TS_KEY) || '0', 10);
     var fails= parseInt(sessionStorage.getItem(BF_KEY)    || '0', 10);
@@ -71,11 +82,67 @@
   }
 
   /**
-   * Verifikasi token ke backend GAS.
-   * Kita kirim dummy action dan lihat apakah Unauthorized kembali.
-   * @param {string} gasUrl
-   * @param {string} token
-   * @returns {Promise<{ok:boolean, role:string, error:string}>}
+   * Login dengan username & password ke backend Google Apps Script.
+   * @param {string} username
+   * @param {string} password
+   * @returns {Promise<{ok:boolean, token:string, username:string, must_change:boolean, role:string}>}
+   */
+  function login(username, password) {
+    var gasUrl = (window.BSConfig && BSConfig.getGasUrl()) || '';
+    if (!gasUrl) return Promise.reject(new Error('URL backend belum dikonfigurasi.'));
+
+    return fetch(gasUrl, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:    JSON.stringify({ action: 'login', username: username, password: password })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp && resp.ok && resp.token) {
+        saveSession(resp.token, resp.role || 'super_admin', resp.username || username, !!resp.must_change);
+        resetFails();
+        return resp;
+      }
+      addFail();
+      var err = (resp && resp.error) || 'Nama pengguna atau kata sandi tidak valid.';
+      throw new Error(err);
+    });
+  }
+
+  /**
+   * Perbarui kata sandi pengguna via endpoint change_password.
+   * @param {string} oldPassword
+   * @param {string} newPassword
+   * @returns {Promise<{ok:boolean, message:string}>}
+   */
+  function changePassword(oldPassword, newPassword) {
+    var gasUrl = (window.BSConfig && BSConfig.getGasUrl()) || '';
+    var token  = getToken();
+    if (!gasUrl) return Promise.reject(new Error('URL backend belum dikonfigurasi.'));
+    if (!token) return Promise.reject(new Error('Sesi admin tidak ditemukan. Silakan masuk kembali.'));
+
+    return fetch(gasUrl, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:    JSON.stringify({
+        action:       'change_password',
+        token:        token,
+        old_password: oldPassword,
+        new_password: newPassword
+      })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp && resp.ok) {
+        setMustChange(false);
+        return resp;
+      }
+      throw new Error((resp && resp.error) || 'Gagal mengubah kata sandi.');
+    });
+  }
+
+  /**
+   * Verifikasi token ke backend GAS (kompatibilitas & fallback).
    */
   function verifyToken(gasUrl, token) {
     if (!gasUrl || !token) return Promise.resolve({ ok: false, error: 'Parameter tidak lengkap' });
@@ -86,8 +153,6 @@
     })
     .then(function(r) { return r.json(); })
     .then(function(resp) {
-      // GAS returns ok:false + Unauthorized jika token salah
-      // ok:true atau error selain Unauthorized = token valid
       if (resp.ok || (resp.error && resp.error !== 'Unauthorized')) {
         return { ok: true, role: 'super_admin' };
       }
@@ -99,18 +164,24 @@
   }
 
   window.BSAuth = {
-    getToken:       getToken,
-    getRole:        getRole,
-    isLoggedIn:     isLoggedIn,
-    saveSession:    saveSession,
-    logout:         logout,
-    isLockedOut:    isLockedOut,
-    remainingLockMs:remainingLockMs,
-    addFail:        addFail,
-    resetFails:     resetFails,
-    getFailCount:   getFailCount,
-    MAX_FAILS:      MAX_FAILS,
-    verifyToken:    verifyToken
+    getToken:           getToken,
+    getRole:            getRole,
+    getUsername:        getUsername,
+    isMustChange:       isMustChange,
+    mustChangePassword: isMustChange,
+    setMustChange:      setMustChange,
+    isLoggedIn:         isLoggedIn,
+    saveSession:        saveSession,
+    logout:             logout,
+    login:              login,
+    changePassword:     changePassword,
+    isLockedOut:        isLockedOut,
+    remainingLockMs:    remainingLockMs,
+    addFail:            addFail,
+    resetFails:         resetFails,
+    getFailCount:       getFailCount,
+    MAX_FAILS:          MAX_FAILS,
+    verifyToken:        verifyToken
   };
 
 })(window);
