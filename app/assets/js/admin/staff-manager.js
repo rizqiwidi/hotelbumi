@@ -23,9 +23,10 @@
    * @typedef {Object} SourceRecord
    * @property {string}   code             - Unique URL-safe slug  e.g. "staff-budi-santoso"
    * @property {string}   name             - Human-readable name
-   * @property {string}   type             - "staff" | "nfc" | "qr"
-   * @property {string}   role             - e.g. "waitress", "manager"
+   * @property {string}   type             - "staff" | "sales" | "nfc" | "outlet"
+   * @property {string}   role             - e.g. "waitress", "manager", "Sales Manager"
    * @property {string}   outlet           - outlet identifier
+   * @property {string}   whatsapp         - WhatsApp sales number (format 628xx)
    * @property {boolean}  active           - whether the source is active
    * @property {boolean}  kartu_diprogram  - whether the NFC/QR card has been programmed
    * @property {string[]} legacy_codes     - previous codes after rotations
@@ -114,10 +115,10 @@
   /**
    * Add a new source record.
    *
-   * @param {{ name: string, type: string, role?: string, outlet?: string }} opts
+   * @param {{ name: string, type: string, role?: string, outlet?: string, whatsapp?: string }} opts
    * @returns {SourceRecord}
    */
-  function addSource({ name, type, role = '', outlet = '' } = {}) {
+  function addSource({ name, type, role = '', outlet = '', whatsapp = '' } = {}) {
     if (!name) throw new Error('[BSStaffManager] addSource: "name" is required');
     if (!type) throw new Error('[BSStaffManager] addSource: "type" is required');
 
@@ -131,6 +132,7 @@
       type,
       role,
       outlet,
+      whatsapp:        whatsapp ? String(whatsapp).replace(/[^0-9]/g, '') : '',
       active:          true,
       kartu_diprogram: false,
       legacy_codes:    [],
@@ -209,6 +211,19 @@
   }
 
   /**
+   * Hard-delete a source by removing it from the sources array.
+   *
+   * @param {string} code
+   * @returns {SourceRecord}
+   */
+  function deleteSource(code) {
+    const idx = _findIndex(code);
+    const removed = _sources.splice(idx, 1)[0];
+    _persistLocal();
+    return removed;
+  }
+
+  /**
    * Return a shallow copy of the full sources array.
    *
    * @returns {SourceRecord[]}
@@ -270,6 +285,7 @@
         // Ensure all expected fields are present even if cloud record is partial
         role:            '',
         outlet:          '',
+        whatsapp:        '',
         active:          true,
         kartu_diprogram: false,
         legacy_codes:    [],
@@ -290,31 +306,20 @@
   /**
    * Return the full URL that should be encoded into a QR code for this source.
    *
-   * The admin page is expected to render this URL using qrcode.js (loaded from
-   * CDN in the admin HTML).  This function does NOT call any QR library itself;
-   * it simply constructs the canonical review URL.
-   *
-   * Usage in admin HTML:
-   *   const url = BSStaffManager.generateQrDataUrl(code, baseUrl);
-   *   new QRCode(containerEl, { text: url, width: 256, height: 256 });
-   *
    * @param {string} sourceCode  - the source's current code
-   * @param {string} [baseUrl]   - base URL of the guest review page
-   *                               defaults to window.location.origin + '/review'
-   * @returns {string}  full URL  e.g. "https://hotel.example.com/review?src=staff-budi-santoso"
+   * @param {string} [baseUrl]   - base URL of guest page (defaults to window.location.origin + '/')
+   * @returns {string}  full URL  e.g. "https://hotel.example.com/?source=staff-budi-santoso"
    */
   function generateQrDataUrl(sourceCode, baseUrl) {
     if (!sourceCode) throw new Error('[BSStaffManager] generateQrDataUrl: sourceCode is required');
 
     const base = baseUrl
-      ? String(baseUrl).replace(/\/$/, '')
+      ? String(baseUrl).replace(/\/$/, '') + '/'
       : (global.location
-          ? global.location.origin + '/review'
-          : 'https://bumi-surabaya.example.com/review');
+          ? global.location.origin + '/'
+          : 'https://bumi-surabaya.example.com/');
 
-    const url = new URL(base);
-    url.searchParams.set('src', sourceCode);
-    return url.toString();
+    return base + '?source=' + encodeURIComponent(sourceCode);
   }
 
   /* ─────────────────────────────────────────────
@@ -403,6 +408,7 @@
     generateSlug,
     addSource,
     updateSource,
+    deleteSource,
     rotateCode,
     deactivateSource,
     getSources,
