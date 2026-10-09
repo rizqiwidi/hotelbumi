@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="description" content="Selamat datang di Bumi Surabaya City Resort — Hotel bintang lima di jantung Surabaya.">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Bumi Surabaya — Digital Guest Experience</title>
+
+  <!-- Preconnect untuk Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Guest-only CSS (no admin code) -->
+  <link rel="stylesheet" href="/assets/css/guest.css">
+  <link rel="stylesheet" href="/assets/css/print.css" media="print">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Bumi Surabaya City Resort">
+  <meta property="og:description" content="Hotel bintang lima di jantung Surabaya — Nikmati pengalaman menginap mewah dan kuliner eksklusif.">
+  <meta property="og:type" content="website">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════
+       HONEYPOT (hidden dari manusia, dihisi bot)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="bs-hp-field" aria-hidden="true">
+    <input type="text" id="bs-hp-website" name="website_url_verification" tabindex="-1" autocomplete="off">
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       LOADING SCREEN
+  ══════════════════════════════════════════════════════════ -->
+  <div id="bs-loading" class="bs-loading">
+    <div class="bs-spinner" role="status" aria-label="Memuat halaman..."></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN CONTENT (disembunyikan sampai config dimuat)
+  ══════════════════════════════════════════════════════════ -->
+  <main id="bs-main" class="bs-hidden">
+
+    <!-- ── HERO SECTION ─────────────────────────────────── -->
+    <section class="bs-hero" role="banner">
+      <div class="bs-hero-overlay" aria-hidden="true"></div>
+      <div class="bs-hero-content">
+
+        <!-- Logo -->
+        <div class="bs-logo-badge" aria-hidden="true">BS</div>
+
+        <!-- Staff badge (tampil hanya jika source valid) -->
+        <div id="bs-staff-badge" class="bs-staff-badge bs-hidden" role="status" aria-live="polite">
+          <span class="bs-dot"></span>
+          <span>Dilayani dengan sepenuh hati</span>
+        </div>
+
+        <!-- Judul hotel -->
+        <h1 id="bs-hotel-name">Bumi Surabaya City Resort</h1>
+        <p class="bs-subtitle" id="bs-subtitle">Hotel Bintang Lima di Jantung Surabaya</p>
+
+        <!-- Pesan sambutan personal -->
+        <p class="bs-welcome" id="bs-welcome-msg" role="status" aria-live="polite">
+          Kami dengan bangga menyambut Anda di Bumi Surabaya City Resort.
+        </p>
+
+        <!-- CTA Buttons -->
+        <div class="bs-hero-cta-review">
+          <a id="bs-btn-review"
+             href="https://g.page/r/CbSXVEVxrNXhEB0/review"
+             target="_blank"
+             rel="noopener noreferrer"
+             class="bs-btn bs-btn-gold"
+             aria-label="Berikan ulasan di Google">
+            <span class="bs-btn-icon">⭐</span>
+            <span>Berikan Ulasan di Google</span>
+          </a>
+        </div>
+
+        <a id="bs-btn-wa"
+           href="https://wa.me/628113388523"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="bs-btn bs-btn-wa"
+           aria-label="Hubungi kami via WhatsApp">
+          <span class="bs-btn-icon">💬</span>
+          <span>Chat &amp; Reservasi via WhatsApp</span>
+        </a>
+
+      </div><!-- .bs-hero-content -->
+
+      <!-- Scroll hint -->
+      <div class="bs-scroll-hint" aria-hidden="true">
+        <span>↓</span>
+        <span style="font-size:0.7rem;letter-spacing:2px;">SCROLL</span>
+      </div>
+    </section><!-- .bs-hero -->
+
+    <!-- ── GOOGLE REVIEW SECTION ─────────────────────────── -->
+    <section id="bs-review-section" class="bs-section bs-review-section" aria-labelledby="bs-review-heading">
+      <div class="bs-section-header">
+        <h2 id="bs-review-heading" class="bs-section-title">
+          <span>Bagikan</span> Pengalaman Anda
+        </h2>
+        <div class="bs-stars" aria-label="5 bintang" role="img">
+          <span class="bs-star" aria-hidden="true">★</span>
+          <span class="bs-star" aria-hidden="true">★</span>
+          <span class="bs-star" aria-hidden="true">★</span>
+          <span class="bs-star" aria-hidden="true">★</span>
+          <span class="bs-star" aria-hidden="true">★</span>
+        </div>
+        <p id="bs-review-prompt" class="bs-section-sub">
+          Pengalaman Anda berarti bagi kami. Bagikan kesan Anda dan bantu tamu lain menemukan keindahan Bumi Surabaya.
+        </p>
+        <a id="bs-review-link"
+           href="https://g.page/r/CbSXVEVxrNXhEB0/review"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="bs-btn bs-btn-gold"
+           style="max-width:360px;margin:0 auto;"
+           aria-label="Tulis ulasan di Google">
+          ⭐ Tulis Ulasan Bintang Lima
+        </a>
+      </div>
+    </section>
+
+    <!-- ── PROMOSI SECTION ───────────────────────────────── -->
+    <section id="bs-promos-section" class="bs-section" aria-labelledby="bs-promos-heading">
+      <div class="bs-section-header">
+        <h2 id="bs-promos-heading" class="bs-section-title">
+          Penawaran <span>Eksklusif</span>
+        </h2>
+        <p class="bs-section-sub">Nikmati pengalaman kuliner dan hiburan premium kami</p>
+      </div>
+      <div id="bs-promos-grid" class="bs-promos-grid" role="list" aria-label="Daftar promosi">
+        <!-- Diisi oleh app.js -->
+      </div>
+    </section>
+
+    <!-- ── OUTLETS SECTION ───────────────────────────────── -->
+    <section id="bs-outlets-section" class="bs-section bs-outlets-section" aria-labelledby="bs-outlets-heading">
+      <div class="bs-section-header">
+        <h2 id="bs-outlets-heading" class="bs-section-title">
+          Gerai <span>F&amp;B</span> Kami
+        </h2>
+        <p class="bs-section-sub">Eksplorasi pilihan kuliner eksklusif di seluruh gerai Bumi Surabaya</p>
+      </div>
+      <div id="bs-outlets-grid" class="bs-outlets-grid" role="list" aria-label="Daftar gerai restoran">
+        <!-- Diisi oleh app.js -->
+      </div>
+    </section>
+
+    <!-- ── WHATSAPP SECTION ──────────────────────────────── -->
+    <section id="bs-wa-section" class="bs-section bs-wa-section" aria-labelledby="bs-wa-heading">
+      <div class="bs-section-header">
+        <div class="bs-wa-icon-wrap" aria-hidden="true">💬</div>
+        <h2 id="bs-wa-heading" class="bs-section-title" style="color:#fff;">
+          Reservasi &amp; <span>Pertanyaan</span>
+        </h2>
+        <p class="bs-section-sub">
+          Tim kami siap membantu Anda 24/7. Hubungi kami langsung via WhatsApp untuk reservasi meja, kamar, dan event spesial.
+        </p>
+        <a id="bs-wa-link"
+           href="https://wa.me/628113388523"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="bs-btn bs-btn-wa"
+           style="max-width:360px;margin:0 auto;"
+           aria-label="Hubungi kami via WhatsApp">
+          💬 Chat WhatsApp Sekarang
+        </a>
+      </div>
+    </section>
+
+    <!-- ── SOCIAL SECTION ────────────────────────────────── -->
+    <section id="bs-social-section" class="bs-section" aria-labelledby="bs-social-heading">
+      <div class="bs-section-header">
+        <h2 id="bs-social-heading" class="bs-section-title">
+          Ikuti Kami di <span>Media Sosial</span>
+        </h2>
+        <p class="bs-section-sub">Dapatkan inspirasi dan penawaran terbaru dari Bumi Surabaya</p>
+        <div id="bs-social-links" class="bs-social-links" role="list">
+          <!-- Diisi oleh app.js -->
+          <a href="https://www.instagram.com/bumisurabaya/" target="_blank" rel="noopener" class="bs-social-link" role="listitem">
+            📸 Instagram
+          </a>
+          <a href="https://www.facebook.com/bumisurabaya/" target="_blank" rel="noopener" class="bs-social-link" role="listitem">
+            👍 Facebook
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── FOOTER ────────────────────────────────────────── -->
+    <footer class="bs-footer" role="contentinfo">
+      <p>
+        <strong id="bs-hotel-name-footer">Bumi Surabaya City Resort</strong>
+      </p>
+      <p id="bs-address-footer" style="margin-top:6px;">
+        Jl. Jenderal Basuki Rachmat No.106-128, Surabaya 60271
+      </p>
+      <p style="margin-top:12px;">
+        <a href="#" id="bs-privacy-link" aria-haspopup="dialog">🔒 Kebijakan Privasi &amp; Zero-PII</a>
+        &nbsp;·&nbsp;
+        <a href="/admin/" style="color:rgba(255,255,255,0.3)">Admin</a>
+      </p>
+      <p style="margin-top:10px;font-size:0.75rem;opacity:0.5;">
+        © 2026 Bumi Surabaya City Resort. Powered by Digital Guest Experience v5.0
+      </p>
+    </footer>
+
+  </main><!-- #bs-main -->
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODAL PRIVASI
+  ══════════════════════════════════════════════════════════ -->
+  <div id="bs-privacy-modal"
+       class="bs-modal-overlay"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="bs-privacy-title"
+       aria-hidden="true">
+    <div class="bs-modal">
+      <div class="bs-modal-drag" aria-hidden="true"></div>
+      <button id="bs-privacy-close" class="bs-modal-close" aria-label="Tutup modal">×</button>
+      <h2 id="bs-privacy-title" class="bs-modal-title">🔒 Komitmen Privasi Kami</h2>
+      <div class="bs-modal-body">
+        <p>
+          <strong>Sistem kami beroperasi dengan prinsip Zero-PII (Zero Personally Identifiable Information).</strong>
+        </p>
+        <p>
+          Kami <strong>tidak</strong> meminta, menyimpan, atau memproses:
+        </p>
+        <ul style="padding-left:20px;margin:10px 0;">
+          <li>Nama tamu</li>
+          <li>Nomor telepon tamu</li>
+          <li>Alamat email tamu</li>
+          <li>Data kartu kredit atau pembayaran</li>
+        </ul>
+        <p>
+          Sistem hanya mencatat data anonim untuk meningkatkan layanan:
+        </p>
+        <ul style="padding-left:20px;margin:10px 0;">
+          <li>Waktu kunjungan halaman (tanpa identitas)</li>
+          <li>Gerai atau staf mana yang memberikan layanan terbaik</li>
+          <li>Tombol apa yang diklik (ulasan, WhatsApp)</li>
+          <li>Durasi kunjungan halaman secara umum</li>
+        </ul>
+        <p>
+          Alamat IP dicatat secara <strong>tersamar</strong> (dua segmen terakhir disembunyikan, contoh: <code>114.125.x.x</code>).
+          Data ini digunakan semata untuk evaluasi performa layanan staf hotel dan tidak pernah dijual atau dibagikan kepada pihak ketiga.
+        </p>
+        <p>
+          Dengan mengakses halaman ini, Anda menyetujui pengumpulan data anonim tersebut demi meningkatkan kualitas layanan Bumi Surabaya City Resort untuk seluruh tamu kami.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SCRIPTS — urutan penting
+  ══════════════════════════════════════════════════════════ -->
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/guest/fingerprint.js"></script>
+  <script src="/assets/js/guest/retry-queue.js"></script>
+  <script src="/assets/js/guest/tracking.js"></script>
+  <script src="/assets/js/guest/app.js"></script>
+
+  <!-- Honeypot check: bila field terisi, tandai bot -->
+  <script>
+    (function() {
+      // Kirim nilai honeypot ke tracker bila ada
+      var hpEl = document.getElementById('bs-hp-website');
+      if (hpEl && hpEl.value) {
+        // Bot mengisi field — akan ditandai di payload tracking
+        window._bsHpValue = hpEl.value;
+      }
+    })();
+  </script>
+
+</body>
+</html>
