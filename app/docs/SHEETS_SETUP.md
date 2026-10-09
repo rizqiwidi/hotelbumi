@@ -50,20 +50,51 @@ untuk platform **Bumi Surabaya Digital Guest Experience v5.0**.
 1. Tambah sheet baru, beri nama `Sources`.
 2. Isi baris pertama (header):
 
-   | A | B | C | D | E | F | G | H | I | J |
-   |---|---|---|---|---|---|---|---|---|---|
-   | `code` | `name` | `type` | `outlet` | `role` | `active` | `kartu_diprogram` | `legacy_codes` | `created_at` | `updated_at` |
+   | A | B | C | D | E | F | G | H | I | J | K |
+   |---|---|---|---|---|---|---|---|---|---|---|
+   | `code` | `name` | `type` | `outlet` | `role` | `active` | `kartu_diprogram` | `legacy_codes` | `created_at` | `updated_at` | `whatsapp` |
 
 3. Isi data staf contoh awal:
 
-   | code | name | type | outlet | role | active | kartu_diprogram | legacy_codes | created_at | updated_at |
-   |---|---|---|---|---|---|---|---|---|---|
-   | `staff-budi-santoso` | Budi Santoso | staff | Arumanis Restaurant | Head Waiter | TRUE | FALSE | `[]` | *(tanggal hari ini)* | |
-   | `arumanis` | Arumanis Restaurant | outlet | Arumanis Restaurant | | TRUE | FALSE | `[]` | | |
+   | code | name | type | outlet | role | active | kartu_diprogram | legacy_codes | created_at | updated_at | whatsapp |
+   |---|---|---|---|---|---|---|---|---|---|---|
+   | `staff-budi-santoso` | Budi Santoso | staff | Arumanis Restaurant | Head Waiter | TRUE | FALSE | `[]` | *(tanggal)* | | |
+   | `sales-maya-lestari` | Maya Lestari | sales | Wedding & Banquet | Sales Manager | TRUE | FALSE | `[]` | *(tanggal)* | | `6281234567890` |
+   | `arumanis` | Arumanis Restaurant | outlet | Arumanis Restaurant | | TRUE | FALSE | `[]` | | | |
 
 4. **Validasi kolom A** (`code`): Wajib berformat slug URL-safe `^[a-z0-9-]+$`.
 5. **Validasi kolom F** (`active`) dan kolom G (`kartu_diprogram`): Gunakan validasi data → Daftar: `TRUE, FALSE`.
-6. Bekukan baris 1.
+6. **Kolom K** (`whatsapp`): Khusus untuk tipe `sales` (format diawali `628`, contoh: `6281234567890`). Untuk staf biasa atau meja, biarkan kosong agar tombol WA tamu mengarah ke nomor WhatsApp concierge global hotel.
+7. Bekukan baris 1.
+
+---
+
+## 3b. Buat Tab `Users` (Autentikasi Administrator v6.0)
+
+> [!NOTE]
+> Tab ini dikelola dan dibuat **secara otomatis** oleh `Code.gs` (`_getOrCreateUsersSheet()`) saat ada upaya login pertama kali jika belum ada.
+> User awal: `widi` dengan password `946217` dan flag `must_change=TRUE` akan di-seed otomatis.
+
+Jika ingin menyiapkan secara manual:
+1. Tambah sheet baru, beri nama `Users`.
+2. Isi baris pertama (header):
+
+   | A | B | C | D | E | F |
+   |---|---|---|---|---|---|
+   | `username` | `password_hash` | `salt` | `must_change` | `created_at` | `updated_at` |
+
+3. Keterangan kolom:
+   - `username`: Nama pengguna admin (huruf kecil/angka/underscore, contoh: `widi`).
+   - `password_hash`: SHA-256(salt + password) dalam format hex lowercase.
+   - `salt`: String acak 16 karakter hexadesimal.
+   - `must_change`: `TRUE` (wajib mengganti password sebelum akses dashboard dibuka) atau `FALSE`.
+   - `created_at` & `updated_at`: Timestamp ISO / tanggal perubahan.
+
+4. **Cara Reset Password Manual**:
+   Jika administrator lupa kata sandi:
+   - Buka Google Sheets ini → tab `Users`.
+   - Hapus baris user yang lupa kata sandinya, atau hapus seluruh baris di bawah header.
+   - Login ulang dari portal admin menggunakan kredensial default (`widi` / `946217`). Sistem akan melakukan auto-seed ulang dan mewajibkan penggantian kata sandi baru.
 
 ---
 
