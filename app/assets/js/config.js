@@ -7,7 +7,10 @@
 (function(window) {
   'use strict';
 
-  /** URL backend Google Apps Script — diisi admin lewat UI, tidak di-hardcode */
+  /** URL backend Google Apps Script produksi v6.0 */
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbwrx5XUk37A3uhIpqNjKR9u87Z5hfg6LcBBVkUKFfgKi16YZPrde37ks7r4IsHu__cL/exec';
+
+  /** Key localStorage untuk override URL backend (opsional) */
   var GAS_URL_KEY = 'bs_gas_url';
 
   /** Cache konfigurasi di sessionStorage */
@@ -68,38 +71,88 @@
         id: 'promo-pasar-malam',
         name: 'Pasar Malam Dinner Buffet',
         outlet: 'Arumanis Restaurant',
-        description: 'Nikmati makan malam prasmanan dengan lebih dari 80 pilihan menu Nusantara dan internasional setiap hari.',
+        description: 'Nikmati makan malam prasmanan dengan lebih dari 80 pilihan menu Nusantara dan internasional autentik setiap hari.',
         price: 'Rp 385.000 nett/pax',
         period: 'Setiap hari, pukul 18.00 – 22.00 WIB',
         emoji: '🌙',
+        image_url: '/assets/images/outlets/arumanis.jpg',
         active: true
       },
       {
         id: 'promo-omakase',
-        name: 'Omakase Kizahashi Experience',
-        outlet: 'Kizahashi Japanese Restaurant',
-        description: 'Perjalanan kuliner Jepang otentik dipandu Chef di meja sushi bar eksklusif kami.',
-        price: 'Rp 750.000 nett/pax',
-        period: 'Selasa – Sabtu, pukul 12.00 – 14.30 & 18.30 – 21.00 WIB',
+        name: 'Omakase & Teppanyaki Experience',
+        outlet: 'Kizahashi',
+        description: 'Perjalanan kuliner Jepang otentik dipandu Chef di sushi bar atau ruang Tatami eksklusif.',
+        price: 'Rp 650.000 nett/pax',
+        period: 'Selasa – Minggu, pukul 12.00 – 14.30 & 18.30 – 21.30 WIB',
         emoji: '🍣',
+        image_url: '/assets/images/outlets/kizahashi.svg',
         active: true
       },
       {
         id: 'promo-high-tea',
-        name: 'Champagne High Tea',
-        outlet: 'Peacock Lounge',
-        description: 'Rasakan tradisi afternoon tea ala hotel bintang lima dengan pilihan kue pastry premium dan teh pilihan dunia.',
-        price: 'Rp 220.000 nett/pax',
-        period: 'Sabtu & Minggu, pukul 14.00 – 17.00 WIB',
+        name: 'Royal Heritage Afternoon High Tea',
+        outlet: 'Lobby Lounge',
+        description: 'Koleksi teh dunia dan artisan coffee dipadu kue tradisional Nusantara dan French patisserie di suasana lounge megah.',
+        price: 'Rp 195.000 nett/set',
+        period: 'Setiap hari, pukul 14.00 – 18.00 WIB',
+        emoji: '🍸',
+        image_url: '/assets/images/outlets/lobby-lounge.jpg',
+        active: true
+      },
+      {
+        id: 'promo-delikopi',
+        name: 'Artisan Morning Brew & Viennoiserie',
+        outlet: 'DeliKopi',
+        description: 'Pilihan single-origin manual brew atau latte hangat dengan butter croissant segar yang dipanggang setiap pagi.',
+        price: 'Rp 65.000 nett/combo',
+        period: 'Pagi hari, pukul 07.00 – 11.00 WIB',
         emoji: '☕',
+        image_url: '/assets/images/outlets/delikopi.svg',
         active: true
       }
     ],
     outlets: [
-      { id: 'arumanis', name: 'Arumanis Restaurant', type: 'Restaurant', description: 'Restoran all-day dining dengan masakan Nusantara & internasional', emoji: '🍽️' },
-      { id: 'kizahashi', name: 'Kizahashi', type: 'Japanese Restaurant', description: 'Kuliner Jepang otentik dengan chef berpengalaman dari Tokyo', emoji: '🍣' },
-      { id: 'peacock', name: 'Peacock Lounge', type: 'Lounge & Bar', description: 'Lounge bergaya art-deco untuk cocktail, mocktail, dan live music', emoji: '🎵' },
-      { id: 'pool-bar', name: 'Pool Bar', type: 'Pool Bar', description: 'Bar tepi kolam renang dengan pemandangan taman tropis', emoji: '🏊' }
+      {
+        id: 'arumanis',
+        name: 'Arumanis Restaurant',
+        type: 'Authentic Indonesian & International Buffet',
+        description: 'Nuansa Jawa yang anggun menghadirkan cita rasa Indonesia autentik berpadu buffet Western & Oriental, serta private room berkapasitas 30 orang.',
+        emoji: '🍽️',
+        image_url: '/assets/images/outlets/arumanis.jpg',
+        hours: '06.00 – 22.00 WIB',
+        highlight: 'Private Room 30 Pax'
+      },
+      {
+        id: 'kizahashi',
+        name: 'Kizahashi',
+        type: 'Authentic Japanese Restaurant',
+        description: 'Restoran Jepang autentik dengan sushi, sashimi segar, teppanyaki live cooking, ramen, udon, dan tempura, dilengkapi 2 ruang Tatami @10 orang.',
+        emoji: '🍣',
+        image_url: '/assets/images/outlets/kizahashi.svg',
+        hours: '11.30 – 14.30 & 18.00 – 22.00 WIB',
+        highlight: '2 Ruang Tatami @10 Pax'
+      },
+      {
+        id: 'lobby-lounge',
+        name: 'Lobby Lounge',
+        type: 'All-Day Lounge & Refreshments',
+        description: 'Suasana santai dan megah untuk all-day refreshments, kopi istimewa, dan aneka kue lokal — tempat sempurna untuk bertemu kolega dan teman.',
+        emoji: '🍸',
+        image_url: '/assets/images/outlets/lobby-lounge.jpg',
+        hours: '08.00 – 23.00 WIB',
+        highlight: 'Live Music & High Tea'
+      },
+      {
+        id: 'delikopi',
+        name: 'DeliKopi',
+        type: 'Specialty Coffee & Gourmet Pastry',
+        description: 'Kopi istimewa serta ragam roti dan pastry segar setiap hari, menghidupkan kembali konsep Delicatessen hotel legendaris.',
+        emoji: '☕',
+        image_url: '/assets/images/outlets/delikopi.svg',
+        hours: '07.00 – 21.00 WIB',
+        highlight: 'Fresh Bakery Daily'
+      }
     ],
     fraud_thresholds: {
       velocity_limit:    3,    // max kunjungan per perangkat ke 1 sumber / 24 jam
@@ -179,9 +232,9 @@
     sessionStorage.removeItem(CONFIG_VERSION_KEY);
   }
 
-  /** Ambil GAS URL dari localStorage */
+  /** Ambil GAS URL (prioritas: override di localStorage -> konstanta default) */
   function getGasUrl() {
-    return localStorage.getItem(GAS_URL_KEY) || '';
+    return localStorage.getItem(GAS_URL_KEY) || GAS_URL;
   }
 
   /** Simpan GAS URL ke localStorage */
@@ -191,6 +244,7 @@
 
   // Ekspos ke global
   window.BSConfig = {
+    GAS_URL:             GAS_URL,
     DEFAULTS:            DEFAULTS,
     GAS_URL_KEY:         GAS_URL_KEY,
     SESSION_SOURCE_KEY:  SESSION_SOURCE_KEY,
