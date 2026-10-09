@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin Portal — Bumi Surabaya v5</title>
+
+  <!-- Fonts (sama dengan guest view agar konsisten) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Admin-only CSS -->
+  <link rel="stylesheet" href="/assets/css/admin.css">
+
+  <!-- Chart.js via CDN (hanya admin yang membutuhkan) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <!-- QRCode.js via CDN (pembuat QR kode untuk staf) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LAYAR LOGIN
+═══════════════════════════════════════════════════════════════ -->
+<div id="adm-login-screen" class="adm-login-screen">
+  <div class="adm-login-card">
+    <div class="adm-login-logo">
+      <div class="adm-badge">BS</div>
+      <h1>Bumi Surabaya</h1>
+      <p>Portal Manajemen &amp; Dashboard Admin</p>
+    </div>
+
+    <div id="adm-lockout-msg" class="adm-alert adm-alert-danger" style="display:none;"></div>
+    <div id="adm-login-err" class="adm-alert adm-alert-danger" style="display:none;"></div>
+
+    <form id="adm-login-form" novalidate>
+      <div class="adm-form-group">
+        <label for="adm-gas-url">URL Google Apps Script Backend</label>
+        <input
+          type="url"
+          id="adm-gas-url"
+          class="adm-input"
+          placeholder="https://script.google.com/macros/s/…/exec"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <span class="adm-field-hint">Diperoleh dari menu Deploy → Kelola deployment di Google Apps Script.</span>
+      </div>
+
+      <div class="adm-form-group">
+        <label for="adm-token">READ_TOKEN (Token Rahasia)</label>
+        <div style="position:relative;">
+          <input
+            type="password"
+            id="adm-token"
+            class="adm-input"
+            placeholder="Token dari Script Properties"
+            autocomplete="off"
+          >
+          <button type="button" id="adm-toggle-pw" class="adm-pw-toggle" aria-label="Tampilkan / sembunyikan token">👁</button>
+        </div>
+        <span class="adm-field-hint">Diatur di Apps Script → Pengaturan Proyek → Script Properties → READ_TOKEN.</span>
+      </div>
+
+      <button type="submit" id="adm-login-btn" class="adm-btn adm-btn-primary adm-btn-full">
+        Masuk ke Dashboard
+      </button>
+    </form>
+
+    <p style="margin-top:24px;text-align:center;font-size:0.78rem;color:#999;">
+      Hanya staf IT dan manajemen yang berwenang mengakses halaman ini.
+    </p>
+  </div>
+</div><!-- #adm-login-screen -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     PORTAL UTAMA (tersembunyi hingga login berhasil)
+═══════════════════════════════════════════════════════════════ -->
+<div id="adm-portal" class="adm-portal" style="display:none;">
+
+  <!-- ── SIDEBAR ──────────────────────────────────────────────── -->
+  <aside class="adm-sidebar" id="adm-sidebar" role="navigation" aria-label="Menu utama admin">
+    <div class="adm-sidebar-header">
+      <div class="adm-sidebar-logo">
+        <div class="adm-badge adm-badge-sm">BS</div>
+        <span>Bumi Surabaya</span>
+      </div>
+      <button id="adm-sidebar-close" class="adm-sidebar-close" aria-label="Tutup sidebar">✕</button>
+    </div>
+
+    <nav class="adm-nav">
+      <a href="#" class="adm-nav-item adm-nav-active" data-tab="dashboard">
+        <span class="adm-nav-icon">📊</span>
+        <span>Dashboard</span>
+      </a>
+      <a href="#" class="adm-nav-item" data-tab="sources">
+        <span class="adm-nav-icon">👥</span>
+        <span>Staf &amp; Sumber</span>
+      </a>
+      <a href="#" class="adm-nav-item" data-tab="antifraud">
+        <span class="adm-nav-icon">🛡️</span>
+        <span>Audit Anti-Fraud</span>
+      </a>
+      <a href="#" class="adm-nav-item" data-tab="nfc">
+        <span class="adm-nav-icon">📡</span>
+        <span>Programmer NFC</span>
+      </a>
+      <a href="#" class="adm-nav-item" data-tab="config">
+        <span class="adm-nav-icon">⚙️</span>
+        <span>Konfigurasi</span>
+      </a>
+    </nav>
+
+    <div class="adm-sidebar-footer">
+      <button id="adm-logout-btn" class="adm-btn adm-btn-ghost adm-btn-full">
+        🚪 Keluar
+      </button>
+    </div>
+  </aside><!-- .adm-sidebar -->
+
+  <!-- ── AREA KONTEN UTAMA ─────────────────────────────────── -->
+  <div class="adm-main">
+
+    <!-- Top bar -->
+    <header class="adm-topbar" role="banner">
+      <button id="adm-sidebar-toggle" class="adm-sidebar-toggle" aria-label="Buka / tutup sidebar">☰</button>
+      <span class="adm-topbar-title" id="adm-topbar-title">Dashboard</span>
+      <div class="adm-topbar-actions">
+        <!-- Pemilih bulan -->
+        <select id="adm-month-select" class="adm-select" aria-label="Pilih bulan data">
+          <option value="">Memuat bulan…</option>
+        </select>
+        <!-- Tombol refresh -->
+        <button id="adm-refresh-btn" class="adm-btn adm-btn-secondary" aria-label="Perbarui data">🔄 Perbarui</button>
+        <!-- Tombol ekspor CSV -->
+        <button id="adm-export-btn" class="adm-btn adm-btn-secondary" aria-label="Unduh laporan CSV">⬇ CSV</button>
+      </div>
+    </header>
+
+    <!-- Notifikasi global -->
+    <div id="adm-toast" class="adm-toast" role="status" aria-live="polite" style="display:none;"></div>
+
+    <!-- ── TAB: DASHBOARD ────────────────────────────────────── -->
+    <section id="tab-dashboard" class="adm-tab-pane adm-tab-active" aria-label="Dashboard utama">
+
+      <!-- Kartu metrik utama -->
+      <div class="adm-metrics-grid">
+        <div class="adm-metric-card" id="adm-metric-visits">
+          <div class="adm-metric-label">Total Kunjungan</div>
+          <div class="adm-metric-value">—</div>
+        </div>
+        <div class="adm-metric-card" id="adm-metric-score">
+          <div class="adm-metric-label">Quality Score</div>
+          <div class="adm-metric-value">—</div>
+        </div>
+        <div class="adm-metric-card" id="adm-metric-reviews">
+          <div class="adm-metric-label">Total Ulasan</div>
+          <div class="adm-metric-value">—</div>
+        </div>
+        <div class="adm-metric-card" id="adm-metric-wa">
+          <div class="adm-metric-label">WA Clicks</div>
+          <div class="adm-metric-value">—</div>
+        </div>
+        <div class="adm-metric-card" id="adm-metric-conv">
+          <div class="adm-metric-label">Conversion Rate</div>
+          <div class="adm-metric-value">—</div>
+        </div>
+      </div>
+
+      <!-- Grafik tren -->
+      <div class="adm-card">
+        <div class="adm-card-header">
+          <h2 class="adm-card-title">📈 Tren Interaksi Harian</h2>
+          <div>
+            <button class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-trend-7d">7 Hari</button>
+            <button class="adm-btn adm-btn-xs adm-btn-primary"   id="adm-trend-30d">30 Hari</button>
+          </div>
+        </div>
+        <div class="adm-chart-wrap">
+          <canvas id="adm-trend-chart" aria-label="Grafik tren kunjungan dan ulasan" role="img"></canvas>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="adm-two-col">
+        <div class="adm-card">
+          <div class="adm-card-header">
+            <h2 class="adm-card-title">🏆 Top Staf</h2>
+          </div>
+          <table class="adm-table" aria-label="Peringkat staf terbaik">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nama Staf</th>
+                <th>Gerai</th>
+                <th>Skor</th>
+                <th>Ulasan</th>
+              </tr>
+            </thead>
+            <tbody id="adm-leaderboard-staff">
+              <tr><td colspan="5" class="bs-empty">Memuat data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="adm-card">
+          <div class="adm-card-header">
+            <h2 class="adm-card-title">🍽️ Top Gerai</h2>
+          </div>
+          <table class="adm-table" aria-label="Peringkat gerai terbaik">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Gerai</th>
+                <th>Skor</th>
+                <th>Ulasan</th>
+              </tr>
+            </thead>
+            <tbody id="adm-leaderboard-outlets">
+              <tr><td colspan="4" class="bs-empty">Memuat data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabel analisis per sumber -->
+      <div class="adm-card">
+        <div class="adm-card-header">
+          <h2 class="adm-card-title">🔍 Analisis per Sumber</h2>
+          <div class="adm-filter-row">
+            <button class="adm-btn adm-btn-xs adm-btn-primary"   data-filter="">Semua</button>
+            <button class="adm-btn adm-btn-xs adm-btn-secondary" data-filter="staff">Staf</button>
+            <button class="adm-btn adm-btn-xs adm-btn-secondary" data-filter="outlet">Gerai</button>
+            <button class="adm-btn adm-btn-xs adm-btn-secondary" data-filter="nfc">NFC Meja</button>
+          </div>
+        </div>
+        <div class="adm-table-wrap">
+          <table class="adm-table" id="adm-source-table" aria-label="Tabel analisis per sumber">
+            <thead>
+              <tr>
+                <th>Nama / Kode</th>
+                <th>Tipe</th>
+                <th>Gerai</th>
+                <th class="bs-num">Kunjungan</th>
+                <th class="bs-num">Ulasan</th>
+                <th class="bs-num">Skor</th>
+                <th class="bs-num">Konversi</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="8" class="bs-empty">Memuat data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section><!-- #tab-dashboard -->
+
+
+    <!-- ── TAB: STAF & SUMBER ────────────────────────────────── -->
+    <section id="tab-sources" class="adm-tab-pane" aria-label="Manajemen staf dan sumber" style="display:none;">
+      <div class="adm-card">
+        <div class="adm-card-header">
+          <h2 class="adm-card-title">👥 Manajemen Staf &amp; Titik NFC</h2>
+          <button id="adm-add-source-btn" class="adm-btn adm-btn-primary">+ Tambah Baru</button>
+        </div>
+
+        <div class="adm-table-wrap">
+          <table class="adm-table" id="adm-sources-list-table" aria-label="Daftar staf dan sumber">
+            <thead>
+              <tr>
+                <th>Kode URL</th>
+                <th>Nama</th>
+                <th>Tipe</th>
+                <th>Gerai</th>
+                <th>Jabatan</th>
+                <th>Kartu</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="adm-sources-tbody">
+              <tr><td colspan="8" class="bs-empty">Belum ada data. Klik "Perbarui" untuk memuat.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap;">
+          <button id="adm-save-sources-btn" class="adm-btn adm-btn-primary">💾 Simpan &amp; Sinkronkan ke Cloud</button>
+        </div>
+      </div>
+    </section><!-- #tab-sources -->
+
+
+    <!-- ── TAB: AUDIT ANTI-FRAUD ─────────────────────────────── -->
+    <section id="tab-antifraud" class="adm-tab-pane" aria-label="Audit anti-fraud" style="display:none;">
+      <div class="adm-card">
+        <div class="adm-card-header">
+          <h2 class="adm-card-title">🛡️ Audit Anti-Kecurangan</h2>
+        </div>
+
+        <!-- Ringkasan fraud per aturan -->
+        <div class="adm-fraud-summary" id="adm-fraud-summary">
+          <p class="bs-empty">Muat data dashboard terlebih dahulu.</p>
+        </div>
+
+        <div class="adm-table-wrap" style="margin-top:20px;">
+          <table class="adm-table" id="adm-fraud-table" aria-label="Daftar event mencurigakan">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Sumber</th>
+                <th>Device ID (samar)</th>
+                <th>IP (samar)</th>
+                <th>Flag</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="adm-fraud-tbody">
+              <tr><td colspan="6" class="bs-empty">Belum ada event mencurigakan terdeteksi.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section><!-- #tab-antifraud -->
+
+
+    <!-- ── TAB: PROGRAMMER NFC ──────────────────────────────── -->
+    <section id="tab-nfc" class="adm-tab-pane" aria-label="Programmer kartu NFC" style="display:none;">
+      <div class="adm-card" style="max-width:600px;margin:0 auto;">
+        <div class="adm-card-header">
+          <h2 class="adm-card-title">📡 Tulis Kartu NFC (Web NFC API)</h2>
+        </div>
+
+        <div id="adm-nfc-status-bar" class="adm-nfc-status"></div>
+
+        <div class="adm-form-group" style="margin-top:20px;">
+          <label for="adm-nfc-source-select">Pilih Staf / Titik NFC</label>
+          <select id="adm-nfc-source-select" class="adm-select adm-input">
+            <option value="">— Pilih sumber —</option>
+          </select>
+        </div>
+
+        <div class="adm-form-group">
+          <label>URL yang akan ditulis</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="adm-nfc-url-preview" class="adm-input" readonly
+                   style="flex:1;background:#f5f5f5;" placeholder="Pilih sumber untuk melihat URL">
+            <button id="adm-nfc-copy-btn" class="adm-btn adm-btn-secondary" aria-label="Salin URL">📋 Salin</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
+          <button id="adm-nfc-write-btn" class="adm-btn adm-btn-primary" disabled>
+            📡 Tulis ke Kartu NFC
+          </button>
+          <button id="adm-nfc-mark-programmed" class="adm-btn adm-btn-secondary" disabled>
+            ✅ Tandai Sudah Diprogram
+          </button>
+        </div>
+
+        <div class="adm-card" style="margin-top:24px;background:#f9f7f4;">
+          <h3 style="font-size:0.9rem;margin-bottom:12px;color:var(--charcoal-light);">
+            📋 Panduan: Tulis Manual via NFC Tools (iOS / Laptop)
+          </h3>
+          <ol style="padding-left:20px;line-height:2;font-size:0.85rem;color:var(--charcoal-light);">
+            <li>Pilih staf / meja di atas, lalu klik <strong>Salin URL</strong>.</li>
+            <li>Buka aplikasi <strong>NFC Tools</strong> (tersedia di App Store &amp; Play Store).</li>
+            <li>Pilih menu <strong>Write</strong> → <strong>Add a record</strong> → <strong>URL</strong>.</li>
+            <li>Paste URL yang sudah disalin ke kolom URL di NFC Tools.</li>
+            <li>Tempelkan kartu fisik ke belakang ponsel → tekan <strong>Write</strong>.</li>
+            <li>Setelah berhasil, kembali ke portal admin dan klik <strong>Tandai Sudah Diprogram</strong>.</li>
+          </ol>
+        </div>
+
+        <!-- Preview QR -->
+        <div class="adm-form-group" style="margin-top:24px;">
+          <label>Preview QR Code</label>
+          <div id="adm-qr-preview" class="adm-qr-wrap">
+            <p class="bs-empty" style="font-size:0.82rem;">Pilih sumber untuk menampilkan QR.</p>
+          </div>
+          <button id="adm-print-qr-btn" class="adm-btn adm-btn-secondary" style="margin-top:12px;" disabled>
+            🖨️ Cetak Kartu Meja
+          </button>
+        </div>
+      </div>
+    </section><!-- #tab-nfc -->
+
+
+    <!-- ── TAB: KONFIGURASI ──────────────────────────────────── -->
+    <section id="tab-config" class="adm-tab-pane" aria-label="Konfigurasi sistem" style="display:none;">
+      <div class="adm-card" style="max-width:640px;margin:0 auto;">
+        <div class="adm-card-header">
+          <h2 class="adm-card-title">⚙️ Konfigurasi Backend</h2>
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cfg-gas-url">URL Google Apps Script</label>
+          <input type="url" id="adm-cfg-gas-url" class="adm-input" placeholder="https://script.google.com/macros/s/…/exec">
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cfg-token">READ_TOKEN</label>
+          <div style="position:relative;">
+            <input type="password" id="adm-cfg-token" class="adm-input" placeholder="Token sesi (hanya disimpan di sessionStorage)">
+            <button type="button" class="adm-pw-toggle" id="adm-cfg-toggle-pw" aria-label="Lihat / sembunyikan token">👁</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
+          <button id="adm-cfg-save-btn" class="adm-btn adm-btn-primary">💾 Simpan Konfigurasi</button>
+          <button id="adm-cfg-test-btn" class="adm-btn adm-btn-secondary">🔗 Uji Koneksi Backend</button>
+        </div>
+
+        <p id="adm-cfg-msg" class="adm-field-hint" style="margin-top:12px;"></p>
+      </div>
+
+      <!-- Konfigurasi fraud thresholds -->
+      <div class="adm-card" style="max-width:640px;margin:24px auto 0;">
+        <div class="adm-card-header">
+          <h2 class="adm-card-title">🛡️ Ambang Batas Anti-Fraud</h2>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-ft-velocity">Velocity Limit (AF-01) — kunjungan / 24 jam</label>
+            <input type="number" id="adm-ft-velocity" class="adm-input" value="3" min="1" max="50">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-ft-burst">Burst Count (AF-02) — kunjungan / 10 menit</label>
+            <input type="number" id="adm-ft-burst" class="adm-input" value="5" min="2" max="20">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-ft-low-dwell">Low Dwell (AF-04) — detik minimum</label>
+            <input type="number" id="adm-ft-low-dwell" class="adm-input" value="5" min="1" max="60">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-ft-hopping">Hopping Sources (AF-05) — sumber / 1 jam</label>
+            <input type="number" id="adm-ft-hopping" class="adm-input" value="4" min="2" max="10">
+          </div>
+        </div>
+
+        <button id="adm-ft-save-btn" class="adm-btn adm-btn-primary">💾 Simpan &amp; Sinkronkan Threshold</button>
+      </div>
+    </section><!-- #tab-config -->
+
+  </div><!-- .adm-main -->
+</div><!-- #adm-portal -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL TAMBAH / EDIT SUMBER
+═══════════════════════════════════════════════════════════════ -->
+<div id="adm-source-modal" class="adm-modal-overlay" role="dialog"
+     aria-modal="true" aria-labelledby="adm-source-modal-title" aria-hidden="true" style="display:none;">
+  <div class="adm-modal-box">
+    <div class="adm-modal-header">
+      <h3 id="adm-source-modal-title">Tambah Sumber Baru</h3>
+      <button class="adm-modal-close" id="adm-source-modal-close" aria-label="Tutup">✕</button>
+    </div>
+    <form id="adm-source-form" novalidate>
+      <div class="adm-form-group">
+        <label for="adm-src-name">Nama Staf / Label Meja <span class="adm-required">*</span></label>
+        <input type="text" id="adm-src-name" class="adm-input" placeholder="Contoh: Budi Santoso" required>
+      </div>
+      <div class="adm-form-group">
+        <label for="adm-src-type">Tipe Sumber <span class="adm-required">*</span></label>
+        <select id="adm-src-type" class="adm-input" required>
+          <option value="staff">Staf (Staff)</option>
+          <option value="nfc">Meja / Titik NFC</option>
+          <option value="outlet">Gerai (Outlet)</option>
+        </select>
+      </div>
+      <div class="adm-form-group" id="adm-src-role-group">
+        <label for="adm-src-role">Jabatan</label>
+        <input type="text" id="adm-src-role" class="adm-input" placeholder="Contoh: Head Waiter, Captain Lounge">
+      </div>
+      <div class="adm-form-group">
+        <label for="adm-src-outlet">Gerai Penugasan</label>
+        <select id="adm-src-outlet" class="adm-input">
+          <option value="">— Pilih gerai —</option>
+          <option value="Arumanis Restaurant">Arumanis Restaurant</option>
+          <option value="Kizahashi">Kizahashi Japanese Restaurant</option>
+          <option value="Peacock Lounge">Peacock Lounge</option>
+          <option value="Pool Bar">Pool Bar</option>
+        </select>
+      </div>
+      <div class="adm-form-group" id="adm-src-code-group" style="display:none;">
+        <label>Kode URL (Auto-generated)</label>
+        <input type="text" id="adm-src-code-preview" class="adm-input" readonly style="background:#f5f5f5;">
+      </div>
+      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;">
+        <button type="button" class="adm-btn adm-btn-secondary" id="adm-source-modal-cancel">Batal</button>
+        <button type="submit" class="adm-btn adm-btn-primary" id="adm-source-modal-submit">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCRIPTS — urutan penting: config → auth → api → modules
+═══════════════════════════════════════════════════════════════ -->
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/admin/auth.js"></script>
+<script src="/assets/js/admin/api.js"></script>
+<script src="/assets/js/admin/dashboard.js"></script>
+<script src="/assets/js/admin/staff-manager.js"></script>
+<script src="/assets/js/admin/anti-fraud.js"></script>
+<script src="/assets/js/admin/web-nfc.js"></script>
+
+<!-- Controller utama portal admin (inline — cukup kecil) -->
+<script>
+(function () {
+  'use strict';
+
+  /* ── State global portal ── */
+  var _events       = [];      // raw events dari GAS
+  var _evalResult   = null;    // hasil BSAntiFraud.evaluate()
+  var _currentPeriod = '7d';
+  var _currentFilter = '';
+  var _editingCode  = null;    // null = tambah baru, string = edit
+  var _fraudThresholds = null;
+
+  /* ── Elemen DOM utama ── */
+  function $id(id) { return document.getElementById(id); }
+
+  var loginScreen  = $id('adm-login-screen');
+  var portal       = $id('adm-portal');
+  var loginForm    = $id('adm-login-form');
+  var loginErr     = $id('adm-login-err');
+  var lockoutMsg   = $id('adm-lockout-msg');
+  var logoutBtn    = $id('adm-logout-btn');
+  var refreshBtn   = $id('adm-refresh-btn');
+  var exportBtn    = $id('adm-export-btn');
+  var monthSelect  = $id('adm-month-select');
+  var toast        = $id('adm-toast');
+  var sidebar      = $id('adm-sidebar');
+  var sidebarToggle= $id('adm-sidebar-toggle');
+  var sidebarClose = $id('adm-sidebar-close');
+
+  /* ── Toast helper ── */
+  var _toastTimer;
+  function showToast(msg, type) {
+    toast.textContent = msg;
+    toast.className   = 'adm-toast adm-toast-' + (type || 'info');
+    toast.style.display = 'block';
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function () { toast.style.display = 'none'; }, 4000);
+  }
+
+  /* ── Navigasi tab ── */
+  var TAB_TITLES = {
+    dashboard: 'Dashboard',
+    sources:   'Staf & Sumber',
+    antifraud: 'Audit Anti-Fraud',
+    nfc:       'Programmer NFC',
+    config:    'Konfigurasi'
+  };
+
+  function switchTab(name) {
+    document.querySelectorAll('.adm-nav-item').forEach(function (el) {
+      el.classList.toggle('adm-nav-active', el.dataset.tab === name);
+    });
+    document.querySelectorAll('.adm-tab-pane').forEach(function (el) {
+      el.style.display = el.id === 'tab-' + name ? '' : 'none';
+    });
+    $id('adm-topbar-title').textContent = TAB_TITLES[name] || name;
+    // Populasi NFC select saat tab NFC dibuka
+    if (name === 'nfc') _populateNfcSelect();
+    // Populasi tabel sumber saat tab sources dibuka
+    if (name === 'sources') _renderSourcesTable();
+    // Populasi fraud table saat tab antifraud dibuka
+    if (name === 'antifraud') _renderFraudTable();
+  }
+
+  document.querySelectorAll('.adm-nav-item').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      switchTab(el.dataset.tab);
+      // Tutup sidebar di mobile
+      if (window.innerWidth < 768) sidebar.classList.remove('adm-sidebar-open');
+    });
+  });
+
+  /* ── Sidebar mobile ── */
+  sidebarToggle.addEventListener('click', function () {
+    sidebar.classList.toggle('adm-sidebar-open');
+  });
+  sidebarClose.addEventListener('click', function () {
+    sidebar.classList.remove('adm-sidebar-open');
+  });
+
+  /* ── Login ── */
+  function _checkLockout() {
+    if (BSAuth.isLockedOut()) {
+      var mins = Math.ceil(BSAuth.remainingLockMs() / 60000);
+      lockoutMsg.textContent = 'Terlalu banyak percobaan gagal. Coba lagi dalam ' + mins + ' menit.';
+      lockoutMsg.style.display = '';
+      return true;
+    }
+    lockoutMsg.style.display = 'none';
+    return false;
+  }
+
+  // Isi URL yang tersimpan di localStorage
+  var savedUrl = BSConfig.getGasUrl();
+  if (savedUrl) $id('adm-gas-url').value = savedUrl;
+
+  // Toggle password visibility
+  function _togglePw(inputId, btn) {
+    var inp = $id(inputId);
+    if (!inp) return;
+    var hidden = inp.type === 'password';
+    inp.type = hidden ? 'text' : 'password';
+    btn.textContent = hidden ? '🙈' : '👁';
+  }
+  $id('adm-toggle-pw').addEventListener('click', function () {
+    _togglePw('adm-token', this);
+  });
+  $id('adm-cfg-toggle-pw').addEventListener('click', function () {
+    _togglePw('adm-cfg-token', this);
+  });
+
+  loginForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (_checkLockout()) return;
+
+    var gasUrl = $id('adm-gas-url').value.trim();
+    var token  = $id('adm-token').value.trim();
+
+    if (!gasUrl || !token) {
+      loginErr.textContent = 'Isi URL backend dan token terlebih dahulu.';
+      loginErr.style.display = '';
+      return;
+    }
+
+    BSConfig.setGasUrl(gasUrl);
+    loginErr.style.display = 'none';
+    var btn = $id('adm-login-btn');
+    btn.disabled = true;
+    btn.textContent = 'Memverifikasi…';
+
+    BSAuth.verifyToken(gasUrl, token).then(function (res) {
+      if (res.ok) {
+        BSAuth.saveSession(token, res.role);
+        BSAuth.resetFails();
+        _showPortal();
+        _loadDashboard();
+      } else {
+        BSAuth.addFail();
+        var fails = BSAuth.getFailCount();
+        loginErr.textContent = (res.error || 'Token tidak valid.') +
+          ' (' + fails + '/' + BSAuth.MAX_FAILS + ' percobaan)';
+        loginErr.style.display = '';
+        _checkLockout();
+      }
+    }).catch(function (err) {
+      loginErr.textContent = 'Gagal menghubungi backend: ' + err.message;
+      loginErr.style.display = '';
+    }).finally(function () {
+      btn.disabled = false;
+      btn.textContent = 'Masuk ke Dashboard';
+    });
+  });
+
+  function _showPortal() {
+    loginScreen.style.display = 'none';
+    portal.style.display      = 'flex';
+    // Isi field konfigurasi
+    $id('adm-cfg-gas-url').value = BSConfig.getGasUrl();
+  }
+
+  /* ── Logout ── */
+  logoutBtn.addEventListener('click', function () {
+    BSAuth.logout();
+    portal.style.display      = 'none';
+    loginScreen.style.display = '';
+    $id('adm-token').value    = '';
+    loginErr.style.display    = 'none';
+  });
+
+  /* ── Auto-resume sesi ── */
+  if (BSAuth.isLoggedIn()) {
+    _showPortal();
+    _loadDashboard();
+  }
+
+  /* ── Load data dashboard ── */
+  function _loadDashboard() {
+    var month = monthSelect.value || '';
+    var gasUrl = BSConfig.getGasUrl();
+    if (!gasUrl) return;
+
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = '🔄 Memuat…';
+
+    BSApi.getEventsData(month, 10000).then(function (resp) {
+      if (!resp.ok) throw new Error(resp.error || 'Gagal memuat data');
+
+      _events = resp.events || [];
+
+      // Populasi dropdown bulan
+      _populateMonthSelect(resp.archive_tabs || []);
+
+      // Evaluasi anti-fraud
+      var _srcList = (window.BSStaffManager && BSStaffManager.getSources)
+        ? BSStaffManager.getSources() : [];
+      _evalResult = BSAntiFraud.evaluate(
+        _events,
+        BSConfig.DEFAULTS.fraud_thresholds,
+        _srcList,
+        resp.staff_devices || []
+      );
+
+      // Render dashboard
+      var lb = _evalResult.leaderboard || {};
+      BSDashboard.renderMetrics({
+        totalVisits:    _evalResult.totalVisits    || 0,
+        qualityScore:   _evalResult.avgQualityScore || 0,
+        totalReviews:   _evalResult.totalReviews   || 0,
+        waClicks:       _evalResult.totalWa        || 0,
+        conversionRate: _evalResult.conversionRate  || 0
+      });
+      BSDashboard.renderLeaderboard({
+        staffRanking:  lb.staff   || [],
+        outletRanking: lb.outlets || []
+      });
+      BSDashboard.renderTrendChart({ daily: _evalResult.daily || [] }, _currentPeriod);
+      BSDashboard.renderSourceTable(_evalResult.sources || [], _currentFilter);
+
+      showToast('Data berhasil dimuat — ' + _events.length + ' event.', 'success');
+    }).catch(function (err) {
+      showToast('Gagal memuat data: ' + err.message, 'error');
+    }).finally(function () {
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = '🔄 Perbarui';
+    });
+  }
+
+  refreshBtn.addEventListener('click', _loadDashboard);
+
+  /* ── Dropdown bulan ── */
+  function _populateMonthSelect(tabs) {
+    var current = monthSelect.value;
+    monthSelect.innerHTML = '';
+    tabs.slice().reverse().forEach(function (t) {
+      var opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      monthSelect.appendChild(opt);
+    });
+    if (current && tabs.indexOf(current) !== -1) monthSelect.value = current;
+    else if (tabs.length > 0) monthSelect.value = tabs[tabs.length - 1];
+  }
+  monthSelect.addEventListener('change', _loadDashboard);
+
+  /* ── Periode tren ── */
+  $id('adm-trend-7d').addEventListener('click', function () {
+    _currentPeriod = '7d';
+    if (_evalResult) BSDashboard.renderTrendChart({ daily: _evalResult.daily || [] }, '7d');
+  });
+  $id('adm-trend-30d').addEventListener('click', function () {
+    _currentPeriod = '30d';
+    if (_evalResult) BSDashboard.renderTrendChart({ daily: _evalResult.daily || [] }, '30d');
+  });
+
+  /* ── Filter sumber ── */
+  document.querySelectorAll('[data-filter]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      _currentFilter = btn.dataset.filter;
+      document.querySelectorAll('[data-filter]').forEach(function (b) {
+        b.className = b === btn
+          ? 'adm-btn adm-btn-xs adm-btn-primary'
+          : 'adm-btn adm-btn-xs adm-btn-secondary';
+      });
+      if (_evalResult) BSDashboard.renderSourceTable(_evalResult.sources || [], _currentFilter);
+    });
+  });
+
+  /* ── Ekspor CSV ── */
+  exportBtn.addEventListener('click', function () {
+    if (!_events || _events.length === 0) {
+      showToast('Tidak ada data untuk diekspor.', 'error'); return;
+    }
+    BSDashboard.exportCsv(_events, 'bumi-surabaya-events');
+    showToast('File CSV berhasil diunduh.', 'success');
+  });
+
+  /* ── TAB STAF: render tabel sumber ── */
+  function _renderSourcesTable() {
+    var sources = BSStaffManager.getSources();
+    var tbody   = $id('adm-sources-tbody');
+    if (!tbody) return;
+    if (sources.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="bs-empty">Belum ada data sumber. Klik "Tambah Baru".</td></tr>';
+      return;
+    }
+    tbody.innerHTML = sources.map(function (s) {
+      var kartuBadge = s.kartu_diprogram
+        ? '<span class="adm-badge-ok">✅ Diprogram</span>'
+        : '<span class="adm-badge-warn">⚠ Belum</span>';
+      var statusBadge = s.active
+        ? '<span class="adm-badge-ok">Aktif</span>'
+        : '<span class="adm-badge-err">Nonaktif</span>';
+      return '<tr>' +
+        '<td><code style="font-size:0.78rem;">' + _esc(s.code) + '</code></td>' +
+        '<td>' + _esc(s.name) + '</td>' +
+        '<td>' + _esc(s.type) + '</td>' +
+        '<td>' + _esc(s.outlet || '—') + '</td>' +
+        '<td>' + _esc(s.role || '—') + '</td>' +
+        '<td>' + kartuBadge + '</td>' +
+        '<td>' + statusBadge + '</td>' +
+        '<td class="adm-actions">' +
+          '<button class="adm-btn adm-btn-xs adm-btn-secondary" onclick="adminEditSource(\'' + _esc(s.code) + '\')">✏</button>' +
+          '<button class="adm-btn adm-btn-xs adm-btn-secondary" onclick="adminRotateSource(\'' + _esc(s.code) + '\')">🔄</button>' +
+          '<button class="adm-btn adm-btn-xs adm-btn-danger"   onclick="adminDeactivate(\'' + _esc(s.code) + '\')">' +
+            (s.active ? '🚫' : '✅') + '</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* ── Modal tambah/edit sumber ── */
+  $id('adm-add-source-btn').addEventListener('click', function () {
+    _openSourceModal(null);
+  });
+  $id('adm-source-modal-close').addEventListener('click', _closeSourceModal);
+  $id('adm-source-modal-cancel').addEventListener('click', _closeSourceModal);
+  $id('adm-src-name').addEventListener('input', _previewSlug);
+  $id('adm-src-type').addEventListener('change', _previewSlug);
+
+  function _openSourceModal(code) {
+    _editingCode = code;
+    var modal    = $id('adm-source-modal');
+    var title    = $id('adm-source-modal-title');
+    var codeGrp  = $id('adm-src-code-group');
+
+    if (code) {
+      var src = BSStaffManager.getSources().find(function (s) { return s.code === code; });
+      if (!src) return;
+      title.textContent           = 'Edit Sumber: ' + src.name;
+      $id('adm-src-name').value   = src.name;
+      $id('adm-src-type').value   = src.type;
+      $id('adm-src-role').value   = src.role || '';
+      $id('adm-src-outlet').value = src.outlet || '';
+      $id('adm-src-code-preview').value = src.code;
+      codeGrp.style.display = '';
+    } else {
+      title.textContent = 'Tambah Sumber Baru';
+      $id('adm-source-form').reset();
+      $id('adm-src-code-preview').value = '';
+      codeGrp.style.display = 'none';
+    }
+
+    modal.style.display = '';
+    modal.setAttribute('aria-hidden', 'false');
+    $id('adm-src-name').focus();
+  }
+
+  function _closeSourceModal() {
+    var modal = $id('adm-source-modal');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    _editingCode = null;
+  }
+
+  function _previewSlug() {
+    if (_editingCode) return; // jangan ubah kode yang sudah ada
+    var name = $id('adm-src-name').value.trim();
+    var type = $id('adm-src-type').value;
+    if (name && type) {
+      try {
+        var slug = BSStaffManager.generateSlug(name, type);
+        $id('adm-src-code-preview').value = slug;
+        $id('adm-src-code-group').style.display = '';
+      } catch (_) {}
+    }
+  }
+
+  $id('adm-source-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name   = $id('adm-src-name').value.trim();
+    var type   = $id('adm-src-type').value;
+    var role   = $id('adm-src-role').value.trim();
+    var outlet = $id('adm-src-outlet').value;
+
+    if (!name || !type) { showToast('Nama dan tipe wajib diisi.', 'error'); return; }
+
+    try {
+      if (_editingCode) {
+        BSStaffManager.updateSource(_editingCode, { name: name, role: role, outlet: outlet });
+        showToast('Sumber berhasil diperbarui.', 'success');
+      } else {
+        BSStaffManager.addSource({ name: name, type: type, role: role, outlet: outlet });
+        showToast('Sumber berhasil ditambahkan.', 'success');
+      }
+      _closeSourceModal();
+      _renderSourcesTable();
+      _populateNfcSelect();
+    } catch (err) {
+      showToast('Gagal: ' + err.message, 'error');
+    }
+  });
+
+  /* Fungsi global untuk aksi baris tabel */
+  window.adminEditSource = function (code) { _openSourceModal(code); };
+  window.adminRotateSource = function (code) {
+    if (!confirm('Rotasi kode untuk sumber ini? Kartu NFC lama tidak lagi aktif menambah skor.')) return;
+    try {
+      var updated = BSStaffManager.rotateCode(code);
+      showToast('Kode dirotasi menjadi: ' + updated.code, 'success');
+      _renderSourcesTable();
+    } catch (err) { showToast('Gagal rotasi: ' + err.message, 'error'); }
+  };
+  window.adminDeactivate = function (code) {
+    var src = BSStaffManager.getSources().find(function (s) { return s.code === code; });
+    if (!src) return;
+    var action = src.active ? 'nonaktifkan' : 'aktifkan kembali';
+    if (!confirm('Yakin ingin ' + action + ' sumber ini?')) return;
+    try {
+      if (src.active) BSStaffManager.deactivateSource(code);
+      else BSStaffManager.updateSource(code, { active: true });
+      showToast('Status berhasil diubah.', 'success');
+      _renderSourcesTable();
+    } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+  };
+
+  /* Simpan & sinkronkan ke cloud */
+  $id('adm-save-sources-btn').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = '⏳ Menyinkronkan…';
+    BSStaffManager.syncToCloud().then(function () {
+      showToast('Data staf berhasil disinkronkan ke Google Sheets.', 'success');
+    }).catch(function (err) {
+      showToast('Gagal sinkronisasi: ' + err.message, 'error');
+    }).finally(function () {
+      btn.disabled = false;
+      btn.textContent = '💾 Simpan & Sinkronkan ke Cloud';
+    });
+  });
+
+  /* ── TAB FRAUD ── */
+  function _renderFraudTable() {
+    if (!_evalResult) {
+      $id('adm-fraud-tbody').innerHTML = '<tr><td colspan="6" class="bs-empty">Muat data dashboard terlebih dahulu.</td></tr>';
+      return;
+    }
+    var flagged = (_evalResult.events || []).filter(function (ev) {
+      return ev._flags && ev._flags.length > 0;
+    });
+
+    var summary = $id('adm-fraud-summary');
+    summary.innerHTML = '<p style="color:var(--charcoal-light);font-size:0.85rem;">Total event terdeteksi: <strong>' + flagged.length + '</strong></p>';
+
+    if (flagged.length === 0) {
+      $id('adm-fraud-tbody').innerHTML = '<tr><td colspan="6" class="bs-empty">Tidak ada event mencurigakan.</td></tr>';
+      return;
+    }
+    $id('adm-fraud-tbody').innerHTML = flagged.slice(0, 200).map(function (ev) {
+      var maskedIp = _maskIp(ev.ip || '');
+      var maskedDev = (ev.device_id || '').substring(0, 8) + '…';
+      var ts = ev.ts_server ? new Date(ev.ts_server).toLocaleString('id-ID') : '—';
+      var flags = ev._flags.join(', ');
+      return '<tr>' +
+        '<td style="font-size:0.78rem;">' + _esc(ts) + '</td>' +
+        '<td>' + _esc(ev.source || '—') + '</td>' +
+        '<td><code style="font-size:0.75rem;">' + _esc(maskedDev) + '</code></td>' +
+        '<td><code style="font-size:0.75rem;">' + _esc(maskedIp) + '</code></td>' +
+        '<td><span class="adm-badge-err">' + _esc(flags) + '</span></td>' +
+        '<td>' +
+          '<button class="adm-btn adm-btn-xs adm-btn-secondary" onclick="adminMarkDevice(\'' + _esc(ev.device_id || '') + '\',\'' + _esc(ev.source || '') + '\')">📌 Daftarkan HP Staf</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  window.adminMarkDevice = function (deviceId, sourceCode) {
+    if (!confirm('Daftarkan perangkat ini sebagai HP staf untuk sumber "' + sourceCode + '"?')) return;
+    showToast('Perangkat ' + deviceId.substring(0, 8) + '… ditandai HP staf.', 'info');
+    // Implementasi penuh: BSApi.post({ action: 'register_staff_device', device_id: deviceId, staff_code: sourceCode })
+  };
+
+  /* ── TAB NFC ── */
+  function _populateNfcSelect() {
+    var sel = $id('adm-nfc-source-select');
+    var sources = BSStaffManager.getActiveSources();
+    sel.innerHTML = '<option value="">— Pilih sumber —</option>';
+    sources.forEach(function (s) {
+      var opt = document.createElement('option');
+      opt.value = s.code;
+      opt.textContent = s.name + ' (' + s.type + ')';
+      sel.appendChild(opt);
+    });
+  }
+
+  $id('adm-nfc-source-select').addEventListener('change', function () {
+    var code = this.value;
+    var urlEl = $id('adm-nfc-url-preview');
+    var writeBtn = $id('adm-nfc-write-btn');
+    var markBtn  = $id('adm-nfc-mark-programmed');
+    var printBtn = $id('adm-print-qr-btn');
+    var qrWrap   = $id('adm-qr-preview');
+
+    if (!code) {
+      urlEl.value = '';
+      writeBtn.disabled = markBtn.disabled = printBtn.disabled = true;
+      qrWrap.innerHTML = '<p class="bs-empty" style="font-size:0.82rem;">Pilih sumber untuk menampilkan QR.</p>';
+      return;
+    }
+
+    var baseUrl = window.location.origin + '/';
+    var fullUrl = baseUrl + '?source=' + encodeURIComponent(code);
+    urlEl.value = fullUrl;
+    writeBtn.disabled = false;
+    markBtn.disabled  = false;
+    printBtn.disabled = false;
+
+    // Render QR
+    qrWrap.innerHTML = '';
+    if (typeof QRCode !== 'undefined') {
+      new QRCode(qrWrap, { text: fullUrl, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+    } else {
+      qrWrap.innerHTML = '<p class="bs-empty">Library QRCode tidak dimuat.</p>';
+    }
+  });
+
+  $id('adm-nfc-copy-btn').addEventListener('click', function () {
+    var url = $id('adm-nfc-url-preview').value;
+    if (!url) { showToast('Pilih sumber terlebih dahulu.', 'error'); return; }
+    navigator.clipboard.writeText(url).then(function () {
+      showToast('URL berhasil disalin!', 'success');
+    }).catch(function () {
+      showToast('Salin manual: ' + url, 'info');
+    });
+  });
+
+  $id('adm-nfc-write-btn').addEventListener('click', function () {
+    var url = $id('adm-nfc-url-preview').value;
+    if (!url) { showToast('Pilih sumber terlebih dahulu.', 'error'); return; }
+    if (typeof BSWebNfc === 'undefined' || typeof BSWebNfc.writeUrl !== 'function') {
+      showToast('Web NFC tidak tersedia di perangkat / browser ini.', 'error'); return;
+    }
+    $id('adm-nfc-status-bar').textContent = '⏳ Menunggu kartu… Tempelkan kartu NFC ke belakang ponsel.';
+    $id('adm-nfc-status-bar').className   = 'adm-nfc-status adm-nfc-waiting';
+    BSWebNfc.writeUrl(url, function (ok, msg) {
+      if (ok) {
+        $id('adm-nfc-status-bar').textContent = '✅ Kartu berhasil ditulis!';
+        $id('adm-nfc-status-bar').className   = 'adm-nfc-status adm-nfc-ok';
+        _markCardProgrammed($id('adm-nfc-source-select').value);
+        showToast('Kartu NFC berhasil diprogram!', 'success');
+      } else {
+        $id('adm-nfc-status-bar').textContent = '❌ Gagal: ' + (msg || 'error');
+        $id('adm-nfc-status-bar').className   = 'adm-nfc-status adm-nfc-err';
+        showToast('Gagal menulis kartu: ' + (msg || 'error'), 'error');
+      }
+    });
+  });
+
+  $id('adm-nfc-mark-programmed').addEventListener('click', function () {
+    var code = $id('adm-nfc-source-select').value;
+    if (!code) return;
+    _markCardProgrammed(code);
+    showToast('Status kartu diperbarui: Sudah Diprogram.', 'success');
+  });
+
+  function _markCardProgrammed(code) {
+    try {
+      BSStaffManager.updateSource(code, { kartu_diprogram: true });
+      _renderSourcesTable();
+    } catch (_) {}
+  }
+
+  $id('adm-print-qr-btn').addEventListener('click', function () {
+    window.print();
+  });
+
+  /* ── TAB KONFIGURASI ── */
+  $id('adm-cfg-save-btn').addEventListener('click', function () {
+    var url   = $id('adm-cfg-gas-url').value.trim();
+    var token = $id('adm-cfg-token').value.trim();
+    if (url)   BSConfig.setGasUrl(url);
+    if (token) BSAuth.saveSession(token, BSAuth.getRole());
+    $id('adm-cfg-msg').textContent = '✅ Konfigurasi tersimpan di sesi ini.';
+    showToast('Konfigurasi disimpan.', 'success');
+  });
+
+  $id('adm-cfg-test-btn').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true; btn.textContent = '⏳ Menguji…';
+    BSApi.getPublicConfig().then(function (resp) {
+      $id('adm-cfg-msg').textContent = resp.ok
+        ? '✅ Koneksi berhasil! Versi config: ' + (resp.version || '?')
+        : '❌ Backend merespons tapi gagal: ' + (resp.error || '?');
+    }).catch(function (err) {
+      $id('adm-cfg-msg').textContent = '❌ Tidak dapat terhubung: ' + err.message;
+    }).finally(function () {
+      btn.disabled = false; btn.textContent = '🔗 Uji Koneksi Backend';
+    });
+  });
+
+  /* Simpan fraud thresholds */
+  $id('adm-ft-save-btn').addEventListener('click', function () {
+    var ft = {
+      velocity_limit:   parseInt($id('adm-ft-velocity').value, 10)  || 3,
+      burst_count:      parseInt($id('adm-ft-burst').value, 10)     || 5,
+      low_dwell_ms:     (parseInt($id('adm-ft-low-dwell').value, 10) || 5) * 1000,
+      hopping_sources:  parseInt($id('adm-ft-hopping').value, 10)   || 4
+    };
+    BSApi.saveAllAdminData({ fraud_settings: ft }).then(function () {
+      showToast('Threshold anti-fraud berhasil disimpan.', 'success');
+    }).catch(function (err) {
+      showToast('Gagal: ' + err.message, 'error');
+    });
+  });
+
+  /* ── Helpers ── */
+  function _esc(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function _maskIp(ip) {
+    var parts = String(ip).split('.');
+    if (parts.length === 4) { parts[2] = 'x'; parts[3] = 'x'; return parts.join('.'); }
+    return ip;
+  }
+
+})();
+</script>
+
+</body>
+</html>
