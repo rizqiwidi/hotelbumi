@@ -26,7 +26,7 @@
    * @property {string}   type             - "staff" | "sales" | "nfc" | "outlet"
    * @property {string}   role             - e.g. "waitress", "manager", "Sales Manager"
    * @property {string}   outlet           - outlet identifier
-   * @property {string}   whatsapp         - WhatsApp sales number (format 628xx)
+   * @property {string}   whatsapp         - WhatsApp number for sales or staff (format 628xx); empty = global fallback
    * @property {boolean}  active           - whether the source is active
    * @property {boolean}  kartu_diprogram  - whether the NFC/QR card has been programmed
    * @property {string[]} legacy_codes     - previous codes after rotations
