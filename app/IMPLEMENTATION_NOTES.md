@@ -56,9 +56,9 @@ Tab `Sources` diperluas dengan kolom ke-11 (`whatsapp`):
 A: code | B: name | C: type | D: outlet | E: role | F: active | G: kartu_diprogram | H: legacy_codes | I: created_at | J: updated_at | K: whatsapp
 ```
 
-- **Kolom K (`whatsapp`)**: Nomor WhatsApp khusus untuk staf tipe **Sales** (format diawali kode negara tanpa tanda plus: `628xx`, contoh: `6281234567890`).
+- **Kolom K (`whatsapp`)**: Nomor WhatsApp individual sumber (format diawali kode negara tanpa tanda plus: `628xx`, contoh: `6281234567890`). Berlaku untuk tipe **Sales** maupun **Staff**; wajib diisi untuk sales, opsional untuk staf.
 - **Aturan Bisnis**:
-  - Untuk staf non-sales, meja, atau gerai, kolom ini dikosongkan.
+  - Untuk meja atau gerai (bukan orang), kolom ini dikosongkan.
   - Jika kosong, tombol WhatsApp di halaman tamu otomatis menggunakan nomor WhatsApp global hotel dari konfigurasi `whatsapp_settings.number` (`628113388523`).
 
 ---
@@ -135,12 +135,12 @@ Ketika tamu mengakses URL `https://<domain>/?source=<code>`:
    - Badge status `#bs-staff-badge` menampilkan `🪄 Dilayani oleh {nama}`.
 3. **Routing Tombol WhatsApp**:
    - Jika sumber memiliki nomor WhatsApp valid (`whatsapp: "628xxx"`):
-     - Nomor tujuan: nomor WhatsApp sales tersebut.
+     - Nomor tujuan: nomor WhatsApp individual sumber tersebut (sales atau staf).
      - Template pesan otomatis:
        ```
        Halo, saya tamu Bumi Surabaya. Saya dilayani oleh {nama}.
        ```
-   - Jika sumber adalah staf non-sales (kolom `whatsapp` kosong) atau titik meja/outlet umum:
+   - Jika kolom `whatsapp` kosong (meja/outlet umum, atau staf tanpa nomor pribadi):
      - Nomor tujuan: fallback ke nomor WhatsApp concierge global hotel (`628113388523`).
      - Template staf: `Halo, saya tamu Bumi Surabaya. Saya baru saja dilayani oleh {staff_name} dan ingin melakukan reservasi.`
      - Template umum: `Halo Bumi Surabaya, saya ingin informasi mengenai reservasi dan layanan hotel.`
