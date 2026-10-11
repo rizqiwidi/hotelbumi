@@ -75,7 +75,7 @@
         price: 'Rp 385.000 nett/pax',
         period: 'Setiap hari, pukul 18.00 – 22.00 WIB',
         emoji: '🌙',
-        image_url: '/assets/images/outlets/arumanis.jpg',
+        image_url: 'assets/images/outlets/arumanis.jpg',
         active: true
       },
       {
@@ -86,7 +86,7 @@
         price: 'Rp 650.000 nett/pax',
         period: 'Selasa – Minggu, pukul 12.00 – 14.30 & 18.30 – 21.30 WIB',
         emoji: '🍣',
-        image_url: '/assets/images/outlets/kizahashi.svg',
+        image_url: 'assets/images/outlets/kizahashi.svg',
         active: true
       },
       {
@@ -97,7 +97,7 @@
         price: 'Rp 195.000 nett/set',
         period: 'Setiap hari, pukul 14.00 – 18.00 WIB',
         emoji: '🍸',
-        image_url: '/assets/images/outlets/lobby-lounge.jpg',
+        image_url: 'assets/images/outlets/lobby-lounge.jpg',
         active: true
       },
       {
@@ -108,7 +108,7 @@
         price: 'Rp 65.000 nett/combo',
         period: 'Pagi hari, pukul 07.00 – 11.00 WIB',
         emoji: '☕',
-        image_url: '/assets/images/outlets/delikopi.svg',
+        image_url: 'assets/images/outlets/delikopi.svg',
         active: true
       }
     ],
@@ -119,7 +119,7 @@
         type: 'Authentic Indonesian & International Buffet',
         description: 'Nuansa Jawa yang anggun menghadirkan cita rasa Indonesia autentik berpadu buffet Western & Oriental, serta private room berkapasitas 30 orang.',
         emoji: '🍽️',
-        image_url: '/assets/images/outlets/arumanis.jpg',
+        image_url: 'assets/images/outlets/arumanis.jpg',
         hours: '06.00 – 22.00 WIB',
         highlight: 'Private Room 30 Pax'
       },
@@ -129,7 +129,7 @@
         type: 'Authentic Japanese Restaurant',
         description: 'Restoran Jepang autentik dengan sushi, sashimi segar, teppanyaki live cooking, ramen, udon, dan tempura, dilengkapi 2 ruang Tatami @10 orang.',
         emoji: '🍣',
-        image_url: '/assets/images/outlets/kizahashi.svg',
+        image_url: 'assets/images/outlets/kizahashi.svg',
         hours: '11.30 – 14.30 & 18.00 – 22.00 WIB',
         highlight: '2 Ruang Tatami @10 Pax'
       },
@@ -139,7 +139,7 @@
         type: 'All-Day Lounge & Refreshments',
         description: 'Suasana santai dan megah untuk all-day refreshments, kopi istimewa, dan aneka kue lokal — tempat sempurna untuk bertemu kolega dan teman.',
         emoji: '🍸',
-        image_url: '/assets/images/outlets/lobby-lounge.jpg',
+        image_url: 'assets/images/outlets/lobby-lounge.jpg',
         hours: '08.00 – 23.00 WIB',
         highlight: 'Live Music & High Tea'
       },
@@ -149,7 +149,7 @@
         type: 'Specialty Coffee & Gourmet Pastry',
         description: 'Kopi istimewa serta ragam roti dan pastry segar setiap hari, menghidupkan kembali konsep Delicatessen hotel legendaris.',
         emoji: '☕',
-        image_url: '/assets/images/outlets/delikopi.svg',
+        image_url: 'assets/images/outlets/delikopi.svg',
         hours: '07.00 – 21.00 WIB',
         highlight: 'Fresh Bakery Daily'
       }
@@ -242,10 +242,33 @@
     localStorage.setItem(GAS_URL_KEY, url);
   }
 
+  /**
+   * Root path aplikasi, mis. "/" atau "/hotelbumi/".
+   * Menangani deploy di domain-root (Cloudflare Pages) maupun subpath (GitHub Pages).
+   */
+  function appRoot() {
+    var p = window.location.pathname || '/';
+    var dir = p.charAt(p.length - 1) === '/' ? p : p.substring(0, p.lastIndexOf('/') + 1);
+    if (/\/admin\/$/.test(dir)) dir = dir.replace(/admin\/$/, '');
+    return dir;
+  }
+
+  /**
+   * Resolve path aset relatif terhadap app root.
+   * "assets/x.jpg" atau "/assets/x.jpg" -> "/hotelbumi/assets/x.jpg" (atau "/assets/x.jpg" di root).
+   * URL absolut (http/data:) dikembalikan apa adanya.
+   */
+  function resolveAsset(p) {
+    if (!p || /^(https?:|data:|\/\/)/i.test(p)) return p;
+    return appRoot() + String(p).replace(/^\/+/, '');
+  }
+
   // Ekspos ke global
   window.BSConfig = {
     GAS_URL:             GAS_URL,
     DEFAULTS:            DEFAULTS,
+    appRoot:             appRoot,
+    resolveAsset:        resolveAsset,
     GAS_URL_KEY:         GAS_URL_KEY,
     SESSION_SOURCE_KEY:  SESSION_SOURCE_KEY,
     DEVICE_ID_KEY:       DEVICE_ID_KEY,
