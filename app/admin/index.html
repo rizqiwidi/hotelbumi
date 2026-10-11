@@ -12,17 +12,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Admin CSS -->
-  <link rel="stylesheet" href="/assets/css/admin.css">
-  <link rel="stylesheet" href="/assets/css/print.css" media="print">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/print.css" media="print">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="../assets/images/favicon.svg">
 
   <!-- Chart.js via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 
   <!-- QRCode.js Lokal (qrcodejs 1.0.0) -->
-  <script src="/assets/js/admin/vendor/qrcode.min.js"></script>
+  <script src="../assets/js/admin/vendor/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -33,7 +33,7 @@
   <div class="adm-login-card">
     <div class="adm-login-logo">
       <div class="adm-logo-wrap">
-        <img src="/assets/images/logo-hotel.png" alt="Bumi Surabaya City Resort" class="adm-hotel-logo" width="220" height="72">
+        <img src="../assets/images/logo-hotel.png" alt="Bumi Surabaya City Resort" class="adm-hotel-logo" width="220" height="72">
       </div>
       <div class="adm-login-badge">PORTAL MANAJEMEN RESOR</div>
       <h1>Bumi Surabaya</h1>
@@ -134,7 +134,7 @@
   <aside class="adm-sidebar" id="adm-sidebar" role="navigation" aria-label="Menu utama admin">
     <div class="adm-sidebar-header">
       <div class="adm-sidebar-logo">
-        <img src="/assets/images/logo-hotel.png" alt="Bumi Surabaya" class="adm-sidebar-brand-img" width="160">
+        <img src="../assets/images/logo-hotel.png" alt="Bumi Surabaya" class="adm-sidebar-brand-img" width="160">
         <span class="adm-sidebar-ver">v6.0</span>
       </div>
       <button id="adm-sidebar-close" class="adm-sidebar-close" aria-label="Tutup sidebar">✕</button>
@@ -497,7 +497,7 @@
           <!-- Outlet 1: Arumanis -->
           <div class="adm-outlet-card-item">
             <div class="adm-outlet-card-media">
-              <img src="/assets/images/outlets/arumanis.jpg" alt="Arumanis Restaurant">
+              <img src="../assets/images/outlets/arumanis.jpg" alt="Arumanis Restaurant">
               <span class="adm-outlet-badge-tag">Private Room 30 Pax</span>
             </div>
             <div class="adm-outlet-card-body">
@@ -519,7 +519,7 @@
           <!-- Outlet 2: Kizahashi -->
           <div class="adm-outlet-card-item">
             <div class="adm-outlet-card-media">
-              <img src="/assets/images/outlets/kizahashi.svg" alt="Kizahashi">
+              <img src="../assets/images/outlets/kizahashi.svg" alt="Kizahashi">
               <span class="adm-outlet-badge-tag">2 Ruang Tatami @10 Pax</span>
             </div>
             <div class="adm-outlet-card-body">
@@ -541,7 +541,7 @@
           <!-- Outlet 3: Lobby Lounge -->
           <div class="adm-outlet-card-item">
             <div class="adm-outlet-card-media">
-              <img src="/assets/images/outlets/lobby-lounge.jpg" alt="Lobby Lounge">
+              <img src="../assets/images/outlets/lobby-lounge.jpg" alt="Lobby Lounge">
               <span class="adm-outlet-badge-tag">Live Music &amp; High Tea</span>
             </div>
             <div class="adm-outlet-card-body">
@@ -563,7 +563,7 @@
           <!-- Outlet 4: DeliKopi -->
           <div class="adm-outlet-card-item">
             <div class="adm-outlet-card-media">
-              <img src="/assets/images/outlets/delikopi.svg" alt="DeliKopi">
+              <img src="../assets/images/outlets/delikopi.svg" alt="DeliKopi">
               <span class="adm-outlet-badge-tag">Fresh Bakery Daily</span>
             </div>
             <div class="adm-outlet-card-body">
@@ -1060,10 +1060,10 @@
       <div class="adm-form-group">
         <label for="adm-otl-image">Foto / Gambar Gerai <span class="adm-required">*</span></label>
         <select id="adm-otl-image" class="adm-input" required>
-          <option value="/assets/images/outlets/arumanis.jpg">Arumanis (/assets/images/outlets/arumanis.jpg)</option>
-          <option value="/assets/images/outlets/delikopi.svg">DeliKopi (/assets/images/outlets/delikopi.svg)</option>
-          <option value="/assets/images/outlets/kizahashi.svg">Kizahashi (/assets/images/outlets/kizahashi.svg)</option>
-          <option value="/assets/images/outlets/lobby-lounge.jpg">Lobby Lounge (/assets/images/outlets/lobby-lounge.jpg)</option>
+          <option value="../assets/images/outlets/arumanis.jpg">Arumanis (/assets/images/outlets/arumanis.jpg)</option>
+          <option value="../assets/images/outlets/delikopi.svg">DeliKopi (/assets/images/outlets/delikopi.svg)</option>
+          <option value="../assets/images/outlets/kizahashi.svg">Kizahashi (/assets/images/outlets/kizahashi.svg)</option>
+          <option value="../assets/images/outlets/lobby-lounge.jpg">Lobby Lounge (/assets/images/outlets/lobby-lounge.jpg)</option>
         </select>
       </div>
       <div class="adm-form-group">
@@ -1152,13 +1152,13 @@
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS ADMIN
 ═══════════════════════════════════════════════════════════════ -->
-<script src="/assets/js/config.js"></script>
-<script src="/assets/js/admin/auth.js"></script>
-<script src="/assets/js/admin/api.js"></script>
-<script src="/assets/js/admin/dashboard.js"></script>
-<script src="/assets/js/admin/staff-manager.js"></script>
-<script src="/assets/js/admin/anti-fraud.js"></script>
-<script src="/assets/js/admin/web-nfc.js"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/admin/auth.js"></script>
+<script src="../assets/js/admin/api.js"></script>
+<script src="../assets/js/admin/dashboard.js"></script>
+<script src="../assets/js/admin/staff-manager.js"></script>
+<script src="../assets/js/admin/anti-fraud.js"></script>
+<script src="../assets/js/admin/web-nfc.js"></script>
 
 <!-- Controller utama portal admin -->
 <script>
@@ -1760,7 +1760,7 @@
         : '<span class="adm-badge-err">Nonaktif</span>';
       return '<div class="adm-outlet-card-item">' +
         '<div class="adm-outlet-card-media">' +
-          '<img src="' + _esc(o.image_url || '/assets/images/outlets/arumanis.jpg') + '" alt="' + _esc(o.name) + '">' +
+          '<img src="' + _esc(window.BSConfig ? BSConfig.resolveAsset(o.image_url || 'assets/images/outlets/arumanis.jpg') : (o.image_url || 'assets/images/outlets/arumanis.jpg')) + '" alt="' + _esc(o.name) + '">' +
           (o.highlight ? '<span class="adm-outlet-badge-tag">' + _esc(o.highlight) + '</span>' : '') +
         '</div>' +
         '<div class="adm-outlet-card-body">' +
@@ -1796,7 +1796,7 @@
       var otl = _outlets[_editingOutletId];
       title.textContent = 'Edit Gerai: ' + otl.name;
       $id('adm-otl-name').value   = otl.name;
-      $id('adm-otl-image').value  = otl.image_url || '/assets/images/outlets/arumanis.jpg';
+      $id('adm-otl-image').value  = otl.image_url || 'assets/images/outlets/arumanis.jpg';
       $id('adm-otl-type').value   = otl.type || '';
       $id('adm-otl-badge').value  = otl.highlight || '';
       $id('adm-otl-desc').value   = otl.description || '';
@@ -2124,7 +2124,7 @@
     }
 
     container.innerHTML = '';
-    var origin = window.location.origin;
+    var origin = window.location.origin + ((window.BSConfig && BSConfig.appRoot) ? BSConfig.appRoot() : '/');
 
     activeSources.forEach(function (s, index) {
       var fullUrl = origin + '/?source=' + encodeURIComponent(s.code);
@@ -2148,7 +2148,7 @@
             '<div class="adm-pc-qr" id="bulk-qr-top-' + index + '"></div>' +
           '</div>' +
           '<div class="print-tent-half">' +
-            '<div class="adm-pc-logo"><img src="/assets/images/logo-hotel.png" alt="Logo" width="90"></div>' +
+            '<div class="adm-pc-logo"><img src="../assets/images/logo-hotel.png" alt="Logo" width="90"></div>' +
             '<div class="adm-pc-title">' + _esc(s.name) + '</div>' +
             '<div class="adm-pc-qr" id="bulk-qr-bot-' + index + '"></div>' +
             '<div class="adm-pc-inst">' + _esc(instText) + '</div>' +
@@ -2164,7 +2164,7 @@
       } else {
         cardEl.className = 'adm-print-card-sample print-card';
         cardEl.innerHTML =
-          '<div class="adm-pc-logo"><img src="/assets/images/logo-hotel.png" alt="Logo" width="110"></div>' +
+          '<div class="adm-pc-logo"><img src="../assets/images/logo-hotel.png" alt="Logo" width="110"></div>' +
           '<div class="adm-pc-qr" id="bulk-qr-' + index + '"></div>' +
           '<div class="adm-pc-title">' + _esc(s.name) + '</div>' +
           '<div class="adm-pc-sub">' + _esc(subText) + '</div>' +
@@ -2412,7 +2412,7 @@
         return;
       }
 
-      var baseUrl = window.location.origin + '/';
+      var baseUrl = window.location.origin + ((window.BSConfig && BSConfig.appRoot) ? BSConfig.appRoot() : '/');
       var fullUrl = baseUrl + '?source=' + encodeURIComponent(code);
       if (urlEl) urlEl.value = fullUrl;
       if (writeBtn) writeBtn.disabled = false;
