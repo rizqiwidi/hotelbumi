@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="Logo Bumi Surabaya City Resort">
+  <title>Bumi Surabaya City Resort</title>
+
+  <!-- Latar lingkaran dalam nuansa hijau hotel -->
+  <circle cx="100" cy="100" r="96" fill="#1a3c2a"/>
+  <circle cx="100" cy="100" r="92" fill="none" stroke="#c9a96e" stroke-width="1.5"/>
+
+  <!-- Simbol bangunan hotel bergaya elegan -->
+  <!-- Menara utama -->
+  <rect x="82" y="68" width="36" height="58" fill="#c9a96e" rx="2"/>
+  <!-- Atap menara -->
+  <polygon points="100,44 118,68 82,68" fill="#ddb97a"/>
+  <!-- Ornamen puncak -->
+  <line x1="100" y1="44" x2="100" y2="36" stroke="#c9a96e" stroke-width="2"/>
+  <circle cx="100" cy="34" r="4" fill="#c9a96e"/>
+
+  <!-- Pintu utama -->
+  <rect x="92" y="100" width="16" height="26" fill="#1a3c2a" rx="8"/>
+  <!-- Jendela kiri -->
+  <rect x="87" y="77" width="8" height="10" fill="#1a3c2a" rx="1" opacity="0.8"/>
+  <!-- Jendela kanan -->
+  <rect x="105" y="77" width="8" height="10" fill="#1a3c2a" rx="1" opacity="0.8"/>
+  <!-- Jendela tengah kiri -->
+  <rect x="87" y="91" width="8" height="8" fill="#1a3c2a" rx="1" opacity="0.8"/>
+  <!-- Jendela tengah kanan -->
+  <rect x="105" y="91" width="8" height="8" fill="#1a3c2a" rx="1" opacity="0.8"/>
+
+  <!-- Sayap kiri bangunan -->
+  <rect x="52" y="88" width="30" height="38" fill="#b39155" rx="2"/>
+  <!-- Jendela sayap kiri -->
+  <rect x="56" y="93" width="7" height="8" fill="#1a3c2a" rx="1" opacity="0.7"/>
+  <rect x="67" y="93" width="7" height="8" fill="#1a3c2a" rx="1" opacity="0.7"/>
+  <rect x="56" y="105" width="7" height="8" fill="#1a3c2a" rx="1" opacity="0.7"/>
+  <rect x="67" y="105" width="7" height="8" fill="#1a3c2a" rx="1" opacity="0.7"/>
+
+  <!-- Sayap kanan bangunan -->
+  <rect x="118" y="88" width="30" height="38" fill="#b39155" rx="2"/>
+  <!-- Jendela sayap kanan -->
+  <rect x="122" y="93" width="7" height="8" fill="#1a3c2a" rx="1" opacity="0.7"/>
+  <rect x="133" y="93" width="7" height="8" fill="#1a3c2a" rx="1" opacity="0.7"/>
+  <rect x="122" y="105" width="7" height="8" fill="#1a3c2a" rx="1" opacity="0.7"/>
+  <rect x="133" y="105" width="7" height="8" fill="#1a3c2a" rx="1" opacity="0.7"/>
+
+  <!-- Teras / tangga -->
+  <rect x="40" y="126" width="120" height="5" fill="#c9a96e" rx="1"/>
+  <rect x="44" y="131" width="112" height="4" fill="#b39155" rx="1"/>
+
+  <!-- Ornamen garis emas horizontal -->
+  <line x1="40" y1="88" x2="160" y2="88" stroke="#c9a96e" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- Teks hotel -->
+  <text x="100" y="153" font-family="Georgia, 'Times New Roman', serif" font-size="11"
+        fill="#c9a96e" text-anchor="middle" letter-spacing="3" font-weight="700">BUMI SURABAYA</text>
+  <text x="100" y="166" font-family="Georgia, 'Times New Roman', serif" font-size="7"
+        fill="#ddb97a" text-anchor="middle" letter-spacing="4" opacity="0.9">CITY RESORT</text>
+
+  <!-- Ornamen bintang lima kecil -->
+  <text x="100" y="179" font-family="serif" font-size="9" fill="#c9a96e" text-anchor="middle" letter-spacing="2">★ ★ ★ ★ ★</text>
+</svg>
