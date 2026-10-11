@@ -196,7 +196,7 @@
       return '<div class="bs-promo-card" data-promo-id="' + (p.id || '') + '" tabindex="0">' +
         '<div class="bs-promo-img-wrap">' +
           (p.image_url
-            ? '<img src="' + p.image_url + '" alt="' + (p.name || '') + '" loading="lazy">'
+            ? '<img src="' + (window.BSConfig ? BSConfig.resolveAsset(p.image_url) : p.image_url) + '" alt="' + (p.name || '') + '" loading="lazy">'
             : '<div class="bs-promo-img-placeholder">' + (p.emoji || '🍽️') + '</div>') +
         '</div>' +
         '<div class="bs-promo-body">' +
@@ -239,7 +239,7 @@
       return '<div class="bs-outlet-card" tabindex="0" data-outlet-id="' + (o.id || '') + '">' +
         '<div class="bs-outlet-img-wrap">' +
           (o.image_url
-            ? '<img src="' + o.image_url + '" alt="' + (o.name || '') + '" loading="lazy">'
+            ? '<img src="' + (window.BSConfig ? BSConfig.resolveAsset(o.image_url) : o.image_url) + '" alt="' + (o.name || '') + '" loading="lazy">'
             : '<div class="bs-outlet-img-placeholder">' + (o.emoji || '🍽️') + '</div>') +
           (o.highlight ? '<span class="bs-outlet-badge">' + o.highlight + '</span>' : '') +
         '</div>' +
