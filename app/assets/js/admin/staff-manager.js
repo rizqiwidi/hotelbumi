@@ -316,7 +316,7 @@
     const base = baseUrl
       ? String(baseUrl).replace(/\/$/, '') + '/'
       : (global.location
-          ? global.location.origin + '/'
+          ? global.location.origin + ((window.BSConfig && BSConfig.appRoot) ? BSConfig.appRoot() : '/')
           : 'https://bumi-surabaya.example.com/');
 
     return base + '?source=' + encodeURIComponent(sourceCode);
