@@ -332,7 +332,7 @@
     var html = active.map(function(p) {
       var pId = escapeHtml(p.id || '');
       var pName = escapeHtml(p.name || '');
-      var pOutlet = escapeHtml(p.outlet || 'F&amp;B');
+      var pOutlet = escapeHtml(p.outlet || 'F&B');
       var pDesc = escapeHtml(p.description || '');
       var pPrice = escapeHtml(p.price || '');
       var pPeriod = escapeHtml(p.period || '');
