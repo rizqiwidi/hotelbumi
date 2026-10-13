@@ -103,6 +103,28 @@
     return null;
   }
 
+  // REV-01: URL review mengikuti outlet pada halaman tamu.
+  // Urutan: review_url outlet sumber > review_settings.review_url > general.google_review_url > '#'
+  function resolveReviewUrl() {
+    var gen = (_config && _config.general)         || BSConfig.DEFAULTS.general;
+    var rev = (_config && _config.review_settings) || BSConfig.DEFAULTS.review_settings;
+    var outletUrl = '';
+    if (_sourceObj && _sourceObj.outlet) {
+      var ol = String(_sourceObj.outlet).toLowerCase().trim();
+      var outlets = (_config && _config.outlets) || [];
+      for (var i = 0; i < outlets.length; i++) {
+        var o = outlets[i];
+        if (o && o.active !== false &&
+            (String(o.name || '').toLowerCase().trim() === ol ||
+             String(o.id || '').toLowerCase().trim() === ol)) {
+          outletUrl = o.review_url || '';
+          break;
+        }
+      }
+    }
+    return sanitizeUrl(outletUrl || (rev && rev.review_url) || gen.google_review_url || '#');
+  }
+
   // ── Render hero & sapaan ──────────────────────────────────
   function renderHero() {
     var gen = (_config && _config.general)    || BSConfig.DEFAULTS.general;
@@ -207,8 +229,8 @@
     var reviewBtn = $('#bs-btn-review');
     var reviewLink = $('#bs-review-link');
     var mobReview = $('.bs-mob-review');
-    var rawReviewUrl = (rev && rev.review_url) || gen.google_review_url || '#';
-    var reviewUrl = sanitizeUrl(rawReviewUrl);
+    // REV-01: URL review mengikuti outlet pada halaman tamu (lihat resolveReviewUrl)
+    var reviewUrl = resolveReviewUrl();
     var reviewTxt = (rev && rev.button_text) || 'Berikan Ulasan di Google ⭐';
 
     if (reviewBtn) {
@@ -222,7 +244,9 @@
     var waNum = '';
     var waMsg = '';
 
-    if (_sourceObj && _sourceObj.whatsapp && cleanPhone(_sourceObj.whatsapp)) {
+    // SLS-01: nomor WhatsApp sumber hanya dipakai bila rolenya sales;
+    // waiter/staf/meja jatuh ke nomor umum agar nomor pribadinya tidak diketahui tamu.
+    if (_sourceObj && _sourceObj.type === 'sales' && _sourceObj.whatsapp && cleanPhone(_sourceObj.whatsapp)) {
       waNum = cleanPhone(_sourceObj.whatsapp);
       waMsg = 'Halo, saya tamu Bumi Surabaya. Saya dilayani oleh ' + (_sourceObj.name || 'staf') + '.';
     } else {
@@ -258,7 +282,8 @@
 
     var reviewLink = el.querySelector('#bs-review-link');
     if (reviewLink) {
-      reviewLink.href = sanitizeUrl(cfg.review_url || BSConfig.DEFAULTS.review_settings.review_url);
+      // REV-01: samakan dengan tombol utama — URL mengikuti outlet halaman tamu
+      reviewLink.href = resolveReviewUrl();
       reviewLink.textContent = cfg.button_text || BSConfig.DEFAULTS.review_settings.button_text;
     }
     show(el);

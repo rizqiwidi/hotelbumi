@@ -601,6 +601,7 @@ function _handleGetConfig() {
         image_url:       String(o.image_url || ''),
         whatsapp:        String(o.whatsapp || ''),
         reservation_url: String(o.reservation_url || ''),
+        review_url:      String(o.review_url || ''),
         active:          true
       };
     }) : []
@@ -614,14 +615,17 @@ function _handleGetConfig() {
     for (var j = 0; j < sRows.length; j++) {
       var isActive = sRows[j][5] === true || sRows[j][5] === 'TRUE';
       if (!isActive) continue; // Jangan sertakan sumber nonaktif
+      var sType = String(sRows[j][2] || 'staff');
       activeSources.push({
         code:     String(sRows[j][0] || ''),
         name:     String(sRows[j][1] || ''),
-        type:     String(sRows[j][2] || 'staff'),
+        type:     sType,
         outlet:   String(sRows[j][3] || ''),
         role:     String(sRows[j][4] || ''),
         active:   true,
-        whatsapp: String(sRows[j][10] || '')
+        // SLS-01: nomor WhatsApp hanya diekspos ke tamu untuk role sales;
+        // waiter/staf/meja tidak ikut terkirim dalam config publik.
+        whatsapp: sType === 'sales' ? String(sRows[j][10] || '') : ''
       });
     }
   }

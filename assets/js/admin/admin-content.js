@@ -82,6 +82,7 @@
       if ($id('adm-otl-emoji'))     $id('adm-otl-emoji').value     = otl.emoji || '';
       if ($id('adm-otl-whatsapp'))  $id('adm-otl-whatsapp').value  = otl.whatsapp || '';
       if ($id('adm-otl-res-url'))   $id('adm-otl-res-url').value   = otl.reservation_url || '';
+      if ($id('adm-otl-review-url')) $id('adm-otl-review-url').value = otl.review_url || '';
       if ($id('adm-otl-active'))    $id('adm-otl-active').checked  = otl.active !== false;
     } else {
       if (title) title.textContent = 'Tambah Gerai F&B Baru';
@@ -371,6 +372,7 @@
         var emoji = ($id('adm-otl-emoji') ? $id('adm-otl-emoji').value : '').trim() || '🍽️';
         var wa    = ($id('adm-otl-whatsapp') ? $id('adm-otl-whatsapp').value : '').trim();
         var rUrl  = ($id('adm-otl-res-url') ? $id('adm-otl-res-url').value : '').trim();
+        var gUrl  = ($id('adm-otl-review-url') ? $id('adm-otl-review-url').value : '').trim();
         var act   = $id('adm-otl-active') ? $id('adm-otl-active').checked : true;
 
         if (!name) { BSAdmin.showToast('Nama gerai wajib diisi.', 'error'); return; }
@@ -386,6 +388,7 @@
           emoji:           emoji,
           whatsapp:        wa,
           reservation_url: rUrl,
+          review_url:      gUrl,
           active:          act
         };
 
