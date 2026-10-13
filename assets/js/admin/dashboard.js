@@ -150,7 +150,7 @@
         label:   'Quality Score',
         value:   _score(qualityScore) + ' / 5',
         sub:     'Skor interaksi rata-rata (0–5)',
-        tooltip: 'Skor kualitas interaksi valid: Visit (+1), Scroll >50% (+1), Klik WA (+2), Promo/Outlet (+2), Klik Review (+3). Event ditolak/dikurangi anti-fraud = 0 poin. Satuan: poin skala 0–5.',
+        tooltip: 'Skor kualitas interaksi valid: Visit (+1), Scroll >50% (+1), Klik WA (+2), Promo/Outlet (+2), Klik Review (+3), Kirim Direct Feedback (+3). Event ditolak/dikurangi anti-fraud = 0 poin. Satuan: poin skala 0–5.',
         ...( prev.qualityScore !== undefined
             ? _trend(qualityScore, prev.qualityScore)
             : {} ),

@@ -513,6 +513,116 @@
     if (addr) addr.textContent = gen.address || '';
   }
 
+  // ── Direct Feedback (REV-02) ──────────────────────────────
+  function initDirectFeedback() {
+    var toggle  = $('#bs-feedback-toggle');
+    var wrap    = $('#bs-feedback-form-wrap');
+    var form    = $('#bs-feedback-form');
+    var thanks  = $('#bs-feedback-thanks');
+    var errEl   = $('#bs-feedback-error');
+    var stars   = $$('.bs-star');
+    if (!toggle || !wrap || !form) return;
+
+    var rating = 0;
+
+    function showError(msg) {
+      if (!errEl) return;
+      if (msg) { errEl.textContent = msg; show(errEl); }
+      else hide(errEl);
+    }
+
+    toggle.addEventListener('click', function() {
+      var open = wrap.classList.contains('bs-hidden');
+      if (open) { show(wrap); toggle.setAttribute('aria-expanded', 'true'); }
+      else { hide(wrap); toggle.setAttribute('aria-expanded', 'false'); }
+    });
+
+    stars.forEach(function(star) {
+      star.addEventListener('click', function() {
+        rating = parseInt(star.getAttribute('data-value'), 10) || 0;
+        stars.forEach(function(s) {
+          var v = parseInt(s.getAttribute('data-value'), 10) || 0;
+          var on = v <= rating;
+          s.classList.toggle('active', on);
+          s.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+        showError('');
+      });
+    });
+
+    function throttleKey() {
+      var d = new Date();
+      return 'bs_feedback_' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    }
+    function throttleOk() {
+      try {
+        var n = parseInt(localStorage.getItem(throttleKey()) || '0', 10) || 0;
+        return n < 3;
+      } catch (e) { return true; }
+    }
+    function throttleBump() {
+      try {
+        var k = throttleKey();
+        var n = parseInt(localStorage.getItem(k) || '0', 10) || 0;
+        localStorage.setItem(k, String(n + 1));
+      } catch (e) {}
+    }
+
+    form.addEventListener('submit', function(ev) {
+      ev.preventDefault();
+      showError('');
+      var msg  = ($('#bs-feedback-msg')  ? $('#bs-feedback-msg').value  : '').trim();
+      var name = ($('#bs-feedback-name') ? $('#bs-feedback-name').value : '').trim();
+      var wa   = ($('#bs-feedback-wa')   ? $('#bs-feedback-wa').value   : '').trim();
+
+      if (!rating)            { showError('Please select a star rating.'); return; }
+      if (!msg)               { showError('Please tell us about your experience.'); return; }
+      if (msg.length > 500)   { showError('Message is too long (max 500 characters).'); return; }
+      if (!throttleOk())      { showError('You have reached today\u2019s feedback limit. Please try again tomorrow.'); return; }
+
+      var gasUrl = (window.BSConfig && typeof window.BSConfig.getGasUrl === 'function')
+        ? window.BSConfig.getGasUrl() : '';
+      if (!gasUrl) { showError('Service unavailable. Please try again later.'); return; }
+
+      var submitBtn = $('#bs-feedback-submit');
+      if (submitBtn) submitBtn.disabled = true;
+
+      var srcObj = (typeof _sourceObj !== 'undefined') ? _sourceObj : null;
+      var payload = {
+        action:      'submit_feedback',
+        rating:      rating,
+        message:     msg,
+        guest_name:  name.substring(0, 80),
+        guest_wa:    wa.replace(/[^0-9+]/g, '').substring(0, 20),
+        source:      (window.BSTracker ? BSTracker.getSource() : 'general') || 'general',
+        source_type: (window.BSTracker ? BSTracker.getSourceType() : 'general') || 'general',
+        source_name: (srcObj && srcObj.name) || '',
+        outlet:      (srcObj && srcObj.outlet) || '',
+        device_id:   (window.BSTracker && BSTracker.getDeviceId) ? BSTracker.getDeviceId() : '',
+        session_id:  (window.BSTracker ? BSTracker.getSessionId() : ''),
+        ts_client:   new Date().toISOString()
+      };
+
+      fetch(gasUrl, {
+        method:  'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body:    JSON.stringify(payload)
+      }).then(function(r) {
+        return r.json().then(function(data) {
+          if (!r.ok || !data || data.ok !== true) {
+            throw new Error((data && data.error) || ('HTTP ' + r.status));
+          }
+          throttleBump();
+          hide(form); show(thanks);
+          if (window.BSTracker) BSTracker.track('direct_feedback_submit', { rating: rating });
+        });
+      }).catch(function(err) {
+        showError('Could not send feedback: ' + (err && err.message ? err.message : 'network error') + '. Please try again.');
+        if (submitBtn) submitBtn.disabled = false;
+      });
+    });
+  }
+
   // ── Modal Privasi (GUE-14, PRD 6.4: Escape, Focus Trap & Return) ──
   function initPrivacyModal() {
     var overlay = $('#bs-privacy-modal');
@@ -613,6 +723,7 @@
     renderFooter();
     bindCtaTracking();
     initPrivacyModal();
+    initDirectFeedback();
   }
 
   // ── Pratinjau Draft Admin (CNT-09) ──────────────────────

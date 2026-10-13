@@ -21,6 +21,7 @@
  *    outlet_click        = +2
  *  whatsapp_click        = +2
  *  google_review_click   = +3
+ *  direct_feedback_submit = +3
  *  flagged event         =  0 (override)
  *  excluded device       =  0 (override)
  */
@@ -463,6 +464,8 @@
       } else if (type === 'whatsapp_click') {
         score += 2;
       } else if (type === 'google_review_click') {
+        score += 3;
+      } else if (type === 'direct_feedback_submit') {
         score += 3;
       }
     });

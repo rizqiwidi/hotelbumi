@@ -176,6 +176,9 @@
     if (action === 'view_analytics' || action === 'view_audit') {
       return r === 'super_admin' || r === 'manager' || r === 'analyst_readonly';
     }
+    if (action === 'view_feedback' || action === 'handle_feedback') {
+      return r === 'super_admin' || r === 'manager';
+    }
     return false;
   }
   BSAdmin.checkPermission = checkPermission;
@@ -218,12 +221,19 @@
 
     // Batasi tab navigasi jika role adalah content_editor
     if (isContentOnly) {
-      var disallowedTabs = ['sources', 'antifraud', 'config', 'audit'];
+      var disallowedTabs = ['sources', 'antifraud', 'config', 'audit', 'feedback'];
       document.querySelectorAll('.adm-nav-item').forEach(function (item) {
         if (disallowedTabs.indexOf(item.dataset.tab) !== -1) {
           item.style.opacity = '0.4';
           item.title = 'Hanya dapat diakses oleh Super Admin & Manager.';
         }
+      });
+    }
+
+    // Tab Feedback berisi data tamu (PII): sembunyikan untuk peran tanpa izin baca
+    if (r === 'content_editor' || r === 'analyst_readonly') {
+      document.querySelectorAll('.adm-nav-item').forEach(function (item) {
+        if (item.dataset.tab === 'feedback') item.style.display = 'none';
       });
     }
   }
@@ -287,7 +297,8 @@
     appearance: 'Tampilan & Tema Visual',
     config:     'Konfigurasi Backend & Ambang Batas',
     account:    'Pengaturan Akun & Keamanan',
-    audit:      'Jejak Audit & Riwayat Mutasi'
+    audit:      'Jejak Audit & Riwayat Mutasi',
+    feedback:   'Feedback Langsung Tamu'
   };
 
   function switchTab(name) {
@@ -312,6 +323,7 @@
     if (name === 'antifraud'  && BSAdmin.fraud)      { BSAdmin.fraud.renderTable(); BSAdmin.fraud.renderStaffDevices(); }
     if (name === 'account'    && BSAdmin.fraud)      BSAdmin.fraud.populateAccount();
     if (name === 'audit'      && BSAdmin.audit)      BSAdmin.audit.load();
+    if (name === 'feedback'   && BSAdmin.feedback)   BSAdmin.feedback.load();
   }
   BSAdmin.switchTab = switchTab;
 

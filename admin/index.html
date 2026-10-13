@@ -162,6 +162,11 @@
         <span class="adm-nav-icon">🛡️</span>
         <span>Audit Anti-Fraud</span>
       </a>
+      <a href="#" class="adm-nav-item" data-tab="feedback">
+        <span class="adm-nav-icon">💬</span>
+        <span>Feedback Tamu</span>
+        <span id="adm-feedback-badge" class="adm-nav-badge" style="display:none;"></span>
+      </a>
 
       <div class="adm-nav-group-title">OPERASIONAL OUTLET</div>
       <a href="#" class="adm-nav-item" data-tab="outlets">
@@ -1143,6 +1148,58 @@
       </div>
     </section><!-- #tab-audit -->
 
+    <section id="tab-feedback" class="adm-tab-pane" aria-label="Feedback langsung dari tamu" style="display:none;">
+      <div class="adm-card">
+        <div class="adm-card-header">
+          <div>
+            <h2 class="adm-card-title">💬 Feedback Langsung Tamu</h2>
+            <p class="adm-card-subtitle">Masukan tamu via tombol "Direct Feedback" di halaman tamu (REV-02)</p>
+          </div>
+          <div class="adm-card-actions" style="flex-wrap:wrap;gap:8px;align-items:center;">
+            <select class="adm-select" id="adm-feedback-filter-status" aria-label="Filter status">
+              <option value="">Semua Status</option>
+              <option value="unread">Belum Dibaca</option>
+              <option value="handled">Sudah Ditangani</option>
+            </select>
+            <select class="adm-select" id="adm-feedback-filter-rating" aria-label="Filter rating">
+              <option value="0">Semua Rating</option>
+              <option value="5">★★★★★ (5)</option>
+              <option value="4">★★★★ (4)</option>
+              <option value="3">★★★ (3)</option>
+              <option value="2">★★ (2)</option>
+              <option value="1">★ (1)</option>
+            </select>
+            <select class="adm-select" id="adm-feedback-filter-outlet" aria-label="Filter outlet">
+              <option value="">Semua Outlet</option>
+            </select>
+            <span id="adm-feedback-count-info" style="font-size:0.78rem;color:var(--color-text-muted,#6b7280);"></span>
+            <button class="adm-btn adm-btn-secondary" id="adm-feedback-refresh-btn">🔄 Perbarui</button>
+          </div>
+        </div>
+
+        <div class="adm-table-wrap">
+          <table class="adm-table" aria-label="Tabel feedback tamu">
+            <thead>
+              <tr>
+                <th>Waktu (WIB)</th>
+                <th>Rating</th>
+                <th>Pesan</th>
+                <th>Tamu</th>
+                <th>WA (tersamar)</th>
+                <th>Sumber / Staf</th>
+                <th>Outlet</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="adm-feedback-tbody">
+              <tr><td colspan="9" class="bs-empty">Buka tab ini untuk memuat feedback dari server.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section><!-- #tab-feedback -->
+
   </div><!-- .adm-main -->
 </div><!-- #adm-portal -->
 
@@ -1407,6 +1464,7 @@
 <script src="../assets/js/admin/admin-reports.js"></script>
 <script src="../assets/js/admin/admin-fraud-ops.js"></script>
 <script src="../assets/js/admin/admin-audit.js"></script>
+<script src="../assets/js/admin/admin-feedback.js"></script>
 <script src="../assets/js/admin/admin-nfc-ops.js"></script>
 <script src="../assets/js/admin/admin-init.js"></script>
 

@@ -136,6 +136,45 @@
             <i class="fas fa-star" aria-hidden="true"></i>
             <span>Review Us on Google</span>
           </a>
+          <button id="bs-feedback-toggle"
+                  type="button"
+                  class="bs-btn bs-btn-outline"
+                  aria-expanded="false"
+                  aria-controls="bs-feedback-form-wrap">
+            <i class="fas fa-comment-dots" aria-hidden="true"></i>
+            <span>Direct Feedback</span>
+          </button>
+
+          <div id="bs-feedback-form-wrap" class="bs-hidden">
+            <form id="bs-feedback-form" novalidate>
+              <p class="bs-feedback-label">How would you rate your experience?</p>
+              <div class="bs-stars" role="radiogroup" aria-label="Your rating">
+                <button type="button" class="bs-star" data-value="1" aria-label="1 star" aria-checked="false" role="radio"><i class="fas fa-star" aria-hidden="true"></i></button>
+                <button type="button" class="bs-star" data-value="2" aria-label="2 stars" aria-checked="false" role="radio"><i class="fas fa-star" aria-hidden="true"></i></button>
+                <button type="button" class="bs-star" data-value="3" aria-label="3 stars" aria-checked="false" role="radio"><i class="fas fa-star" aria-hidden="true"></i></button>
+                <button type="button" class="bs-star" data-value="4" aria-label="4 stars" aria-checked="false" role="radio"><i class="fas fa-star" aria-hidden="true"></i></button>
+                <button type="button" class="bs-star" data-value="5" aria-label="5 stars" aria-checked="false" role="radio"><i class="fas fa-star" aria-hidden="true"></i></button>
+              </div>
+              <textarea id="bs-feedback-msg" rows="3" maxlength="500"
+                        placeholder="Tell us about your experience..."
+                        aria-label="Your feedback message"></textarea>
+              <input type="text" id="bs-feedback-name" maxlength="80"
+                     placeholder="Your name (optional)" aria-label="Your name (optional)"
+                     autocomplete="name">
+              <input type="tel" id="bs-feedback-wa" maxlength="20"
+                     placeholder="WhatsApp number (optional)" aria-label="WhatsApp number (optional)"
+                     autocomplete="tel">
+              <button type="submit" id="bs-feedback-submit" class="bs-btn bs-btn-gold">
+                <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                <span>Send Feedback</span>
+              </button>
+              <p id="bs-feedback-error" class="bs-form-error bs-hidden" role="alert"></p>
+            </form>
+            <div id="bs-feedback-thanks" class="bs-hidden" role="status">
+              <i class="fas fa-check-circle" aria-hidden="true"></i>
+              <p>Thank you! Your feedback means a lot to us.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>

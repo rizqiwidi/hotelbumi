@@ -180,6 +180,48 @@ body {
 }
 .bs-btn-dark:hover { background: var(--deep-green-light); transform: translateY(-2px); }
 .bs-btn-sm { padding: 12px 22px; font-size: 0.82rem; width: auto; }
+.bs-btn-outline {
+  background: transparent; color: var(--deep-green);
+  border: 2px solid var(--deep-green);
+  margin-top: 12px;
+}
+.bs-btn-outline:hover { background: rgba(26,60,42,0.06); transform: translateY(-2px); }
+
+/* ── Direct Feedback form (REV-02) ── */
+#bs-feedback-form-wrap { margin-top: 20px; text-align: left; }
+#bs-feedback-form-wrap .bs-hidden { display: none !important; }
+.bs-feedback-label {
+  font-size: 0.9rem; font-weight: 600; color: var(--deep-green);
+  margin: 0 0 10px;
+}
+.bs-stars { display: flex; gap: 8px; margin-bottom: 14px; }
+.bs-star {
+  background: none; border: none; cursor: pointer; padding: 4px;
+  font-size: 1.7rem; color: #d8d4c8; transition: color 0.15s, transform 0.15s;
+}
+.bs-star:hover { transform: scale(1.15); }
+.bs-star.active { color: var(--gold); }
+.bs-star:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+#bs-feedback-form textarea,
+#bs-feedback-form input[type="text"],
+#bs-feedback-form input[type="tel"] {
+  width: 100%; box-sizing: border-box;
+  border: 1.5px solid #e2ded2; border-radius: 12px;
+  padding: 12px 14px; font-size: 0.92rem; font-family: inherit;
+  margin-bottom: 12px; background: var(--white); color: var(--ink);
+}
+#bs-feedback-form textarea:focus,
+#bs-feedback-form input:focus {
+  outline: none; border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201,169,110,0.2);
+}
+#bs-feedback-form textarea { resize: vertical; min-height: 84px; }
+.bs-form-error {
+  color: #b3261e; font-size: 0.85rem; margin: 10px 0 0; font-weight: 600;
+}
+#bs-feedback-thanks { text-align: center; padding: 18px 8px 6px; }
+#bs-feedback-thanks .fa-check-circle { font-size: 2.6rem; color: var(--deep-green); margin-bottom: 10px; }
+#bs-feedback-thanks p { font-size: 1rem; color: var(--deep-green); font-weight: 600; margin: 0; }
 
 .bs-scroll-hint {
   position: absolute; bottom: 96px; left: 50%;

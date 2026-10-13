@@ -98,6 +98,16 @@
     return post({ action: 'get_audit_logs', limit: limit || 200 });
   }
 
+  /** Ambil data feedback tamu (REV-02; hanya super_admin & manager di backend) */
+  function getFeedbackData(filters) {
+    return post(Object.assign({ action: 'get_feedback_data', limit: 50 }, filters || {}));
+  }
+
+  /** Tandai satu feedback sebagai handled (REV-02) */
+  function markFeedbackHandled(row) {
+    return post({ action: 'mark_feedback_handled', row: row });
+  }
+
   window.BSApi = {
     post:             post,
     get:              get,
@@ -107,7 +117,9 @@
     getAdminData:     getAdminData,
     getEventsData:    getEventsData,
     getPublicConfig:  getPublicConfig,
-    getAuditLogs:     getAuditLogs
+    getAuditLogs:     getAuditLogs,
+    getFeedbackData:  getFeedbackData,
+    markFeedbackHandled: markFeedbackHandled
   };
 
 })(window);

@@ -510,6 +510,13 @@ body {
 .adm-nav-icon {
   font-size: 1.1rem;
 }
+.adm-nav-badge {
+  margin-left: auto;
+  background: #b3261e; color: #fff;
+  font-size: 0.68rem; font-weight: 700;
+  border-radius: 999px; padding: 1px 8px;
+  line-height: 1.5;
+}
 
 .adm-sidebar-footer {
   padding: 16px;

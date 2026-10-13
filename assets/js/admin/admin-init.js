@@ -200,6 +200,7 @@
     if (BSAdmin.reports && typeof BSAdmin.reports.init === 'function') BSAdmin.reports.init();
     if (BSAdmin.fraud && typeof BSAdmin.fraud.init === 'function') BSAdmin.fraud.init();
     if (BSAdmin.audit && typeof BSAdmin.audit.init === 'function') BSAdmin.audit.init();
+    if (BSAdmin.feedback && typeof BSAdmin.feedback.init === 'function') BSAdmin.feedback.init();
     if (BSAdmin.nfc && typeof BSAdmin.nfc.init === 'function') BSAdmin.nfc.init();
 
     /* ── 9. Auto-Resume Sesi ── */

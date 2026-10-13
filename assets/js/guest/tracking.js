@@ -296,6 +296,7 @@
   /** Akses ke source aktif sesi */
   function getSource()     { return _source; }
   function getSourceType() { return _sourceType; }
+  function getDeviceId()   { return _deviceId || ''; }
 
   // Ekspos ke global
   window.BSTracker = {
@@ -304,6 +305,7 @@
     getSource:     getSource,
     getSourceType: getSourceType,
     getSessionId:  getSessionId,
+    getDeviceId:   getDeviceId,
     getCurrentDwell:getCurrentDwell
   };
 

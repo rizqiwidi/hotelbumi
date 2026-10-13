@@ -661,6 +661,10 @@ function doPost(e) {
       return _handleLogEvent(data);
     }
 
+    if (action === 'submit_feedback') {
+      return _handleSubmitFeedback(data);
+    }
+
     if (action === 'login') {
       return _handleLogin(data);
     }
@@ -693,6 +697,14 @@ function doPost(e) {
       return _handleGetAuditLogs(data, session);
     }
 
+    if (action === 'get_feedback_data') {
+      return _handleGetFeedbackData(data, session);
+    }
+
+    if (action === 'mark_feedback_handled') {
+      return _handleMarkFeedbackHandled(data, session);
+    }
+
     _log('WARN', 'doPost', 'Aksi tidak dikenali: ' + action, '');
     return _jsonOut({ ok: false, error: 'Aksi tidak dikenali: ' + action });
 
@@ -700,6 +712,162 @@ function doPost(e) {
     _log('ERROR', 'doPost', err.toString(), '');
     return _jsonOut({ ok: false, error: err.toString() });
   }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Handler: submit_feedback (publik, REV-02)
+   - Validasi rating 1–5, pesan 1–500 karakter, sanitasi tag HTML
+   - Rate limit 3 kiriman per device per 24 jam (anti-spam)
+   - Honeypot anti-bot (pola sama dengan log_event)
+   - Simpan ke tab Feedback (dibuat otomatis bila belum ada)
+══════════════════════════════════════════════════════════════ */
+
+function _stripFeedbackHtml(s) {
+  return String(s == null ? '' : s).replace(/<[^>]*>/g, '');
+}
+
+function _handleSubmitFeedback(data) {
+  if (!data) return _jsonOut({ ok: false, error: 'Data kosong' });
+
+  var rating = parseInt(data.rating, 10);
+  if (!(rating >= 1 && rating <= 5)) {
+    return _jsonOut({ ok: false, error: 'Rating harus antara 1 dan 5' });
+  }
+
+  var message = _stripFeedbackHtml(data.message).trim();
+  if (!message) {
+    return _jsonOut({ ok: false, error: 'Pesan feedback wajib diisi' });
+  }
+  if (message.length > 500) {
+    return _jsonOut({ ok: false, error: 'Pesan maksimal 500 karakter' });
+  }
+
+  var guestName = _stripFeedbackHtml(data.guest_name).trim().substring(0, 80);
+  var guestWa   = String(data.guest_wa || '').replace(/[^0-9+]/g, '').substring(0, 20);
+
+  var devId = String(data.device_id || '').trim().substring(0, 100);
+  if (!devId) {
+    return _jsonOut({ ok: false, error: 'device_id diperlukan' });
+  }
+
+  // Honeypot anti-bot (AF-06): field hp yang terisi = bot
+  if (data.hp && String(data.hp).trim() !== '') {
+    _log('WARN', 'submit_feedback', 'Honeypot terisi — kemungkinan bot, device: ' + devId.substring(0, 30), '');
+    return _jsonOut({ ok: false, error: 'Pengiriman ditolak' });
+  }
+
+  // Anti-spam: maksimal 3 feedback per perangkat per 24 jam
+  if (!_checkRateLimit('feedback_dev_' + devId, 3, 86400)) {
+    _log('WARN', 'submit_feedback', 'Batas harian tercapai — device: ' + devId.substring(0, 30), '');
+    return _jsonOut({ ok: false, error: 'Batas pengiriman harian tercapai. Coba lagi besok.' });
+  }
+
+  var tsServer = Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+  var sheet = getOrCreateSheet('Feedback', [
+    'timestamp', 'source', 'source_name', 'outlet',
+    'guest_name', 'guest_wa', 'rating', 'message', 'status', 'device_hash'
+  ]);
+
+  var devHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, devId)
+    .map(function(b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
+
+  sheet.appendRow([
+    tsServer,
+    String(data.source || 'general').substring(0, 60),
+    _stripFeedbackHtml(data.source_name).substring(0, 80),
+    _stripFeedbackHtml(data.outlet).substring(0, 80),
+    guestName,
+    guestWa,
+    rating,
+    message,
+    'unread',
+    devHash
+  ]);
+
+  return _jsonOut({ ok: true });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Handler: get_feedback_data (terproteksi, REV-02)
+   Hanya super_admin & manager (berisi data tamu/PII).
+   Mendukung filter status/rating/outlet + paginasi sederhana.
+══════════════════════════════════════════════════════════════ */
+
+function _handleGetFeedbackData(data, session) {
+  var role = session ? session.role : '';
+  if (role !== 'super_admin' && role !== 'manager') {
+    _recordAudit(session.username, role, 'FEEDBACK_DENIED', 'feedback', 'REJECTED',
+      'Ditolak: role ' + role + ' tidak berhak membaca data feedback tamu', '');
+    return _jsonOut({ ok: false, error: 'Akses ditolak: hanya Super Admin & Manager.' });
+  }
+
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('Feedback');
+  if (!sheet || sheet.getLastRow() < 2) {
+    return _jsonOut({ ok: true, items: [], total: 0, unread: 0 });
+  }
+
+  var fStatus = String(data.status || '').trim();       // unread | handled | ''
+  var fRating = parseInt(data.rating, 10) || 0;         // 1-5 | 0 = semua
+  var fOutlet = String(data.outlet || '').trim();
+  var limit   = Math.min(Math.max(parseInt(data.limit, 10) || 50, 1), 200);
+  var offset  = Math.max(parseInt(data.offset, 10) || 0, 0);
+
+  var lastRow = sheet.getLastRow();
+  var rows = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+
+  var items = [];
+  var unread = 0;
+  for (var i = rows.length - 1; i >= 0; i--) {   // terbaru dulu
+    var r = rows[i];
+    var st = String(r[8] || 'unread');
+    if (st === 'unread') unread++;
+    if (fStatus && st !== fStatus) continue;
+    if (fRating && Number(r[6]) !== fRating) continue;
+    if (fOutlet && String(r[3] || '') !== fOutlet) continue;
+    items.push({
+      row:       i + 2,
+      timestamp: String(r[0] || ''),
+      source:    String(r[1] || ''),
+      source_name: String(r[2] || ''),
+      outlet:    String(r[3] || ''),
+      guest_name: String(r[4] || ''),
+      guest_wa:  _maskWa(String(r[5] || '')),
+      rating:    Number(r[6]) || 0,
+      message:   String(r[7] || ''),
+      status:    st
+    });
+  }
+
+  return _jsonOut({ ok: true, items: items.slice(offset, offset + limit), total: items.length, unread: unread });
+}
+
+function _maskWa(wa) {
+  if (!wa) return '';
+  if (wa.length <= 4) return '****';
+  return wa.substring(0, 4) + '****' + wa.substring(wa.length - 2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Handler: mark_feedback_handled (terproteksi, REV-02)
+══════════════════════════════════════════════════════════════ */
+
+function _handleMarkFeedbackHandled(data, session) {
+  var role = session ? session.role : '';
+  if (role !== 'super_admin' && role !== 'manager') {
+    return _jsonOut({ ok: false, error: 'Akses ditolak: hanya Super Admin & Manager.' });
+  }
+  var row = parseInt(data.row, 10);
+  if (!row || row < 2) return _jsonOut({ ok: false, error: 'Baris tidak valid' });
+
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('Feedback');
+  if (!sheet || row > sheet.getLastRow()) {
+    return _jsonOut({ ok: false, error: 'Data tidak ditemukan' });
+  }
+  sheet.getRange(row, 9).setValue('handled');
+  _recordAudit(session.username, role, 'FEEDBACK_HANDLED', 'feedback:row' + row, 'SUCCESS', '', '');
+  return _jsonOut({ ok: true });
 }
 
 /* ══════════════════════════════════════════════════════════════
