@@ -76,7 +76,7 @@ body {
   display: flex; flex-direction: column;
   justify-content: center; align-items: center;
   text-align: center;
-  padding: 48px 24px 72px;
+  padding: 48px 24px 112px;
   background: linear-gradient(180deg, var(--deep-green) 0%, var(--deep-green-light) 100%);
   overflow: hidden;
 }
@@ -224,17 +224,16 @@ body {
 #bs-feedback-thanks p { font-size: 1rem; color: var(--deep-green); font-weight: 600; margin: 0; }
 
 .bs-scroll-hint {
-  position: absolute; bottom: 96px; left: 50%;
-  transform: translateX(-50%);
+  margin: 30px auto 0;
   color: rgba(255,255,255,0.45);
   font-size: 0.72rem; letter-spacing: 1px;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  animation: bs-bounce 2s infinite;
+  animation: bs-bounce-y 2s infinite;
   text-transform: uppercase;
 }
-@keyframes bs-bounce {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50% { transform: translateX(-50%) translateY(-8px); }
+@keyframes bs-bounce-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
 /* ── Sections ────────────────────────────────────────────── */
