@@ -132,7 +132,7 @@
           </div>
           <div class="bs-hl-item">
             <span class="bs-hl-icon">🔒</span>
-            <span class="bs-hl-text">Privasi Terjaga (Zero-PII)</span>
+            <span class="bs-hl-text">Privasi Terjaga &amp; Transparan</span>
           </div>
         </div>
 
@@ -295,7 +295,7 @@
 
         <div class="bs-footer-links">
           <a href="#" id="bs-privacy-link" class="bs-footer-privacy" aria-haspopup="dialog">
-            🔒 Kebijakan Privasi &amp; Komitmen Zero-PII
+            🔒 Kebijakan Privasi &amp; Penggunaan Data
           </a>
           <span class="bs-footer-sep">·</span>
           <a href="admin/" class="bs-footer-admin">Portal Manajemen</a>
@@ -323,7 +323,7 @@
 
 
   <!-- ═══════════════════════════════════════════════════════
-       MODAL PRIVASI (ZERO-PII)
+       MODAL KEBIJAKAN PRIVASI & PENGGUNAAN DATA
   ══════════════════════════════════════════════════════════ -->
   <div id="bs-privacy-modal"
        class="bs-modal-overlay"
@@ -336,42 +336,47 @@
       <button id="bs-privacy-close" class="bs-modal-close" aria-label="Tutup modal">✕</button>
       
       <div class="bs-modal-badge">STANDAR PRIVASI RESOR KELAS DUNIA</div>
-      <h2 id="bs-privacy-title" class="bs-modal-title">🔒 Komitmen Privasi Tamu &amp; Zero-PII</h2>
+      <h2 id="bs-privacy-title" class="bs-modal-title">🔒 Kebijakan Privasi &amp; Penggunaan Data Tamu</h2>
       
       <div class="bs-modal-body">
         <p class="bs-lead-text">
-          <strong>Bumi Surabaya City Resort menerapkan prinsip Zero-PII (Zero Personally Identifiable Information).</strong>
+          <strong>Bumi Surabaya City Resort berkomitmen pada privasi yang transparan, aman, dan beretika.</strong>
         </p>
         <p>
-          Kenyamanan dan ketenangan privasi Anda adalah prioritas mutlak kami. Sistem digital ini dirancang khusus agar Anda dapat menikmati layanan tanpa perlu membagikan data identitas pribadi.
+          Kenyamanan dan ketenangan privasi Anda adalah prioritas mutlak kami. Kami menerapkan prinsip transparansi penuh terkait data yang diproses saat Anda mengakses portal layanan digital ini.
         </p>
 
         <div class="bs-privacy-block bs-privacy-negative">
-          <div class="bs-privacy-block-title">❌ Kami TIDAK PERNAH meminta atau menyimpan:</div>
+          <div class="bs-privacy-block-title">❌ Data Pribadi Langsung yang TIDAK PERNAH Kami Kumpulkan:</div>
           <ul>
             <li>Nama lengkap atau identitas KTP/Paspor tamu</li>
-            <li>Nomor telepon pribadi tamu</li>
+            <li>Nomor telepon pribadi tamu (kecuali jika Anda secara sukarela menghubungi Concierge melalui WhatsApp)</li>
             <li>Alamat email pribadi</li>
-            <li>Nomor kartu kredit, PIN, atau data perbankan</li>
+            <li>Nomor kartu kredit, PIN, atau data finansial perbankan</li>
           </ul>
         </div>
 
         <div class="bs-privacy-block bs-privacy-positive">
-          <div class="bs-privacy-block-title">✅ Yang dicatat hanyalah statistik layanan agregat anonim:</div>
+          <div class="bs-privacy-block-title">📊 Data Pseudonim &amp; Teknis yang Kami Proses:</div>
           <ul>
-            <li>Waktu kunjungan halaman saat tap NFC / scan QR meja</li>
-            <li>Gerai atau staf penyedia layanan untuk evaluasi performa internal</li>
-            <li>Tombol yang diakses (misal: klik ulasan Google atau chat WhatsApp)</li>
-            <li>Durasi kunjungan umum pada halaman info hotel</li>
+            <li><strong>Pengenal Pseudonim:</strong> Identifier acak per sesi (<code>session_id</code>) dan pengenal perangkat (<code>device_id</code>) yang disimpan di peramban lokal (localStorage/sessionStorage) untuk integritas interaksi serta perlindungan anti-kecurangan (anti-fraud).</li>
+            <li><strong>Informasi Peramban:</strong> Tipe browser (User-Agent), resolusi layar, dan waktu akses server.</li>
+            <li><strong>Metrik Interaksi:</strong> Durasi aktif melihat halaman (dwell time), kedalaman scroll, serta tombol aksi yang dipilih (ulasan Google, WhatsApp, kartu gerai/promosi).</li>
+            <li><strong>Titik Akses Layanan:</strong> Kode sumber meja, gerai F&amp;B, kamar, atau staf penyedia layanan untuk atribusi dan evaluasi internal.</li>
+          </ul>
+        </div>
+
+        <div class="bs-privacy-block">
+          <div class="bs-privacy-block-title">🎯 Tujuan &amp; Masa Retensi Data:</div>
+          <ul>
+            <li><strong>Tujuan Penggunaan:</strong> Evaluasi kualitas pelayanan staf dan gerai, pencegahan manipulasi metrik (anti-fraud), dan peningkatan kenyamanan tamu hotel.</li>
+            <li><strong>Masa Retensi:</strong> Log event mentah di server disimpan maksimal <strong>12 bulan</strong> untuk kebutuhan audit kualitas. Rekapitulasi performa bulanan disimpan hingga <strong>24 bulan</strong>.</li>
+            <li><strong>Kerahasiaan:</strong> Data evaluasi tidak pernah diperjualbelikan atau dialihkan kepada pihak ketiga untuk kepentingan iklan.</li>
           </ul>
         </div>
 
         <p class="bs-privacy-subtext">
-          Alamat IP diproses secara <strong>tersamar permanen</strong> (dua segmen terakhir dihilangkan, contoh: <code>114.125.x.x</code>). Data evaluasi ini tidak akan pernah dijual atau dialihkan ke pihak ketiga.
-        </p>
-
-        <p class="bs-privacy-subtext">
-          Dengan menikmati platform ini, Anda bersama kami membangun standar pelayanan keramahan bintang lima yang lebih prima dan terpercaya.
+          Dengan mengakses layanan ini, Anda bersama kami membangun standar pelayanan keramahan bintang lima yang lebih prima, transparan, dan terpercaya.
         </p>
       </div>
 

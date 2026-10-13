@@ -30,7 +30,7 @@ Halaman tamu didesain dengan pendekatan **Mobile-First** mutlak, mengingat lebih
    - **Tombol Aksi Prioritas (High Conversion)**:
      - Tombol **Google Review** bergradasi emas (`#bs-btn-review`) dengan ikon bintang dan micro-interaction shimmer.
      - Tombol **WhatsApp** bergradasi hijau emerald (`#bs-btn-wa`) untuk chat dan reservasi langsung.
-   - **Micro Highlights Bar**: 3 badge keunggulan resort (Oasis Tropis di Pusat Kota, 4 Gerai Kuliner Ikonik, Privasi Zero-PII).
+   - **Micro Highlights Bar**: 3 badge keunggulan resort (Oasis Tropis di Pusat Kota, 4 Gerai Kuliner Ikonik, Privasi Terjaga & Transparan).
 2. **Google Review Section (`#bs-review-section`)**:
    - Tampilan malam hari elegan berlatar emerald dengan 5 bintang emas teranimasi pop-up bertahap, kutipan apresiasi, dan tombol berukuran optimal untuk jari jempol.
 3. **Katalog 4 Gerai F&B Ikonik (`#bs-outlets-section`)**:
@@ -41,8 +41,8 @@ Halaman tamu didesain dengan pendekatan **Mobile-First** mutlak, mengingat lebih
    - Kartu terkurasi dengan status *"Layanan Pramutamu Aktif"* dan tautan langsung ke WhatsApp tim reservasi.
 6. **Floating Mobile Action Bar (`.bs-mobile-action-bar`)**:
    - Bar aksi lengket (sticky) di bagian bawah layar ponsel (<768px) dengan dua tombol cepat (Ulas di Google + Chat WhatsApp) yang selalu dapat diakses tamu saat menjelajahi halaman.
-7. **Modal Privasi Zero-PII (`#bs-privacy-modal`)**:
-   - Desain bottom-sheet dengan drag handle, badge standar privasi, pemisahan jelas antara *"TIDAK PERNAH diminta"* (merah) dan *"Data anonim yang dicatat"* (hijau).
+7. **Modal Kebijakan Privasi (`#bs-privacy-modal`)**:
+   - Desain bottom-sheet dengan drag handle, badge standar privasi, pemisahan jelas antara *"TIDAK PERNAH diminta"* (merah), data pseudonim yang diproses (hijau), serta tujuan dan masa retensi data.
 
 ---
 
@@ -50,18 +50,18 @@ Halaman tamu didesain dengan pendekatan **Mobile-First** mutlak, mengingat lebih
 Panel admin dirombak total menjadi sebuah dashboard manajemen hotel mewah sekelas *Stripe Dashboard / SevenRooms / Toast Hospitality UI*.
 
 1. **Layar Login Admin (`#adm-login-screen`)**:
-   - Berlatar radial deep emerald dengan logo resmi hotel, badge enkripsi Zero-PII, form login berikon, dan tombol toggle intip password.
+   - Berlatar radial deep emerald dengan logo resmi hotel, badge enkripsi sesi admin, form login berikon, dan tombol toggle intip password.
 2. **Navigasi Sidebar Terstruktur (11 Panel Terpadu)**:
    - **Dashboard Analitik**: 5 KPI Card (Total Kunjungan, Quality Score, Total Ulasan, WA Clicks, Conversion Rate), grafik tren interaktif harian (7 Hari / 30 Hari via Chart.js), Top Staf & Top Gerai leaderboard dengan medali, serta Data Table per sumber dengan filter.
    - **Manajemen Staf & Titik NFC**: Daftar lengkap staf dan meja, status pemrograman kartu NFC, aksi rotasi kode unik, dan tombol sinkronisasi cloud.
-   - **Audit Anti-Fraud**: Ringkasan audit anomali, tabel event anomali dengan masking IP/device, dan remedi pendaftaran HP staf.
+   - **Audit Anti-Fraud**: Ringkasan audit anomali, tabel event anomali dengan masking IP/device, dan remedi pendaftaran HP staf ke StaffDevices.
    - **Manajemen Outlet F&B** *(Panel Baru)*: Tampilan grid kartu 4 outlet lengkap dengan foto cover, status operasional, jam buka, fasilitas privat, dan tombol edit.
    - **Nomor WhatsApp Sales** *(Panel Baru)*: Konfigurasi nomor WA per departemen (Wedding & Banquet, MICE Corporate, Reservasi Kamar, F&B Concierge) lengkap dengan template pesan pembuka.
    - **Programmer Kartu NFC**: Antarmuka tulis Web NFC API ke kartu NTAG fisik, penyalin URL, generator QR individual, dan panduan NFC Tools.
    - **Cetak QR Massal** *(Panel Baru)*: Antarmuka cetak multi-kartu dengan pilihan ukuran Kartu Stiker Meja (85 x 54 mm) dan Table Tent Lipat (100 x 70 mm) lengkap dengan tombol cetak batch.
    - **Promosi & Konten Halaman Tamu** *(Panel Baru)*: Pengaturan toggle visibilitas seksi tamu dan tabel daftar promo aktif.
    - **Tampilan & Tema** *(Panel Baru)*: Kustomisasi palet warna dan template teks hero.
-   - **Konfigurasi Backend & Fraud Thresholds**: Input endpoint Google Apps Script, READ_TOKEN, dan batas ambang AF-01 hingga AF-05.
+   - **Konfigurasi Backend & Fraud Thresholds**: Input endpoint Google Apps Script dan batas ambang AF-01 hingga AF-08.
    - **Pengaturan Akun & Keamanan** *(Panel Baru)*: Form perbarui kata sandi admin dan log sesi keamanan.
 
 ---

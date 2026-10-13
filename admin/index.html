@@ -52,7 +52,7 @@
             type="text"
             id="adm-username"
             class="adm-input"
-            placeholder="Masukkan username admin (contoh: widi)"
+            placeholder="Masukkan username admin"
             autocomplete="username"
             spellcheck="false"
             required
@@ -86,7 +86,7 @@
     </form>
 
     <div class="adm-login-footer">
-      <span class="adm-security-badge">🛡️ Terproteksi Enkripsi Zero-PII</span>
+      <span class="adm-security-badge">🛡️ Terproteksi Enkripsi Sesi Admin</span>
       <p>Hanya staf berwenang dan manajemen yang memiliki hak akses sistem ini.</p>
     </div>
   </div>
@@ -471,6 +471,40 @@
             </thead>
             <tbody id="adm-fraud-tbody">
               <tr><td colspan="6" class="bs-empty">Belum ada event mencurigakan terdeteksi.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Daftar HP Staf Terdaftar (SRC-08) -->
+      <div class="adm-card" style="margin-top:24px;">
+        <div class="adm-card-header">
+          <div>
+            <h2 class="adm-card-title">📱 Perangkat Staf Terdaftar (StaffDevices — AF-03)</h2>
+            <p class="adm-card-subtitle">Daftar perangkat staf hotel untuk pengecualian kunjungan mandiri (self-tap) dan audit integritas</p>
+          </div>
+        </div>
+
+        <form id="adm-staff-device-form" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+          <input type="text" id="adm-sd-device-id" class="adm-input" placeholder="Device ID (32-hex)" style="flex:2;min-width:200px;" required>
+          <input type="text" id="adm-sd-staff-code" class="adm-input" placeholder="Kode Staf / Sumber (mis. widi)" style="flex:1;min-width:140px;" required>
+          <input type="text" id="adm-sd-label" class="adm-input" placeholder="Label perangkat (mis. HP Staf A)" style="flex:1;min-width:140px;">
+          <button type="submit" class="adm-btn adm-btn-primary" id="adm-sd-submit-btn">➕ Daftarkan Perangkat</button>
+        </form>
+
+        <div class="adm-table-wrap">
+          <table class="adm-table" id="adm-staff-devices-table" aria-label="Daftar perangkat staf terdaftar">
+            <thead>
+              <tr>
+                <th>Device ID</th>
+                <th>Staf / Sumber</th>
+                <th>Label</th>
+                <th>Terdaftar Pada</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="adm-staff-devices-tbody">
+              <tr><td colspan="5" class="bs-empty">Belum ada perangkat staf terdaftar.</td></tr>
             </tbody>
           </table>
         </div>
@@ -888,18 +922,11 @@
         <div class="adm-form-group">
           <label for="adm-cfg-gas-url">URL Google Apps Script</label>
           <input type="url" id="adm-cfg-gas-url" class="adm-input" placeholder="https://script.google.com/macros/s/…/exec">
-        </div>
-
-        <div class="adm-form-group">
-          <label for="adm-cfg-token">READ_TOKEN</label>
-          <div style="position:relative;">
-            <input type="password" id="adm-cfg-token" class="adm-input" placeholder="Token sesi (hanya disimpan di sessionStorage)">
-            <button type="button" class="adm-pw-toggle" id="adm-cfg-toggle-pw" aria-label="Lihat / sembunyikan token">👁</button>
-          </div>
+          <p class="adm-field-hint">Token sesi dikelola otomatis oleh modul autentikasi (BSAuth) dan tersimpan aman di sessionStorage.</p>
         </div>
 
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
-          <button id="adm-cfg-save-btn" class="adm-btn adm-btn-primary">💾 Simpan Konfigurasi</button>
+          <button id="adm-cfg-save-btn" class="adm-btn adm-btn-primary">💾 Simpan URL Backend</button>
           <button id="adm-cfg-test-btn" class="adm-btn adm-btn-secondary">🔗 Uji Koneksi Backend</button>
         </div>
 
@@ -975,9 +1002,9 @@
         <div class="adm-account-audit-card" style="margin-top:28px;">
           <h4 style="font-size:0.9rem;margin-bottom:8px;color:var(--deep-green);">Informasi Sesi Keamanan</h4>
           <ul style="font-size:0.84rem;color:var(--charcoal-light);padding-left:18px;line-height:1.8;">
-            <li>Akun aktif: <strong id="adm-acc-current-user">widi</strong></li>
-            <li>Sesi terotentikasi via Session Token SHA-256 (6 Jam TTL)</li>
-            <li>Zero-PII Compliance: Tidak ada rekaman data sensitif pribadi</li>
+            <li>Akun aktif: <strong id="adm-acc-current-user">admin</strong></li>
+            <li>Sesi terotentikasi via Session Token Kriptografis (6 Jam TTL)</li>
+            <li>Transparansi Privasi: Pencatatan event menggunakan identifier pseudonim perangkat (device_id)</li>
             <li>Versi Platform: <strong>Digital Guest Experience v6.0</strong></li>
           </ul>
         </div>
@@ -1176,6 +1203,7 @@
   var _configData      = JSON.parse(JSON.stringify(BSConfig.DEFAULTS || {}));
   var _outlets         = (_configData.outlets || []).slice();
   var _promos          = (_configData.promotions || []).slice();
+  var _staffDevices    = [];
 
   /* ── Elemen DOM utama ── */
   function $id(id) { return document.getElementById(id); }
@@ -1239,7 +1267,7 @@
     if (name === 'appearance') _populateAppearance();
     if (name === 'config')     _populateFraudThresholds();
     if (name === 'account')    _populateAccount();
-    if (name === 'antifraud')  _renderFraudTable();
+    if (name === 'antifraud')  { _renderFraudTable(); _renderStaffDevicesTable(); }
   }
 
   document.querySelectorAll('.adm-nav-item').forEach(function (el) {
@@ -1287,11 +1315,6 @@
   if ($id('adm-toggle-pw')) {
     $id('adm-toggle-pw').addEventListener('click', function () {
       _togglePw('adm-password', this);
-    });
-  }
-  if ($id('adm-cfg-toggle-pw')) {
-    $id('adm-cfg-toggle-pw').addEventListener('click', function () {
-      _togglePw('adm-cfg-token', this);
     });
   }
 
@@ -1408,9 +1431,8 @@
     loginScreen.style.display = 'none';
     portal.style.display      = 'flex';
     var u = BSAuth.getUsername();
-    if ($id('adm-acc-current-user')) $id('adm-acc-current-user').textContent = u || 'widi';
+    if ($id('adm-acc-current-user')) $id('adm-acc-current-user').textContent = u || 'admin';
     if ($id('adm-cfg-gas-url')) $id('adm-cfg-gas-url').value = BSConfig.getGasUrl();
-    if ($id('adm-cfg-token')) $id('adm-cfg-token').value = BSAuth.getToken() || '';
   }
 
   if (logoutBtn) {
@@ -1444,31 +1466,47 @@
       refreshBtn.textContent = '🔄 Memuat…';
     }
 
-    // Ambil konfigurasi publik terlebih dahulu untuk sinkronisasi state
-    BSApi.getPublicConfig().then(function (cfgResp) {
-      if (cfgResp && cfgResp.ok) {
-        if (cfgResp.config) {
-          _configData = Object.assign({}, BSConfig.DEFAULTS, cfgResp.config);
-          if (Array.isArray(cfgResp.config.outlets)) _outlets = cfgResp.config.outlets;
-          if (Array.isArray(cfgResp.config.promotions)) _promos = cfgResp.config.promotions;
+    // Ambil konfigurasi admin (memerlukan token sesi server)
+    BSApi.getAdminData().then(function (admResp) {
+      if (admResp && admResp.ok) {
+        if (admResp.config) {
+          _configData = Object.assign({}, BSConfig.DEFAULTS, admResp.config);
+          if (Array.isArray(admResp.config.outlets)) _outlets = admResp.config.outlets;
+          if (Array.isArray(admResp.config.promotions)) _promos = admResp.config.promotions;
         }
-        if (Array.isArray(cfgResp.sources) && window.BSStaffManager && typeof BSStaffManager.loadFromCloud === 'function') {
+        if (Array.isArray(admResp.sources) && window.BSStaffManager && typeof BSStaffManager.initSources === 'function') {
+          BSStaffManager.initSources(admResp.sources);
+        } else if (Array.isArray(admResp.sources) && window.BSStaffManager && typeof BSStaffManager.loadFromCloud === 'function') {
           BSStaffManager.loadFromCloud().catch(function () {});
         }
+        if (Array.isArray(admResp.staff_devices)) {
+          _staffDevices = admResp.staff_devices;
+        }
       }
-    }).catch(function () {}).finally(function () {
+    }).catch(function () {
+      return BSApi.getPublicConfig().then(function (cfgResp) {
+        if (cfgResp && cfgResp.ok && cfgResp.config) {
+          _configData = Object.assign({}, BSConfig.DEFAULTS, cfgResp.config);
+        }
+      }).catch(function () {});
+    }).finally(function () {
       _renderOutlets();
       _renderPromos();
       _populateSections();
       _renderSalesWa();
       _populateAppearance();
       _populateFraudThresholds();
+      _renderStaffDevicesTable();
 
       // Ambil data event dari backend
       BSApi.getEventsData(month, 10000).then(function (resp) {
         if (!resp.ok) throw new Error(resp.error || 'Gagal memuat data event');
 
         _events = resp.events || [];
+        if (Array.isArray(resp.staff_devices) && resp.staff_devices.length > 0) {
+          _staffDevices = resp.staff_devices;
+          _renderStaffDevicesTable();
+        }
         _populateMonthSelect(resp.archive_tabs || []);
 
         var _srcList = (window.BSStaffManager && BSStaffManager.getSources)
@@ -1480,7 +1518,7 @@
           _events,
           ftConfig,
           _srcList,
-          resp.staff_devices || []
+          _staffDevices
         );
 
         var lb = _evalResult.leaderboard || {};
@@ -1497,6 +1535,7 @@
         });
         BSDashboard.renderTrendChart({ daily: _evalResult.daily || [] }, _currentPeriod);
         BSDashboard.renderSourceTable(_evalResult.sources || [], _currentFilter);
+        _renderFraudTable();
 
         showToast('Data berhasil dimuat — ' + _events.length + ' event.', 'success');
       }).catch(function (err) {
@@ -2234,7 +2273,7 @@
   /* ── TAB AKUN: Ganti Password ── */
   function _populateAccount() {
     var u = BSAuth.getUsername();
-    if ($id('adm-acc-current-user')) $id('adm-acc-current-user').textContent = u || 'widi';
+    if ($id('adm-acc-current-user')) $id('adm-acc-current-user').textContent = u || 'admin';
   }
 
   if ($id('adm-acc-pw-form')) {
@@ -2286,12 +2325,14 @@
 
   if ($id('adm-cfg-save-btn')) {
     $id('adm-cfg-save-btn').addEventListener('click', function () {
-      var url   = $id('adm-cfg-gas-url').value.trim();
-      var token = $id('adm-cfg-token').value.trim();
-      if (url)   BSConfig.setGasUrl(url);
-      if (token) BSAuth.saveSession(token, BSAuth.getRole(), BSAuth.getUsername(), false);
-      $id('adm-cfg-msg').textContent = '✅ Konfigurasi tersimpan di sesi ini.';
-      showToast('Konfigurasi disimpan.', 'success');
+      var url = $id('adm-cfg-gas-url').value.trim();
+      if (url) {
+        BSConfig.setGasUrl(url);
+        $id('adm-cfg-msg').textContent = '✅ URL backend tersimpan.';
+        showToast('URL backend disimpan.', 'success');
+      } else {
+        showToast('URL backend tidak boleh kosong.', 'error');
+      }
     });
   }
 
@@ -2342,9 +2383,18 @@
       }
       return;
     }
-    var flagged = (_evalResult.events || []).filter(function (ev) {
-      return ev._flags && ev._flags.length > 0;
-    });
+    var flagsMap = _evalResult.flagsByEventId || new Map();
+    var flagged = [];
+    if (Array.isArray(_events)) {
+      _events.forEach(function (ev) {
+        var eid = String(ev.event_id || '');
+        if (flagsMap.has(eid)) {
+          var item = Object.assign({}, ev);
+          item._flags = flagsMap.get(eid);
+          flagged.push(item);
+        }
+      });
+    }
 
     var summary = $id('adm-fraud-summary');
     if (summary) {
@@ -2361,7 +2411,7 @@
       var maskedIp = _maskIp(ev.ip || '');
       var maskedDev = (ev.device_id || '').substring(0, 8) + '…';
       var ts = ev.ts_server ? new Date(ev.ts_server).toLocaleString('id-ID') : '—';
-      var flags = ev._flags.join(', ');
+      var flags = (ev._flags || []).join(', ');
       return '<tr>' +
         '<td style="font-size:0.78rem;">' + _esc(ts) + '</td>' +
         '<td><strong>' + _esc(ev.source || '—') + '</strong></td>' +
@@ -2369,16 +2419,148 @@
         '<td><code style="font-size:0.75rem;">' + _esc(maskedIp) + '</code></td>' +
         '<td><span class="adm-badge-err">' + _esc(flags) + '</span></td>' +
         '<td>' +
-          '<button class="adm-btn adm-btn-xs adm-btn-secondary" onclick="adminMarkDevice(\'' + _esc(ev.device_id || '') + '\',\'' + _esc(ev.source || '') + '\')">📌 Daftarkan HP Staf</button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" onclick="adminMarkDevice(\'' + _esc(ev.device_id || '') + '\',\'' + _esc(ev.source || '') + '\')">📌 Daftarkan HP Staf</button>' +
         '</td>' +
       '</tr>';
     }).join('');
   }
 
-  window.adminMarkDevice = function (deviceId, sourceCode) {
-    if (!confirm('Daftarkan perangkat ini sebagai HP staf untuk sumber "' + sourceCode + '"?')) return;
-    showToast('Perangkat ' + deviceId.substring(0, 8) + '… ditandai HP staf.', 'info');
+  /* ── TAB FRAUD: Pendaftaran HP Staf (StaffDevices — SRC-08, AF-03) ── */
+  function _renderStaffDevicesTable() {
+    var tbody = $id('adm-staff-devices-tbody');
+    if (!tbody) return;
+    if (!_staffDevices || _staffDevices.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="bs-empty">Belum ada perangkat staf terdaftar.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = _staffDevices.map(function (dev, idx) {
+      var devSub = (dev.device_id || '').substring(0, 12) + '…';
+      var regTs = dev.registered_at ? new Date(dev.registered_at).toLocaleString('id-ID') : '—';
+      return '<tr>' +
+        '<td><code style="font-size:0.75rem;" title="' + _esc(dev.device_id || '') + '">' + _esc(devSub) + '</code></td>' +
+        '<td><strong>' + _esc(dev.staff_code || '—') + '</strong></td>' +
+        '<td>' + _esc(dev.label || '—') + '</td>' +
+        '<td style="font-size:0.78rem;">' + _esc(regTs) + '</td>' +
+        '<td><button type="button" class="adm-btn adm-btn-xs adm-btn-danger" onclick="adminRemoveStaffDevice(' + idx + ')">🗑 Hapus</button></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function _reEvaluateFraud() {
+    if (!_events || _events.length === 0) return;
+    var _srcList = (window.BSStaffManager && BSStaffManager.getSources)
+      ? BSStaffManager.getSources() : [];
+    var ftConfig = (_configData && _configData.fraud_thresholds)
+      ? _configData.fraud_thresholds : BSConfig.DEFAULTS.fraud_thresholds;
+
+    _evalResult = BSAntiFraud.evaluate(
+      _events,
+      ftConfig,
+      _srcList,
+      _staffDevices
+    );
+
+    var lb = _evalResult.leaderboard || {};
+    BSDashboard.renderMetrics({
+      totalVisits:    _evalResult.totalVisits    || 0,
+      qualityScore:   _evalResult.avgQualityScore || 0,
+      totalReviews:   _evalResult.totalReviews   || 0,
+      waClicks:       _evalResult.totalWa        || 0,
+      conversionRate: _evalResult.conversionRate  || 0
+    });
+    BSDashboard.renderLeaderboard({
+      staffRanking:  lb.staff   || [],
+      outletRanking: lb.outlets || []
+    });
+    BSDashboard.renderTrendChart({ daily: _evalResult.daily || [] }, _currentPeriod);
+    BSDashboard.renderSourceTable(_evalResult.sources || [], _currentFilter);
+    _renderFraudTable();
+  }
+
+  window.adminRemoveStaffDevice = function (idx) {
+    if (idx < 0 || idx >= _staffDevices.length) return;
+    var dev = _staffDevices[idx];
+    if (!confirm('Hapus perangkat staf "' + (dev.label || dev.device_id) + '" dari StaffDevices?')) return;
+    var removed = _staffDevices.splice(idx, 1)[0];
+    showToast('Menghapus perangkat dari server…', 'info');
+    BSApi.saveAllAdminData({ staff_devices: _staffDevices }).then(function () {
+      showToast('Perangkat staf berhasil dihapus dari server.', 'success');
+      _renderStaffDevicesTable();
+      _reEvaluateFraud();
+    }).catch(function (err) {
+      if (removed) _staffDevices.splice(idx, 0, removed);
+      showToast('Gagal menghapus perangkat: ' + err.message, 'error');
+    });
   };
+
+  window.adminMarkDevice = function (deviceId, sourceCode) {
+    if (!deviceId) {
+      showToast('Device ID tidak valid.', 'error');
+      return;
+    }
+    if (!confirm('Daftarkan perangkat ' + deviceId.substring(0, 8) + '… sebagai HP staf untuk sumber "' + sourceCode + '"?')) return;
+    var exists = _staffDevices.some(function (d) { return d.device_id === deviceId; });
+    if (exists) {
+      showToast('Perangkat sudah terdaftar di StaffDevices.', 'warning');
+      return;
+    }
+    var newDev = {
+      device_id: deviceId,
+      staff_code: sourceCode || '',
+      label: 'Ditandai dari audit fraud',
+      registered_at: new Date().toISOString()
+    };
+    _staffDevices.push(newDev);
+    showToast('Menyimpan perangkat ke server (StaffDevices)…', 'info');
+    BSApi.saveAllAdminData({ staff_devices: _staffDevices }).then(function () {
+      showToast('✅ Perangkat HP staf berhasil disimpan ke server!', 'success');
+      _renderStaffDevicesTable();
+      _reEvaluateFraud();
+    }).catch(function (err) {
+      var idx = _staffDevices.indexOf(newDev);
+      if (idx !== -1) _staffDevices.splice(idx, 1);
+      showToast('❌ Gagal menyimpan perangkat ke server: ' + err.message, 'error');
+    });
+  };
+
+  if ($id('adm-staff-device-form')) {
+    $id('adm-staff-device-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var devId = ($id('adm-sd-device-id').value || '').trim();
+      var sCode = ($id('adm-sd-staff-code').value || '').trim();
+      var label = ($id('adm-sd-label').value || '').trim();
+      if (!devId || !sCode) {
+        showToast('Device ID dan Kode Staf wajib diisi.', 'error');
+        return;
+      }
+      var exists = _staffDevices.some(function (d) { return d.device_id === devId; });
+      if (exists) {
+        showToast('Perangkat dengan Device ID ini sudah terdaftar.', 'warning');
+        return;
+      }
+      var newDev = {
+        device_id: devId,
+        staff_code: sCode,
+        label: label || 'Didaftarkan manual',
+        registered_at: new Date().toISOString()
+      };
+      _staffDevices.push(newDev);
+      var btn = $id('adm-sd-submit-btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Menyimpan…'; }
+      BSApi.saveAllAdminData({ staff_devices: _staffDevices }).then(function () {
+        showToast('✅ Perangkat staf berhasil disimpan ke server.', 'success');
+        $id('adm-staff-device-form').reset();
+        _renderStaffDevicesTable();
+        _reEvaluateFraud();
+      }).catch(function (err) {
+        var idx = _staffDevices.indexOf(newDev);
+        if (idx !== -1) _staffDevices.splice(idx, 1);
+        showToast('❌ Gagal menyimpan perangkat: ' + err.message, 'error');
+      }).finally(function () {
+        if (btn) { btn.disabled = false; btn.textContent = '➕ Daftarkan Perangkat'; }
+      });
+    });
+  }
 
   /* ── TAB NFC: Web NFC Programmer ── */
   function _populateNfcSelect() {

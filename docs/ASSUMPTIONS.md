@@ -1,113 +1,63 @@
-# ASSUMPTIONS.md — Catatan Asumsi Implementasi
+# ASSUMPTIONS.md — Catatan Asumsi & Batasan Platform v6.0
 
-Dokumen ini mencatat seluruh asumsi yang diambil untuk bagian-bagian yang ambigu dalam PRD v5.0,
-serta keputusan implementasi yang perlu diketahui oleh pengembang berikutnya.
-
----
-
-## A. Aset yang Dilewati
-
-### A-01 — `favicon.ico` (dilewati)
-**Alasan**: PRD §4.1 menyebutkan `favicon.ico` namun tidak memberi spesifikasi desain.  
-File `index.html` sudah mereferensikan `favicon.svg` sebagai fallback modern (SVG favicon didukung semua browser modern).  
-**Tindakan yang disarankan**: Buat file `favicon.ico` 16×16px dan 32×32px dari `logo-gold.svg` menggunakan tool seperti `realfavicongenerator.net` dan tambahkan ke `/assets/images/`.
-
-### A-02 — `default-hero.jpg` (dilewati)
-**Alasan**: PRD §4.1 menyebutkan file ini namun tidak menyertakan gambar asli hotel.  
-`guest.css` menggunakan gradient CSS fallback (`linear-gradient`) sebagai latar hero sehingga tampilan tetap elegan tanpa gambar.  
-**Tindakan yang disarankan**: Sediakan foto hotel berkualitas tinggi (≤200 KB setelah kompresi WebP) dan referensikan di `config.js` → `appearance.hero_image_url`.
+Dokumen ini mencatat asumsi arsitektur, batasan teknis platform, dan keputusan implementasi pada **Bumi Surabaya Digital Guest Experience v6.0**.
 
 ---
 
-## B. Asumsi Autentikasi
+## A. Asumsi Autentikasi & Sesi (SEC-01 s/d SEC-07)
 
-### B-01 — Single-token, bukan multi-role
-**PRD §8.5 FR-ADM-01** menyebutkan dua peran: *Super Admin* dan *Outlet Manager*.  
-**Asumsi**: Implementasi saat ini menggunakan **satu READ_TOKEN tunggal** yang memberikan akses penuh (ekivalen Super Admin).  
-Multi-role dengan akses terbatas per gerai bukan prioritas v5 (ditandai Opsional P2 di PRD §9) dan membutuhkan logika token terpisah di GAS.  
-**Dampak**: Semua pengguna portal admin memiliki akses setara. Untuk pembatasan akses outlet manager, perlu token terpisah per peran di Script Properties.
+### A-01 — Autentikasi Berbasis Tab `Users` & Sesi Kriptografis
+- Tidak ada lagi pintu darurat `READ_TOKEN` statis. Autentikasi sepenuhnya menggunakan verifikasi kredensial pengguna di tab `Users`.
+- Kata sandi dilindungi salt kriptografis per-user dengan key stretching 1.000 putaran SHA-256 (`pbkdf2_sha256$1000$[salt]$[hash]`).
+- Token sesi dibuat menggunakan generator hex acak kriptografis (32-karakter) dan disimpan di `CacheService` sisi server dengan masa berlaku (TTL) **6 jam**, disinkronkan dengan `sessionStorage` di sisi klien.
+- Kegagalan login diproteksi rate limiting (maksimal 5 kali percobaan gagal per username / 15 menit). Pesan kesalahan bersifat seragam (`Nama pengguna atau kata sandi tidak valid.`) untuk mencegah *username enumeration*.
 
-### B-02 — Token disimpan di `sessionStorage` (bukan `localStorage`)
-Token **tidak persisten** antar sesi (tab atau jendela browser yang baru). Ini adalah keputusan keamanan yang disengaja — sesuai PRD §8.5 FR-ADM-02.  
-Admin harus login ulang setiap membuka tab baru atau setelah 8 jam.
-
----
-
-## C. Asumsi Backend Google Apps Script
-
-### C-01 — IP address di GAS
-Google Apps Script tidak menyediakan IP address klien secara native di parameter `e` untuk Web App.  
-**Asumsi**: Kolom `ip` di tab Events diisi dengan nilai `"client-ip"` sebagai placeholder.  
-Untuk mendapatkan IP asli, diperlukan proxy middleware (misalnya Cloudflare Worker) yang meneruskan header `CF-Connecting-IP` sebagai query parameter `?ip=`.  
-**Dampak**: Fitur AF-07 (Shared IP Flood) berfungsi di level frontend (sudah diimplementasi di `anti-fraud.js`) namun tidak di level server GAS.
-
-### C-02 — Rate limiting berbasis `device_id`, bukan IP
-Karena IP tidak tersedia di GAS (lihat C-01), rate limiting menggunakan `device_id` sebagai kunci.  
-Ini cukup efektif untuk mencegah spam dari satu perangkat, namun tidak mencegah serangan yang menggunakan `device_id` palsu.
-
-### C-03 — `dwell_update` hanya mencari 200 baris terakhir
-Fungsi rekonsiliasi dwell (`_handleLogEvent`) mencari `session_id` yang cocok hanya dalam **200 baris terakhir** tab Events.  
-**Asumsi**: Sesi kunjungan normal berlangsung singkat dan sessionnya pasti ada di 200 baris terakhir.  
-Jika hotel memiliki lebih dari 200 kunjungan bersamaan (sangat tidak mungkin untuk hotel bintang lima skala ini), ada risiko kecil rekonsiliasi gagal dan dwell ditulis sebagai baris terpisah.
-
-### C-04 — `appsscript.json` menggunakan `executeAs: USER_DEPLOYING`
-Web App berjalan dengan identitas akun Google yang men-deploy skrip.  
-**Asumsi**: Ini adalah akun IT hotel yang memiliki akses ke Spreadsheet database.  
-Jangan gunakan `USER_ACCESSING` karena akan meminta izin dari setiap pengguna yang mengirim request.
+### A-02 — Batasan Kriptografi di Google Apps Script (GAS V8)
+- Runtime Google Apps Script V8 tidak memiliki binding C native untuk bcrypt atau argon2, dan tidak mendukung WebCrypto `crypto.subtle`.
+- Iterasi SHA-256 1.000 putaran via `Utilities.computeDigest` dipilih karena memberikan proteksi komputasi memadai terhadap *offline dictionary attack* sekaligus menyelesaikan eksekusi dalam waktu ~30 milidetik, jauh di bawah batas timeout eksekusi Google Apps Script (30 detik untuk web app).
 
 ---
 
-## D. Asumsi Frontend
+## B. Asumsi Backend & Jaringan Google Apps Script (SEC-05, API-01 s/d API-04)
 
-### D-01 — Chart.js dan QRCode.js dari CDN
-Admin portal memuat Chart.js dan QRCode.js dari CDN jsDelivr.  
-**Alasan**: Library ini hanya dibutuhkan admin, bukan tamu. Memuat dari CDN menjaga ukuran aset guest view tetap <40 KB.  
-**Risiko**: Jika CDN tidak tersedia (jarang terjadi), dashboard charts dan QR preview tidak akan muncul.  
-**Mitigasi**: Tambahkan fallback lokal jika dibutuhkan — copy `chart.umd.min.js` dan `qrcode.min.js` ke `/assets/js/vendor/`.
+### B-01 — Penanganan Alamat IP Klien
+- Google Apps Script Web App tidak mengekspos header IP klien asli pada parameter request `e`.
+- Backend **secara tegas menolak dan mengabaikan** parameter `?ip=` atau field JSON `clientIp` yang dikirim dari klien browser untuk mencegah pemalsuan (*spoofing*) dan manipulasi rate limit.
+- Kolom IP pada event diisi dengan nilai internal server atau dibiarkan kosong, dan disamarkan di dashboard.
+- Aturan anti-fraud AF-07 (Shared IP Flood) mengabaikan nilai placeholder (`client-ip`, `unknown`, `-`, kosong).
 
-### D-02 — `generateQrDataUrl` menggunakan parameter `?source=`
-Modul `staff-manager.js` menggunakan `?source=` sebagai nama parameter URL.  
-Ini konsisten dengan seluruh kode `tracking.js` dan `app.js` yang membaca `?source=`.
+### B-02 — Rate Limiting & Idempotensi
+- Karena IP klien tidak dapat dipercaya, rate limit login diterapkan berbasis username dan global cache counter.
+- Rate limit pencatatan event diterapkan per `device_id`.
+- Idempotensi request dijamin melalui pengecekan `event_id` unik pada 200 baris terakhir tab Events aktif. Retry event dengan `event_id` yang sama akan merespons `{ok: true, duplicate: true}` tanpa menggandakan baris di spreadsheet.
 
-### D-03 — Web NFC hanya tersedia di Android Chrome
-`web-nfc.js` menggunakan `window.NDEFReader` yang saat ini **hanya tersedia di Google Chrome Android**.  
-Pada iOS dan desktop, tombol "Tulis via Web NFC" akan dinonaktifkan secara otomatis dan panduan manual NFC Tools ditampilkan.
-
-### D-04 — Tabel sumber di admin tidak di-paginate
-Untuk hotel dengan >500 staf aktif, tabel sumber di tab "Staf & Sumber" mungkin terasa lambat.  
-**Asumsi**: Hotel Bumi Surabaya memiliki staf lini depan dalam kisaran puluhan, bukan ratusan.  
-Jika perlu pagination, implementasikan client-side pagination di `_renderSourcesTable()`.
+### B-03 — Pemisahan Konfigurasi Publik & Admin (SEC-08)
+- Endpoint publik `get_config` hanya mengembalikan konfigurasi publik aman yang diallowlist (`general`, `appearance`, `guest_sections`, `review_settings`, `whatsapp_settings`, `promotions`, `outlets`) dan hanya sumber dengan status `active === true`.
+- Data sensitif seperti `fraud_thresholds`, `StaffDevices`, dan seluruh sumber (termasuk yang nonaktif) hanya disajikan melalui endpoint terotentikasi token admin valid (`get_admin_data` atau `get_events_data`).
 
 ---
 
-## E. Asumsi Sekuriti
+## C. Asumsi Frontend & Hosting
 
-### E-01 — `READ_TOKEN` tidak di-rotate otomatis
-Token rahasia diset manual di Script Properties dan berlaku indefinitely hingga diganti.  
-**Rekomendasi**: Ganti READ_TOKEN minimal setiap 6 bulan atau saat ada pergantian staf IT.
+### C-01 — Hosting GitHub Pages dari Root Repository
+- Frontend di-deploy langsung dari **root repository** (`main` branch) pada GitHub Pages: `https://rizqiwidi.github.io/hotelbumi/`.
+- Path aset diselesaikan secara otomatis relatif terhadap root path (`/hotelbumi/`) melalui fungsi `BSConfig.resolveAsset()`.
+- Seluruh kode bersifat vanilla HTML, CSS, dan JavaScript tanpa framework atau build pipeline.
 
-### E-02 — Honeypot bernama `website_url_verification`
-Field honeypot di `index.html` menggunakan name attribute `website_url_verification` — cukup umum agar bot sederhana mengisinya, tapi tidak terlalu terkenal sehingga bot canggih mungkin bisa menghindarinya.
-
----
-
-## F. Asumsi Operasional
-
-### F-01 — URL dasar guest view adalah `/` (root)
-URL yang ditulis ke kartu NFC dan QR code menggunakan format:  
-`https://[domain]/?source=[kode]`
-
-Ini berarti `index.html` harus berada di root direktori deploy (`app/`), sesuai konfigurasi Cloudflare Pages dengan build output `app`.
-
-### F-02 — Timezone WIB untuk semua timestamp server
-Semua timestamp di GAS menggunakan `Asia/Jakarta` (WIB, UTC+7).  
-Timestamp klien (`ts_client`) menggunakan UTC ISO string dari JavaScript `new Date().toISOString()`.
-
-### F-03 — Email laporan menggunakan `GmailApp` (bukan SMTP eksternal)
-Trigger email menggunakan `GmailApp.sendEmail()` — hanya bekerja jika akun Google yang men-deploy Apps Script adalah akun Gmail.  
-Jika hotel menggunakan Google Workspace (G Suite), ini tetap berfungsi.
+### C-02 — Web NFC di Android Chrome
+- Fitur Web NFC memanfaatkan API modern `window.NDEFReader` yang saat ini didukung oleh Google Chrome di Android.
+- Pada browser desktop atau iOS, tombol programmer Web NFC dinonaktifkan secara anggun dengan panduan alternatif aplikasi pihak ketiga (NFC Tools).
 
 ---
 
-*Dokumen ini dibuat pada: **8 Oktober 2026**.*  
-*Penulis implementasi: Antigravity AI Engineering Agent.*
+## D. Asumsi Privasi & Kepatuhan Data (GUE-13, PRD 7.9)
+
+### D-01 — Transparansi Data Pseudonim vs PII Langsung
+- Sistem tidak pernah meminta atau menyimpan data identitas pribadi langsung (Nama lengkap, nomor KTP/Paspor, email, atau kartu kredit).
+- Sistem memproses identifier teknis pseudonim:
+  1. `device_id` (disimpan di `localStorage` tamu) untuk integritas kunjungan dan pencegahan kecurangan (anti-fraud).
+  2. `session_id` (disimpan di `sessionStorage`) untuk deduplikasi sesi kunjungan.
+  3. Metrik perilaku teknis: waktu interaksi (dwell time), kedalaman scroll, dan titik sumber layanan.
+- Istilah "Zero-PII" dan "anonim" tidak lagi digunakan secara keliru pada dokumentasi dan UI, melainkan digantikan dengan komitmen transparansi pengolahan data pseudonim dengan masa retensi:
+  - Maksimal 12 bulan untuk raw events di Google Sheets.
+  - Maksimal 24 bulan untuk rekapitulasi agregat bulanan.

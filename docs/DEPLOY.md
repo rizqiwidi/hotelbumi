@@ -1,195 +1,148 @@
-# DEPLOY.md — Langkah Deploy ke Cloudflare Pages
+# DEPLOY.md — Panduan Deployment GitHub Pages & Google Apps Script
 
-Panduan ini menjelaskan cara mendeploy seluruh aplikasi **Bumi Surabaya Digital Guest Experience v5.0**
-ke **Cloudflare Pages** dari repositori Git.
+Panduan resmi deployment aplikasi **Bumi Surabaya Digital Guest Experience v6.0**.
 
 > [!IMPORTANT]
-> Prasyarat: Backend Google Sheets + Apps Script **harus sudah aktif** sebelum deploy frontend.
-> Lihat [SHEETS_SETUP.md](./SHEETS_SETUP.md) untuk panduan backend.
+> **Arsitektur Deployment**:
+> - **Frontend**: Website statis di-deploy via **GitHub Pages dari root repository** (`main` branch) pada URL: `https://rizqiwidi.github.io/hotelbumi/`.
+> - **Backend**: Google Apps Script Web App yang terhubung ke Google Sheets sebagai penyimpanan basis data. File backend (`backend/Code.gs` dan `backend/Triggers.gs`) di-deploy **secara manual** oleh pemilik/administrator di editor Apps Script.
 
 ---
 
-## Prasyarat
+## 1. Struktur Direktori Repository
 
-- Akun Cloudflare (gratis cukup)
-- Repositori Git (GitHub / GitLab) yang berisi folder `app/` dari proyek ini
-- URL Web App Google Apps Script yang sudah di-deploy dan berjalan
-
----
-
-## 1. Persiapan Repositori
-
-Pastikan struktur direktori proyek `app/` sudah lengkap sesuai PRD §4.1:
+Repository menggunakan struktur root statis tanpa framework dan tanpa build step:
 
 ```
-app/
-├── index.html              ← Halaman tamu (publik)
+hotelbumi/
+├── index.html              ← Halaman tamu publik (GitHub Pages root)
 ├── admin/
-│   └── index.html          ← Portal admin (terlindungi)
+│   └── index.html          ← Portal admin resmi (/admin/)
 ├── assets/
 │   ├── css/
-│   │   ├── guest.css
-│   │   ├── admin.css
-│   │   └── print.css
+│   │   ├── guest.css       ← Styling halaman tamu (token palet warna resmi)
+│   │   ├── admin.css       ← Styling portal admin
+│   │   └── print.css       ← Styling cetak QR & stiker meja
 │   ├── js/
-│   │   ├── config.js
+│   │   ├── config.js       ← Konfigurasi publik & konstanta fallback
 │   │   ├── guest/
-│   │   │   ├── app.js
-│   │   │   ├── tracking.js
-│   │   │   ├── fingerprint.js
-│   │   │   └── retry-queue.js
+│   │   │   ├── app.js          ← Logika presentasi tamu (aman XSS)
+│   │   │   ├── tracking.js     ← Pelacak interaksi & beacon
+│   │   │   ├── fingerprint.js  ← Pengenal pseudonim perangkat (device_id)
+│   │   │   └── retry-queue.js  ← Antrean offline, backoff & dead-letter queue
 │   │   └── admin/
-│   │       ├── auth.js
-│   │       ├── api.js
-│   │       ├── dashboard.js
-│   │       ├── staff-manager.js
-│   │       ├── anti-fraud.js
-│   │       └── web-nfc.js
-│   └── images/
-│       └── logo-gold.svg
+│   │       ├── auth.js         ← Pengelola sesi login (username/password, 6h TTL)
+│   │       ├── api.js          ← Klien API admin terproteksi token sesi
+│   │       ├── dashboard.js    ← Visualisasi metrik & grafik tren
+│   │       ├── staff-manager.js← Manajemen data staf & titik NFC
+│   │       ├── anti-fraud.js   ← Engine evaluasi 8 aturan anti-fraud (AF-01 s/d AF-08)
+│   │       └── web-nfc.js      ← Utilitas baca/tulis kartu Web NFC
+│   └── images/             ← Logo dan foto gerai resmi
 ├── backend/
-│   ├── Code.gs
-│   ├── Triggers.gs
-│   └── appsscript.json
+│   ├── Code.gs             ← Logika API, sesi kriptografis, hashing, rate limiting
+│   ├── Triggers.gs         ← Laporan email otomatis & agregasi integritas
+│   └── appsscript.json     ← Manifest Google Apps Script runtime
 └── docs/
-    ├── SHEETS_SETUP.md
-    ├── DEPLOY.md
-    └── ASSUMPTIONS.md
-```
-
-> [!NOTE]
-> Folder `backend/` **tidak perlu** di-deploy ke Cloudflare — isinya hanya dipakai di Google Apps Script.
-> Cloudflare hanya membutuhkan file statis (`index.html`, `admin/`, `assets/`).
-
----
-
-## 2. Push ke GitHub / GitLab
-
-```bash
-# Di root repositori
-cd /path/to/bumi-surabaya-v5
-
-git add app/
-git commit -m "feat: deploy v5 — multi-file modular architecture"
-git push origin main
+    ├── SHEETS_SETUP.md     ← Panduan struktur tab Sheets & bootstrap admin
+    ├── DEPLOY.md           ← Panduan ini (GitHub Pages & GAS deployment)
+    └── ASSUMPTIONS.md      ← Catatan teknis, limitasi runtime & asumsi
 ```
 
 ---
 
-## 3. Buat Project di Cloudflare Pages
+## 2. Deployment Backend (Google Apps Script Manual)
 
-1. Login ke [Cloudflare Dashboard](https://dash.cloudflare.com).
-2. Klik **Workers & Pages** di sidebar → **Create application** → **Pages**.
-3. Klik **Connect to Git**.
-4. Pilih **GitHub** (atau GitLab) dan izinkan akses repositori.
-5. Pilih repositori proyek Bumi Surabaya.
+File backend berada di folder `backend/` dan memerlukan pembaruan manual di konsol Google Apps Script:
+
+### Langkah Deploy Backend:
+1. Buka spreadsheet Google Sheets resmi hotel.
+2. Klik menu **Extensions** (Ekstensi) → **Apps Script**.
+3. Di editor Apps Script:
+   - Salin seluruh isi `backend/Code.gs` ke file `Code.gs`.
+   - Salin seluruh isi `backend/Triggers.gs` ke file `Triggers.gs`.
+   - Pastikan `appsscript.json` menggunakan runtime V8 dan zona waktu `Asia/Jakarta`.
+4. Jalankan bootstrap administrator awal:
+   - Di editor, pilih fungsi `setupInitialAdmin`.
+   - Ubah parameter pemanggilan atau jalankan:
+     ```javascript
+     setupInitialAdmin('admin', 'PasswordKuatAnda2026!');
+     ```
+   - Klik **Run** dan berikan izin akses spreadsheet. Akun admin akan dibuat dengan flag `must_change = true`.
+5. Deploy Web App:
+   - Klik tombol **Deploy** → **New deployment**.
+   - Pilih jenis: **Web app**.
+   - **Execute as**: *Me (pemilik akun Google)*.
+   - **Who has access**: *Anyone* (Siapa saja, termasuk tamu tanpa login Google).
+   - Klik **Deploy**, lalu salin **Web App URL** (berakhiran `/exec`).
+6. Siapkan Trigger Otomatis:
+   - Di Apps Script, pilih menu **Triggers** (Ikon jam di sidebar kiri).
+   - Tambahkan trigger mingguan untuk fungsi `laporanMingguan` (setiap Senin pukul 07.00 WIB).
+   - Tambahkan trigger bulanan untuk fungsi `rekapBulanan` (tanggal 1 setiap bulan).
 
 ---
 
-## 4. Konfigurasi Build
+## 3. Deployment Frontend (GitHub Pages)
 
-Isi formulir konfigurasi build berikut:
+Frontend di-deploy langsung dari root repository GitHub:
 
-| Pengaturan | Nilai |
-|---|---|
-| **Project name** | `bumi-surabaya-guest` (atau nama bebas) |
-| **Production branch** | `main` |
-| **Framework preset** | `None` |
-| **Build command** | *(kosongkan)* |
-| **Build output directory** | `app` |
-| **Root directory** | `/` (root repositori) |
-
-> [!TIP]
-> **Build output directory** adalah `app` — Cloudflare akan menyajikan isi folder `app/` sebagai root website.
-> Ini berarti `app/index.html` akan tersedia di `https://[domain]/` dan `app/admin/index.html` di `https://[domain]/admin/`.
-
-Klik **Save and Deploy**.
-
----
-
-## 5. Konfigurasi Domain Kustom
-
-### Subdomain Cloudflare Pages (Gratis)
-Setelah deploy pertama berhasil, project akan tersedia di:
-```
-https://bumi-surabaya-guest.pages.dev
-```
-
-### Domain Kustom Hotel
-Jika hotel memiliki domain sendiri (contoh: `guest.bumisurabaya.com`):
-
-1. Di Cloudflare Pages → **Custom domains** → **Set up a custom domain**.
-2. Masukkan `guest.bumisurabaya.com`.
-3. Ikuti instruksi untuk menambahkan DNS record CNAME di Cloudflare DNS:
+1. Buka repository GitHub: `https://github.com/rizqiwidi/hotelbumi`.
+2. Masuk ke **Settings** → **Pages**.
+3. Pada bagian **Build and deployment**:
+   - **Source**: `Deploy from a branch`
+   - **Branch**: `main`
+   - **Folder**: `/ (root)`
+4. Klik **Save**.
+5. Tunggu proses GitHub Actions Pages selesai. Website akan tayang di:
    ```
-   CNAME   guest   →   bumi-surabaya-guest.pages.dev
+   https://rizqiwidi.github.io/hotelbumi/
    ```
-4. Cloudflare akan otomatis provisioning sertifikat SSL (HTTPS).
 
 ---
 
-## 6. Konfigurasi Pertama Kali di Browser Admin
+## 4. Konfigurasi Pertama Kali di Portal Admin
 
-Setelah deploy berhasil:
+Setelah frontend dan backend tayang:
 
-1. Buka `https://[domain]/admin/`.
-2. Isi form login:
-   - **URL GAS Backend**: URL Web App dari Google Apps Script
-   - **READ_TOKEN**: Token rahasia yang sudah diset di Script Properties
-3. Klik **Masuk ke Dashboard**.
-4. Verifikasi data tampil dengan benar (klik **Perbarui**).
-5. Tambahkan staf pertama via menu **Staf & Sumber** → **+ Tambah Baru**.
-6. Klik **Simpan & Sinkronkan ke Cloud** untuk menyimpan ke Google Sheets.
-
----
-
-## 7. Pengujian End-to-End
-
-Setelah konfigurasi selesai, lakukan pengujian berikut:
-
-### Uji Tamu
-1. Buka `https://[domain]/?source=staff-budi-santoso`
-2. Halaman harus menampilkan sapaan: *"Dilayani oleh Budi Santoso"*
-3. Klik tombol Google Review → event `google_review_click` harus tercatat di Sheets
-
-### Uji Isolasi Keamanan
-1. Buka `https://[domain]/` → View Source
-2. **Tidak boleh** ada kode admin, token, atau kredensial apapun di source code
-
-### Uji Admin
-1. Login di `/admin/` → Dashboard harus memuat data dari Sheets
-2. Tambah staf baru → sinkronkan → buka URL staf baru di tab lain → sapaan muncul
-
-### Uji Offline Retry
-1. Buka halaman tamu → matikan WiFi → klik Google Review
-2. Nyalakan WiFi kembali → event harus terkirim otomatis (cek Sheets)
+1. Buka portal manajemen: `https://rizqiwidi.github.io/hotelbumi/admin/`.
+2. Masuk menggunakan akun admin yang telah dibuat via `setupInitialAdmin`.
+3. Jika akun diset dengan `must_change = true`, sistem akan meminta Anda mengganti password ke kata sandi baru.
+4. Buka menu **Konfigurasi**:
+   - Pastikan **URL Google Apps Script** terisi dengan Web App URL dari Langkah 2.
+   - Klik **Simpan URL Backend** dan **Uji Koneksi Backend** untuk memverifikasi komunikasi.
+5. Kelola Sumber & Staf:
+   - Buka menu **Manajemen Staf & Titik NFC** untuk mendaftarkan staf hotel dan meja gerai.
+   - Klik **Simpan & Sinkronkan ke Cloud**.
+6. Atur Ambang Batas Anti-Fraud:
+   - Buka menu **Audit Anti-Fraud & Integritas**.
+   - Daftarkan perangkat staf hotel ke **StaffDevices (AF-03)** agar kunjungan uji coba staf tidak merusak metrik kualitas.
 
 ---
 
-## 8. Update / Redeploy
+## 5. Prosedur Uji Coba (Smoke Test)
 
-Setiap `git push` ke branch `main` akan otomatis memicu build dan deploy ulang di Cloudflare Pages.
+Lakukan pengujian berikut sebelum digunakan operasional:
 
-Jika ada perubahan konfigurasi yang perlu langsung terlihat:
-1. Di Cloudflare → **Caching** → **Purge Everything** (opsional, jika CDN cache tidak kedaluwarsa)
-2. Atau gunakan **Cache Rules** untuk mengatur TTL berdasarkan path
+### A. Uji Halaman Tamu
+- Buka `https://rizqiwidi.github.io/hotelbumi/?source=staff-test`.
+- Pastikan sapaan staf muncul sesuai kode sumber.
+- Klik tombol ulasan Google Review.
+- Periksa tab `Events_YYYY_MM` di Google Sheets untuk memastikan event `google_review_click` tercatat dengan `event_id` unik dan timestamp server.
+
+### B. Uji Anti-Kecurangan (Anti-Fraud)
+- Buka portal admin di `/admin/` dan buka tab **Audit Anti-Fraud**.
+- Verifikasi ringkasan 8 aturan anti-fraud (AF-01 s/d AF-08).
+- Uji pendaftaran HP staf: klik tombol **📌 Daftarkan HP Staf** pada baris event atau gunakan formulir pendaftaran manual. Pastikan status tersimpan ke server dan muncul di tabel `StaffDevices`.
+
+### C. Uji Ketahanan Offline (Retry Queue & DLQ)
+- Buka halaman tamu, aktifkan mode Airplane / matikan koneksi.
+- Lakukan interaksi (misalnya klik promosi).
+- Nyalakan kembali koneksi internet: antrean offline harus mengirimkan event secara otomatis dengan backoff eksponensial tanpa menduplikasi baris berkat idempotensi `event_id`.
 
 ---
 
-## 9. Rollback
+## 6. Prosedur Pembaruan & Rollback
 
-Jika deploy terbaru bermasalah:
-1. Di Cloudflare Pages → pilih project → **Deployments**
-2. Klik deployment yang stabil sebelumnya → **Rollback to this deployment**
-
----
-
-## Checklist Sebelum Go-Live
-
-- [ ] Backend Apps Script berjalan dan `get_config` mengembalikan data valid
-- [ ] Domain kustom + SSL aktif
-- [ ] Halaman tamu `/?source=staff-test` menampilkan sapaan personal
-- [ ] View Source halaman tamu tidak mengandung kode atau token admin
-- [ ] Login admin berhasil dengan token yang benar
-- [ ] Trigger laporan email dicoba manual (`laporanMingguan()`) dan email terkirim
-- [ ] Kartu NFC fisik sudah diprogram dan diuji tap dari jarak dekat
+- **Pembaruan Frontend**: Cukup lakukan `git commit` dan `git push` ke branch `main`. GitHub Pages akan memperbarui situs dalam 1–2 menit.
+- **Pembaruan Backend**: Edit kode di `backend/Code.gs` atau `backend/Triggers.gs`, lalu buat versi baru via **Deploy** → **Manage deployments** → **Edit** → **New version** → **Deploy**.
+- **Rollback Frontend**: Lakukan `git revert` pada commit bermasalah dan push ke `main`.
+- **Rollback Backend**: Di editor Apps Script, pilih versi deployment sebelumnya pada menu **Manage deployments**.

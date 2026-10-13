@@ -21,7 +21,7 @@
 
   var MAX_FAILS   = 5;
   var LOCKOUT_MS  = 15 * 60 * 1000;  // 15 menit
-  var SESSION_TTL = 8 * 60 * 60 * 1000; // 8 jam
+  var SESSION_TTL = 6 * 60 * 60 * 1000; // 6 jam (sesuai backend GAS)
 
   function getToken()       { return sessionStorage.getItem(TOKEN_KEY) || ''; }
   function getRole()        { return sessionStorage.getItem(ROLE_KEY)  || ''; }
@@ -40,7 +40,7 @@
   function saveSession(token, role, username, mustChange) {
     sessionStorage.setItem(TOKEN_KEY,       token);
     sessionStorage.setItem(ROLE_KEY,        role || 'super_admin');
-    sessionStorage.setItem(USERNAME_KEY,    username || 'widi');
+    sessionStorage.setItem(USERNAME_KEY,    username || 'admin');
     sessionStorage.setItem(MUST_CHANGE_KEY, String(!!mustChange));
     sessionStorage.setItem(LOGIN_TIME,      String(Date.now()));
   }
@@ -149,14 +149,14 @@
     return fetch(gasUrl, {
       method:  'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'get_events_data', token: token, month: 'Events_verify', limit: 1 })
+      body: JSON.stringify({ action: 'get_admin_data', token: token })
     })
     .then(function(r) { return r.json(); })
     .then(function(resp) {
-      if (resp.ok || (resp.error && resp.error !== 'Unauthorized')) {
-        return { ok: true, role: 'super_admin' };
+      if (resp && resp.ok) {
+        return { ok: true, role: resp.role || 'super_admin' };
       }
-      return { ok: false, error: 'Token tidak valid atau tidak memiliki akses' };
+      return { ok: false, error: (resp && resp.error) || 'Token tidak valid atau tidak memiliki akses' };
     })
     .catch(function(err) {
       return { ok: false, error: 'Gagal terhubung ke backend: ' + err.message };

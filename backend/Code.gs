@@ -1,18 +1,21 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v5.0
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.0
  * backend/Code.gs — Kode utama Google Apps Script
  *
  * Endpoint:
- *   GET  /exec?action=get_config            → Konfigurasi publik (tanpa token)
- *   POST /exec { action:"log_event", … }    → Ingest event tamu (publik)
- *   POST /exec { action:"save_all_admin_data", token, … } → Simpan config+sources (admin)
- *   POST /exec { action:"get_events_data",  token, … }    → Ambil data events (admin)
+ *   GET  /exec?action=get_config            → Konfigurasi publik allowlist & sumber aktif (tanpa token)
+ *   POST /exec { action:"login", … }        → Login admin (terproteksi rate limit per user & global)
+ *   POST /exec { action:"change_password" } → Perbarui kata sandi admin (terproteksi sesi)
+ *   POST /exec { action:"get_admin_data" }  → Ambil full config, seluruh sumber, & staff devices (admin)
+ *   POST /exec { action:"get_events_data" } → Ambil data events & full admin data (admin)
+ *   POST /exec { action:"save_all_admin_data" } → Simpan config, sources, & staff devices (admin)
+ *   POST /exec { action:"log_event", … }    → Ingest event tamu (idempotent via event_id, server timestamp)
  *
- * Script Properties yang wajib diatur:
- *   READ_TOKEN  → Token rahasia; set via Apps Script → Project Settings → Script Properties
+ * Script Properties yang dapat diatur di Apps Script Editor:
+ *   EMAIL_MANAJEMEN  → Alamat email penerima laporan mingguan
  *
- * Tab Google Sheets yang wajib ada (dibuat otomatis bila belum ada):
- *   Config, Sources, StaffDevices, Events_YYYY_MM, MonthlyAggregates, ScriptLog
+ * Tab Google Sheets:
+ *   Users, Config, Sources, StaffDevices, Events_YYYY_MM, MonthlyAggregates, ScriptLog
  */
 
 /* ══════════════════════════════════════════════════════════════
@@ -82,7 +85,7 @@ function getOrCreateSheet(name, headers) {
  * @param {'INFO'|'WARN'|'ERROR'} level
  * @param {string} action
  * @param {string} message
- * @param {string} ip
+ * @param {string} [ip]
  */
 function _log(level, action, message, ip) {
   try {
@@ -98,45 +101,100 @@ function _log(level, action, message, ip) {
 ══════════════════════════════════════════════════════════════ */
 
 /**
- * Cek rate limit untuk kunci tertentu.
- * Maks 60 request / menit per device_id / IP.
+ * Cek rate limit untuk kunci tertentu di CacheService.
  * @param {string} key
+ * @param {number} [limit=60]
+ * @param {number} [windowSec=60]
  * @returns {boolean}  true jika masih dalam batas
  */
-function _checkRateLimit(key) {
+function _checkRateLimit(key, limit, windowSec) {
+  var max        = limit || 60;
+  var ttl        = windowSec || 60;
   var cache      = CacheService.getScriptCache();
   var rateKey    = 'rate_' + String(key).substring(0, 100);
   var count      = Number(cache.get(rateKey) || 0);
-  if (count >= 60) return false;
-  cache.put(rateKey, String(count + 1), 60); // TTL 60 detik
+  if (count >= max) return false;
+  cache.put(rateKey, String(count + 1), ttl);
   return true;
 }
 
 /* ══════════════════════════════════════════════════════════════
    HELPER: Enkripsi & Manajemen Pengguna (Tab Users)
+   SEC-02, SEC-03, SEC-04
 ══════════════════════════════════════════════════════════════ */
 
 /**
- * Buat string acak hexadecimal sepanjang len karakter.
+ * Buat string acak hexadecimal yang aman secara kriptografis sepanjang len karakter.
+ * Menggunakan Utilities.getUuid() yang bersumber dari SecureRandom bawaan runtime Java Apps Script.
+ * Menggantikan Math.random() yang tidak aman secara kriptografis (SEC-03).
+ *
  * @param {number} len
  * @returns {string}
  */
-function _generateRandomHex(len) {
-  var chars = '0123456789abcdef';
-  var res = '';
-  for (var i = 0; i < len; i++) {
-    res += chars.charAt(Math.floor(Math.random() * chars.length));
+function _generateSecureRandomHex(len) {
+  var hex = '';
+  while (hex.length < len) {
+    var raw = Utilities.getUuid() + '-' + new Date().getTime() + '-' + Utilities.getUuid();
+    var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw, Utilities.Charset.UTF_8);
+    for (var i = 0; i < digest.length && hex.length < len; i++) {
+      var b = digest[i];
+      if (b < 0) b += 256;
+      var s = b.toString(16);
+      if (s.length === 1) hex += '0';
+      hex += s;
+    }
   }
-  return res;
+  return hex.substring(0, len);
 }
 
 /**
- * Hitung hash SHA-256 dari (salt + password) dalam format hex lowercase.
+ * Hitung hash password menggunakan salted iterative SHA-256 (key stretching).
+ *
+ * Catatan Batasan Platform Google Apps Script (SEC-04):
+ * Runtime GAS V8 tidak menyediakan modul native C-bindings seperti argon2 atau bcrypt,
+ * dan WebCrypto API (crypto.subtle) tidak diekspos di lingkungan server Apps Script.
+ * Untuk memitigasi risiko serangan offline dictionary & brute-force tanpa melebihi kuota waktu
+ * eksekusi maksimum GAS (6 menit per trigger, timeout HTTP Web App ~30 detik),
+ * diterapkan penguatan berupa 1.000 iterasi digest SHA-256 ber-salt acak unik 16-hex per akun.
+ * Format tersimpan: pbkdf2_sha256$1000$<digest_hex>
+ *
  * @param {string} salt
  * @param {string} password
  * @returns {string}
  */
 function _hashPassword(salt, password) {
+  var rounds = 1000;
+  var current = String(salt) + ':' + String(password);
+  for (var i = 0; i < rounds; i++) {
+    var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, current, Utilities.Charset.UTF_8);
+    var hex = '';
+    for (var j = 0; j < digest.length; j++) {
+      var b = digest[j];
+      if (b < 0) b += 256;
+      var s = b.toString(16);
+      if (s.length === 1) hex += '0';
+      hex += s;
+    }
+    current = hex + ':' + salt;
+  }
+  return 'pbkdf2_sha256$' + rounds + '$' + hex;
+}
+
+/**
+ * Verifikasi kecocokan password terhadap hash yang tersimpan.
+ * Mendukung format PBKDF2-stretched dan format legacy single SHA-256 (backward compatibility).
+ *
+ * @param {string} salt
+ * @param {string} password
+ * @param {string} storedHash
+ * @returns {boolean}
+ */
+function _verifyPassword(salt, password, storedHash) {
+  if (!storedHash) return false;
+  if (storedHash.indexOf('pbkdf2_sha256$') === 0) {
+    return _hashPassword(salt, password) === storedHash;
+  }
+  // Verifikasi fallback untuk hash warisan single sha256 jika ada akun lama
   var raw = String(salt) + String(password);
   var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw, Utilities.Charset.UTF_8);
   var hex = '';
@@ -147,12 +205,15 @@ function _hashPassword(salt, password) {
     if (s.length === 1) hex += '0';
     hex += s;
   }
-  return hex;
+  return hex === storedHash;
 }
 
 /**
  * Dapatkan atau buat tab Users.
- * Jika kosong, lakukan auto-seed user 'widi' dengan password '946217' dan must_change=TRUE.
+ * PENTING (SEC-02): Hapus auto-seed kredensial default yang bisa ditebak (mis. widi/946217).
+ * Akun admin pertama kali harus diinisialisasi secara eksplisit melalui fungsi setupInitialAdmin()
+ * yang dijalankan manual di Apps Script Editor oleh pemilik spreadsheet.
+ *
  * @returns {GoogleAppsScript.Spreadsheet.Sheet}
  */
 function _getOrCreateUsersSheet() {
@@ -166,23 +227,41 @@ function _getOrCreateUsersSheet() {
          .setFontWeight('bold')
          .setBackground('#f0ece4');
     sheet.setFrozenRows(1);
-    _seedDefaultUser(sheet);
-  } else if (sheet.getLastRow() <= 1) {
-    _seedDefaultUser(sheet);
+    _log('INFO', 'create_sheet', 'Tab Users dibuat tanpa kredensial default (SEC-02)', '');
   }
   return sheet;
 }
 
 /**
- * Seed pengguna default widi / 946217 ke tab Users.
- * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * Inisialisasi akun admin pertama kali (dijalankan MANUAL oleh pemilik di Apps Script Editor).
+ * Contoh pemanggilan di Apps Script:
+ *   setupInitialAdmin('admin_bumi', 'KataSandiKuat2026!#');
+ *
+ * @param {string} username
+ * @param {string} password
  */
-function _seedDefaultUser(sheet) {
-  var salt = _generateRandomHex(16);
-  var hash = _hashPassword(salt, '946217');
+function setupInitialAdmin(username, password) {
+  var u = String(username || '').trim().toLowerCase();
+  var p = String(password || '').trim();
+  if (!u || !p || p.length < 8) {
+    throw new Error('Username wajib diisi dan password minimal 8 karakter.');
+  }
+  var sheet = _getOrCreateUsersSheet();
+  var existing = _findUser(u);
+  var salt = _generateSecureRandomHex(16);
+  var hash = _hashPassword(salt, p);
   var now = new Date();
-  sheet.appendRow(['widi', hash, salt, true, now, now]);
-  _log('INFO', 'seed_user', 'Auto-seed pengguna default: widi (must_change=TRUE)', '');
+
+  if (existing) {
+    sheet.getRange(existing.rowIndex, 2).setValue(hash);
+    sheet.getRange(existing.rowIndex, 3).setValue(salt);
+    sheet.getRange(existing.rowIndex, 4).setValue(false);
+    sheet.getRange(existing.rowIndex, 6).setValue(now);
+    Logger.log('Admin ' + u + ' berhasil diperbarui.');
+  } else {
+    sheet.appendRow([u, hash, salt, false, now, now]);
+    Logger.log('Admin baru ' + u + ' berhasil dibuat.');
+  }
 }
 
 /**
@@ -215,7 +294,9 @@ function _findUser(username) {
 /**
  * Verifikasi sesi admin via CacheService (key: sess_<token> -> username).
  * Bila must_change=TRUE dan !allowMustChange, akses ditolak sampai ganti password.
- * Fallback darurat: bila tab Users kosong dan token == READ_TOKEN di Script Properties.
+ * PENTING (SEC-01, SEC-07): Tidak ada pintu darurat READ_TOKEN statis.
+ * Semua akses admin wajib memiliki sesi aktif yang valid di server.
+ *
  * @param {string} token
  * @param {boolean} [allowMustChange=false]
  * @returns {{valid:boolean, username?:string, must_change?:boolean, error?:string}}
@@ -227,14 +308,6 @@ function _verifySession(token, allowMustChange) {
   var username = cache.get('sess_' + token);
 
   if (!username) {
-    // Fallback darurat bila tab Users belum ada/kosong
-    var ss = getSpreadsheet();
-    var uSheet = ss.getSheetByName('Users');
-    var usersEmpty = !uSheet || uSheet.getLastRow() <= 1;
-    var emergencyToken = PropertiesService.getScriptProperties().getProperty('READ_TOKEN');
-    if (emergencyToken && token === emergencyToken && usersEmpty) {
-      return { valid: true, username: 'emergency_admin', must_change: false };
-    }
     return { valid: false, error: 'Unauthorized: Sesi kedaluwarsa atau tidak valid' };
   }
 
@@ -274,38 +347,106 @@ function doGet(e) {
 }
 
 /**
- * Kembalikan seluruh konfigurasi publik + daftar sumber.
- * Tidak memerlukan token.
+ * Kembalikan konfigurasi publik (allowlist) + daftar sumber yang AKTIF saja.
+ * Sesuai SEC-01, SEC-08, API-04:
+ * - Hanya field publik allowlist yang dikembalikan.
+ * - Tab Config sensitif seperti fraud_thresholds, user, session TIDAK dibocorkan.
+ * - Hanya sources yang berstatus active === true yang dikembalikan.
+ * - Field internal/kartu/legacy_codes tidak dikirim ke publik.
  */
 function _handleGetConfig() {
   var ss        = getSpreadsheet();
   var cfgSheet  = ss.getSheetByName('Config');
   var srcSheet  = ss.getSheetByName('Sources');
-  var configObj = {};
+  var rawConfig = {};
 
   if (cfgSheet && cfgSheet.getLastRow() > 1) {
     var rows = cfgSheet.getRange(2, 1, cfgSheet.getLastRow() - 1, 2).getValues();
     for (var i = 0; i < rows.length; i++) {
       if (!rows[i][0]) continue;
-      try { configObj[rows[i][0]] = JSON.parse(rows[i][1]); } catch (e) {}
+      try { rawConfig[rows[i][0]] = JSON.parse(rows[i][1]); } catch (e) {}
     }
   }
 
+  // Allowlist sections & fields publik (API-04, SEC-08)
+  var publicConfig = {
+    general: {
+      hotel_name:        (rawConfig.general && rawConfig.general.hotel_name) || 'Bumi Surabaya City Resort',
+      description:       (rawConfig.general && rawConfig.general.description) || '',
+      address:           (rawConfig.general && rawConfig.general.address) || '',
+      phone:             (rawConfig.general && rawConfig.general.phone) || '',
+      whatsapp:          (rawConfig.general && rawConfig.general.whatsapp) || '628113388523',
+      google_review_url: (rawConfig.general && rawConfig.general.google_review_url) || '',
+      instagram:         (rawConfig.general && rawConfig.general.instagram) || '',
+      facebook:          (rawConfig.general && rawConfig.general.facebook) || '',
+      tiktok:            (rawConfig.general && rawConfig.general.tiktok) || ''
+    },
+    appearance: {
+      accent_color:        (rawConfig.appearance && rawConfig.appearance.accent_color) || '#c9a96e',
+      hero_text:           (rawConfig.appearance && rawConfig.appearance.hero_text) || '',
+      hero_subtitle:       (rawConfig.appearance && rawConfig.appearance.hero_subtitle) || '',
+      welcome_msg_staff:   (rawConfig.appearance && rawConfig.appearance.welcome_msg_staff) || '',
+      welcome_msg_outlet:  (rawConfig.appearance && rawConfig.appearance.welcome_msg_outlet) || '',
+      welcome_msg_general: (rawConfig.appearance && rawConfig.appearance.welcome_msg_general) || '',
+      hero_bg_url:         (rawConfig.appearance && rawConfig.appearance.hero_bg_url) || ''
+    },
+    guest_sections: rawConfig.guest_sections || {
+      show_review: true, show_wa: true, show_promotions: true, show_outlets: true, show_social: true, show_final_cta: true
+    },
+    review_settings: rawConfig.review_settings || {
+      review_url: 'https://g.page/r/CbSXVEVxrNXhEB0/review', button_text: 'Berikan Ulasan di Google ⭐', review_prompt: ''
+    },
+    whatsapp_settings: rawConfig.whatsapp_settings || {
+      number: '628113388523', template_staff: '', template_general: ''
+    },
+    promotions: Array.isArray(rawConfig.promotions) ? rawConfig.promotions.filter(function(p) {
+      return p && p.active !== false;
+    }).map(function(p) {
+      return {
+        id:          String(p.id || ''),
+        name:        String(p.name || ''),
+        outlet:      String(p.outlet || ''),
+        description: String(p.description || ''),
+        price:       String(p.price || ''),
+        period:      String(p.period || ''),
+        emoji:       String(p.emoji || '🍽️'),
+        image_url:   String(p.image_url || ''),
+        active:      true
+      };
+    }) : [],
+    outlets: Array.isArray(rawConfig.outlets) ? rawConfig.outlets.filter(function(o) {
+      return o && o.active !== false;
+    }).map(function(o) {
+      return {
+        id:          String(o.id || ''),
+        name:        String(o.name || ''),
+        type:        String(o.type || ''),
+        description: String(o.description || ''),
+        hours:       String(o.hours || ''),
+        emoji:       String(o.emoji || '🍽️'),
+        highlight:   String(o.highlight || ''),
+        image_url:   String(o.image_url || ''),
+        active:      true
+      };
+    }) : []
+  };
+
+  // Hanya sumber AKTIF dengan field publik saja (API-04, SRC-02)
   var activeSources = [];
   if (srcSheet && srcSheet.getLastRow() > 1) {
     var maxCol = Math.max(srcSheet.getLastColumn(), 11);
     var sRows = srcSheet.getRange(2, 1, srcSheet.getLastRow() - 1, maxCol).getValues();
     for (var j = 0; j < sRows.length; j++) {
+      var isActive = sRows[j][5] === true || sRows[j][5] === 'TRUE';
+      if (!isActive) continue; // Jangan sertakan sumber nonaktif
       activeSources.push({
-        code:            String(sRows[j][0] || ''),
-        name:            String(sRows[j][1] || ''),
-        type:            String(sRows[j][2] || 'staff'),
-        outlet:          String(sRows[j][3] || ''),
-        role:            String(sRows[j][4] || ''),
-        active:          sRows[j][5] === true || sRows[j][5] === 'TRUE',
-        kartu_diprogram: sRows[j][6] === true || sRows[j][6] === 'TRUE',
-        legacy_codes:    sRows[j][7] ? (function(){ try{ return JSON.parse(sRows[j][7]); }catch(e){ return []; } })() : [],
-        whatsapp:        String(sRows[j][10] || '')
+        code:     String(sRows[j][0] || ''),
+        name:     String(sRows[j][1] || ''),
+        type:     String(sRows[j][2] || 'staff'),
+        outlet:   String(sRows[j][3] || ''),
+        role:     String(sRows[j][4] || ''),
+        active:   true,
+        whatsapp: String(sRows[j][10] || '')
       });
     }
   }
@@ -313,7 +454,7 @@ function _handleGetConfig() {
   return _jsonOut({
     ok:      true,
     version: Date.now(),
-    config:  configObj,
+    config:  publicConfig,
     sources: activeSources
   });
 }
@@ -330,38 +471,41 @@ function doPost(e) {
 
     var data   = JSON.parse(e.postData.contents);
     var action = data.action || 'log_event';
-    var clientIp = (e && e.parameter && e.parameter.ip) ? e.parameter.ip : 'client-ip';
 
     /* ── 1. Endpoint Publik ── */
     if (action === 'log_event') {
-      return _handleLogEvent(data, clientIp);
+      return _handleLogEvent(data);
     }
 
     if (action === 'login') {
-      return _handleLogin(data, clientIp);
+      return _handleLogin(data);
     }
 
-    /* ── 2. Endpoint Ganti Password (khusus: allow must_change=true) ── */
+    /* ── 2. Endpoint Ganti Password (khusus: izinkan saat must_change=true) ── */
     if (action === 'change_password') {
-      return _handleChangePassword(data, clientIp);
+      return _handleChangePassword(data);
     }
 
-    /* ── 3. Endpoint Terproteksi Sesi Admin ── */
+    /* ── 3. Endpoint Terproteksi Sesi Admin (SEC-01) ── */
     var session = _verifySession(data.token, false);
     if (!session.valid) {
-      _log('WARN', 'doPost', 'Unauthorized — aksi: ' + action + ' (' + (session.error || '') + ')', clientIp);
+      _log('WARN', 'doPost', 'Unauthorized — aksi: ' + action + ' (' + (session.error || '') + ')', '');
       return _jsonOut({ ok: false, error: session.error || 'Unauthorized', must_change: !!session.must_change });
     }
 
+    if (action === 'get_admin_data') {
+      return _handleGetAdminData(data);
+    }
+
     if (action === 'save_all_admin_data') {
-      return _handleSaveAllAdminData(data, clientIp);
+      return _handleSaveAllAdminData(data);
     }
 
     if (action === 'get_events_data') {
-      return _handleGetEventsData(data, clientIp);
+      return _handleGetEventsData(data);
     }
 
-    _log('WARN', 'doPost', 'Aksi tidak dikenali: ' + action, clientIp);
+    _log('WARN', 'doPost', 'Aksi tidak dikenali: ' + action, '');
     return _jsonOut({ ok: false, error: 'Aksi tidak dikenali: ' + action });
 
   } catch (err) {
@@ -371,51 +515,57 @@ function doPost(e) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Handler: login (rate-limited maks 10x/menit per IP)
+   Handler: login (SEC-04, SEC-05, SEC-06)
+   - Rate limit per user dan global (TIDAK percaya IP klien)
+   - Respon generik seragam tanpa bocor keberadaan akun
+   - Sesi 6 jam (21600 detik) via CacheService
 ══════════════════════════════════════════════════════════════ */
 
-function _handleLogin(data, clientIp) {
-  var cache = CacheService.getScriptCache();
-  var rateKey = 'login_rate_' + String(clientIp).substring(0, 50);
-  var attempts = Number(cache.get(rateKey) || 0);
-  if (attempts >= 10) {
-    _log('WARN', 'login', 'Rate limit login terlampaui (' + attempts + 'x)', clientIp);
-    return _jsonOut({ ok: false, error: 'Terlalu banyak percobaan login. Silakan tunggu 1 menit.' });
-  }
-  cache.put(rateKey, String(attempts + 1), 60);
-
-  var username = (data.username || '').toString().trim();
+function _handleLogin(data) {
+  var username = (data.username || '').toString().trim().toLowerCase();
   var password = (data.password || '').toString();
 
   if (!username || !password) {
     return _jsonOut({ ok: false, error: 'Nama pengguna dan kata sandi wajib diisi.' });
   }
 
+  // Rate limiting (SEC-05): Mengabaikan parameter IP klien
+  var userRateKey = 'login_user_' + username;
+  if (!_checkRateLimit(userRateKey, 5, 60)) {
+    _log('WARN', 'login', 'Rate limit login terlampaui untuk user: ' + username, '');
+    return _jsonOut({ ok: false, error: 'Terlalu banyak percobaan login. Silakan tunggu 1 menit.' });
+  }
+  if (!_checkRateLimit('login_global', 25, 60)) {
+    _log('WARN', 'login', 'Global rate limit login terlampaui', '');
+    return _jsonOut({ ok: false, error: 'Terlalu banyak percobaan login. Silakan tunggu 1 menit.' });
+  }
+
   var user = _findUser(username);
-  if (!user) {
-    _log('WARN', 'login', 'Pengguna tidak ditemukan: ' + username, clientIp);
+  // SEC-04: Mitigasi timing attack & cegah username enumeration
+  var saltToUse = user ? user.salt : 'dummy_salt_123456';
+  var expectedHash = user ? user.password_hash : 'pbkdf2_sha256$1000$dummyhash';
+  var isValid = _verifyPassword(saltToUse, password, expectedHash) && (user !== null);
+
+  if (!isValid) {
+    _log('WARN', 'login', 'Percobaan login gagal untuk: ' + username, '');
+    // Pesan kesalahan generik (SEC-04)
     return _jsonOut({ ok: false, error: 'Nama pengguna atau kata sandi tidak valid.' });
   }
 
-  var hash = _hashPassword(user.salt, password);
-  if (hash !== user.password_hash) {
-    _log('WARN', 'login', 'Kata sandi salah untuk: ' + username, clientIp);
-    return _jsonOut({ ok: false, error: 'Nama pengguna atau kata sandi tidak valid.' });
-  }
-
-  // Generate session token 32 hex chars
-  var token = _generateRandomHex(32);
-  // Simpan di CacheService TTL 6 jam = 21600 detik (key: sess_<token> -> username)
+  // Generate cryptographically secure session token (32 hex, SEC-03)
+  var token = _generateSecureRandomHex(32);
+  // Simpan di CacheService TTL 6 jam = 21600 detik (SEC-06)
+  var cache = CacheService.getScriptCache();
   cache.put('sess_' + token, user.username, 21600);
 
-  _log('INFO', 'login', 'Login sukses: ' + user.username + ' (must_change=' + user.must_change + ')', clientIp);
+  _log('INFO', 'login', 'Login sukses: ' + user.username + ' (must_change=' + user.must_change + ')', '');
 
   return _jsonOut({
-    ok: true,
-    token: token,
-    username: user.username,
+    ok:          true,
+    token:       token,
+    username:    user.username,
     must_change: user.must_change,
-    role: 'super_admin'
+    role:        'super_admin'
   });
 }
 
@@ -423,7 +573,7 @@ function _handleLogin(data, clientIp) {
    Handler: change_password (terproteksi sesi)
 ══════════════════════════════════════════════════════════════ */
 
-function _handleChangePassword(data, clientIp) {
+function _handleChangePassword(data) {
   var token = data.token;
   var session = _verifySession(token, true); // allowMustChange=true
   if (!session.valid) {
@@ -437,8 +587,8 @@ function _handleChangePassword(data, clientIp) {
     return _jsonOut({ ok: false, error: 'Kata sandi lama dan kata sandi baru wajib diisi.' });
   }
 
-  if (newPassword.length < 6) {
-    return _jsonOut({ ok: false, error: 'Kata sandi baru minimal 6 karakter.' });
+  if (newPassword.length < 8) {
+    return _jsonOut({ ok: false, error: 'Kata sandi baru minimal 8 karakter.' });
   }
 
   var user = _findUser(session.username);
@@ -446,52 +596,57 @@ function _handleChangePassword(data, clientIp) {
     return _jsonOut({ ok: false, error: 'Data pengguna tidak ditemukan.' });
   }
 
-  var oldHash = _hashPassword(user.salt, oldPassword);
-  if (oldHash !== user.password_hash) {
-    _log('WARN', 'change_password', 'Kata sandi lama salah untuk: ' + user.username, clientIp);
+  if (!_verifyPassword(user.salt, oldPassword, user.password_hash)) {
+    _log('WARN', 'change_password', 'Kata sandi lama salah untuk: ' + user.username, '');
     return _jsonOut({ ok: false, error: 'Kata sandi saat ini tidak cocok.' });
   }
 
-  var newSalt = _generateRandomHex(16);
+  var newSalt = _generateSecureRandomHex(16);
   var newHash = _hashPassword(newSalt, newPassword);
   var now = new Date();
 
   var sheet = _getOrCreateUsersSheet();
-  // Kolom: 1:username, 2:password_hash, 3:salt, 4:must_change, 5:created_at, 6:updated_at
   sheet.getRange(user.rowIndex, 2).setValue(newHash);
   sheet.getRange(user.rowIndex, 3).setValue(newSalt);
   sheet.getRange(user.rowIndex, 4).setValue(false);
   sheet.getRange(user.rowIndex, 6).setValue(now);
 
-  _log('INFO', 'change_password', 'Kata sandi berhasil diperbarui untuk: ' + user.username, clientIp);
+  _log('INFO', 'change_password', 'Kata sandi berhasil diperbarui untuk: ' + user.username, '');
 
   return _jsonOut({
-    ok: true,
+    ok:      true,
     message: 'Kata sandi berhasil diperbarui.'
   });
 }
 
 /* ══════════════════════════════════════════════════════════════
    Handler: log_event (publik)
+   API-01 (schema allowlist), API-02 (server timestamp),
+   API-03 (idempotensi via event_id), SEC-05 (abaikan IP klien)
 ══════════════════════════════════════════════════════════════ */
 
-function _handleLogEvent(data, clientIp) {
-  // Validasi field wajib
-  var missing = ['action', 'event', 'device_id'].filter(function (f) { return !data[f]; });
-  if (missing.length > 0) {
-    return _jsonOut({ ok: false, error: 'Field wajib tidak ada: ' + missing.join(', ') });
+function _handleLogEvent(data) {
+  // Validasi field wajib (API-01)
+  if (!data || !data.event || !data.device_id) {
+    return _jsonOut({ ok: false, error: 'Field wajib tidak ada: event dan device_id diperlukan' });
   }
 
-  // Rate limiting per device_id
-  var rateKey = data.device_id || clientIp;
-  if (!_checkRateLimit(rateKey)) {
-    _log('WARN', 'log_event', 'Rate limit exceeded — device: ' + String(rateKey).substring(0, 30), clientIp);
+  var devId = String(data.device_id).trim();
+  if (devId.length > 100) {
+    return _jsonOut({ ok: false, error: 'Format device_id tidak valid' });
+  }
+
+  // Rate limiting per device_id (SEC-05: tidak menggunakan IP klien)
+  if (!_checkRateLimit('event_dev_' + devId, 60, 60)) {
+    _log('WARN', 'log_event', 'Rate limit exceeded — device: ' + devId.substring(0, 30), '');
     return _jsonOut({ ok: false, error: 'Rate limit exceeded' });
   }
 
   var sheet    = getOrCreateMonthlyEventsSheet();
+  // Server timestamp adalah sumber waktu tepercaya (API-02)
   var tsServer = Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
   var botFlag  = (data.hp && String(data.hp).trim() !== '') ? true : false;
+  var eventId  = String(data.event_id || '').trim() || Utilities.getUuid();
 
   // Rekonsiliasi dwell_update: cari baris sesi yang cocok dan perbarui kolom dwell
   if (data.event === 'dwell_update' && data.session_id) {
@@ -510,27 +665,38 @@ function _handleLogEvent(data, clientIp) {
         }
       }
     }
-    // Session tidak ditemukan dalam 200 baris terakhir — tulis sebagai baris baru
   }
 
-  // Append baris event baru
-  var eventId = data.event_id || Utilities.getUuid();
+  // Idempotensi (API-03, GUE-11): Cek apakah event_id sudah pernah dicatat di 200 baris terakhir
+  var curLastRow = sheet.getLastRow();
+  if (curLastRow > 1) {
+    var checkRows = Math.min(200, curLastRow - 1);
+    var existingIds = sheet.getRange(curLastRow - checkRows + 1, 1, checkRows, 1).getValues();
+    for (var r = existingIds.length - 1; r >= 0; r--) {
+      if (String(existingIds[r][0]) === eventId) {
+        // Event telah tercatat sebelumnya: kembalikan sukses tanpa duplikasi baris
+        return _jsonOut({ ok: true, event_id: eventId, duplicate: true });
+      }
+    }
+  }
+
+  // Append baris event baru (SEC-05: tidak menyimpan IP palsu dari klien)
   var row = [
     eventId,
-    data.session_id  || '',
-    data.device_id   || '',
+    String(data.session_id  || '').substring(0, 100),
+    devId,
     tsServer,
-    data.ts_client   || tsServer,
-    data.event       || 'unknown',
-    data.source      || 'general',
-    data.source_type || 'general',
-    clientIp,
-    String(data.ua   || '').substring(0, 150),
-    data.screen      || '',
-    Number(data.dwell_ms)    || 0,
-    Number(data.interactions)|| 0,
-    Number(data.scroll_max)  || 0,
-    data.fp          || '',
+    String(data.ts_client   || tsServer).substring(0, 50),
+    String(data.event       || 'unknown').substring(0, 50),
+    String(data.source      || 'general').substring(0, 100),
+    String(data.source_type || 'general').substring(0, 50),
+    '', // IP tidak disediakan oleh GAS runtime; jangan simpan placeholder klien
+    String(data.ua          || '').substring(0, 150),
+    String(data.screen      || '').substring(0, 30),
+    Number(data.dwell_ms)     || 0,
+    Number(data.interactions) || 0,
+    Number(data.scroll_max)   || 0,
+    String(data.fp          || '').substring(0, 64),
     botFlag,
     JSON.stringify(data.extra || {})
   ];
@@ -540,10 +706,75 @@ function _handleLogEvent(data, clientIp) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Handler: save_all_admin_data (token-protected)
+   Handler: get_admin_data (token-protected)
+   SEC-01, SEC-08: Ambil seluruh konfigurasi internal, sumber,
+   dan staff devices hanya untuk sesi admin terotentikasi.
 ══════════════════════════════════════════════════════════════ */
 
-function _handleSaveAllAdminData(data, clientIp) {
+function _handleGetAdminData(data) {
+  var ss       = getSpreadsheet();
+  var cfgSheet = ss.getSheetByName('Config');
+  var srcSheet = ss.getSheetByName('Sources');
+  var devSheet = ss.getSheetByName('StaffDevices');
+
+  var fullConfig = {};
+  if (cfgSheet && cfgSheet.getLastRow() > 1) {
+    var rows = cfgSheet.getRange(2, 1, cfgSheet.getLastRow() - 1, 2).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      if (!rows[i][0]) continue;
+      try { fullConfig[rows[i][0]] = JSON.parse(rows[i][1]); } catch (e) {}
+    }
+  }
+
+  var allSources = [];
+  if (srcSheet && srcSheet.getLastRow() > 1) {
+    var maxCol = Math.max(srcSheet.getLastColumn(), 11);
+    var sRows = srcSheet.getRange(2, 1, srcSheet.getLastRow() - 1, maxCol).getValues();
+    for (var j = 0; j < sRows.length; j++) {
+      allSources.push({
+        code:            String(sRows[j][0] || ''),
+        name:            String(sRows[j][1] || ''),
+        type:            String(sRows[j][2] || 'staff'),
+        outlet:          String(sRows[j][3] || ''),
+        role:            String(sRows[j][4] || ''),
+        active:          sRows[j][5] === true || sRows[j][5] === 'TRUE',
+        kartu_diprogram: sRows[j][6] === true || sRows[j][6] === 'TRUE',
+        legacy_codes:    sRows[j][7] ? (function(){ try{ return JSON.parse(sRows[j][7]); }catch(e){ return []; } })() : [],
+        created_at:      sRows[j][8] || '',
+        updated_at:      sRows[j][9] || '',
+        whatsapp:        String(sRows[j][10] || '')
+      });
+    }
+  }
+
+  var staffDevices = [];
+  if (devSheet && devSheet.getLastRow() > 1) {
+    var dRows = devSheet.getRange(2, 1, devSheet.getLastRow() - 1, 4).getValues();
+    staffDevices = dRows.map(function(r) {
+      return {
+        device_id:     String(r[0] || ''),
+        staff_code:    String(r[1] || ''),
+        label:         String(r[2] || ''),
+        registered_at: r[3] || ''
+      };
+    });
+  }
+
+  return _jsonOut({
+    ok:            true,
+    config:        fullConfig,
+    sources:       allSources,
+    staff_devices: staffDevices,
+    timestamp:     new Date().toISOString()
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Handler: save_all_admin_data (token-protected)
+   SRC-08: Mendukung persistensi StaffDevices
+══════════════════════════════════════════════════════════════ */
+
+function _handleSaveAllAdminData(data) {
   var ss = getSpreadsheet();
 
   /* ── Simpan tab Config ── */
@@ -588,7 +819,6 @@ function _handleSaveAllAdminData(data, clientIp) {
   var srcSheet = getOrCreateSheet('Sources', [
     'code', 'name', 'type', 'outlet', 'role', 'active', 'kartu_diprogram', 'legacy_codes', 'created_at', 'updated_at', 'whatsapp'
   ]);
-  // Pastikan kolom ke-11 whatsapp memiliki header
   if (srcSheet.getLastColumn() < 11) {
     srcSheet.getRange(1, 11).setValue('whatsapp').setFontWeight('bold').setBackground('#f0ece4');
   }
@@ -615,7 +845,7 @@ function _handleSaveAllAdminData(data, clientIp) {
     }
   }
 
-  /* ── Simpan tab StaffDevices ── */
+  /* ── Simpan tab StaffDevices (SRC-08) ── */
   var devSheet = getOrCreateSheet('StaffDevices', ['device_id', 'staff_code', 'label', 'registered_at']);
   if (Array.isArray(data.staff_devices)) {
     var lastDev = devSheet.getLastRow();
@@ -628,15 +858,16 @@ function _handleSaveAllAdminData(data, clientIp) {
     }
   }
 
-  _log('INFO', 'save_all_admin_data', 'Data admin disimpan. Sources: ' + (data.sources || []).length, clientIp);
+  _log('INFO', 'save_all_admin_data', 'Data admin disimpan. Sources: ' + (data.sources || []).length, '');
   return _jsonOut({ ok: true, updated_at: new Date().toISOString() });
 }
 
 /* ══════════════════════════════════════════════════════════════
    Handler: get_events_data (token-protected)
+   Mengembalikan data events beserta data konfigurasi dan staff_devices
 ══════════════════════════════════════════════════════════════ */
 
-function _handleGetEventsData(data, clientIp) {
+function _handleGetEventsData(data) {
   var ss          = getSpreadsheet();
   var targetMonth = data.month || ('Events_' + Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy_MM'));
   var evSheet     = ss.getSheetByName(targetMonth);
@@ -646,8 +877,7 @@ function _handleGetEventsData(data, clientIp) {
   if (evSheet && evSheet.getLastRow() > 1) {
     var totalRows = evSheet.getLastRow() - 1;
     var readRows  = Math.min(totalRows, limit);
-    // Baca dari baris terbaru ke belakang (offset dari bawah)
-    var startRow  = totalRows - readRows + 2; // +2 karena header di baris 1
+    var startRow  = totalRows - readRows + 2;
     var rawRows   = evSheet.getRange(startRow, 1, readRows, 17).getValues();
     eventsList = rawRows.map(function (r) {
       return {
@@ -670,29 +900,70 @@ function _handleGetEventsData(data, clientIp) {
     }
   }
 
-  // Ambil staff_devices untuk anti-fraud self-tap
+  // Ambil staff_devices untuk anti-fraud self-tap (SRC-08)
   var staffDevices = [];
   var devSheet     = ss.getSheetByName('StaffDevices');
   if (devSheet && devSheet.getLastRow() > 1) {
-    var dRows = devSheet.getRange(2, 1, devSheet.getLastRow() - 1, 3).getValues();
+    var dRows = devSheet.getRange(2, 1, devSheet.getLastRow() - 1, 4).getValues();
     staffDevices = dRows.map(function (r) {
-      return { device_id: r[0], staff_code: r[1], label: r[2] };
+      return {
+        device_id:     String(r[0] || ''),
+        staff_code:    String(r[1] || ''),
+        label:         String(r[2] || ''),
+        registered_at: r[3] || ''
+      };
     });
   }
 
-  _log('INFO', 'get_events_data', 'Kirim ' + eventsList.length + ' events dari ' + targetMonth, clientIp);
+  // Ambil juga config dan sources untuk kebutuhan sinkronisasi admin
+  var cfgSheet = ss.getSheetByName('Config');
+  var srcSheet = ss.getSheetByName('Sources');
+  var fullConfig = {};
+  if (cfgSheet && cfgSheet.getLastRow() > 1) {
+    var cRows = cfgSheet.getRange(2, 1, cfgSheet.getLastRow() - 1, 2).getValues();
+    for (var ci = 0; ci < cRows.length; ci++) {
+      if (cRows[ci][0]) {
+        try { fullConfig[cRows[ci][0]] = JSON.parse(cRows[ci][1]); } catch (e) {}
+      }
+    }
+  }
+
+  var allSources = [];
+  if (srcSheet && srcSheet.getLastRow() > 1) {
+    var maxCol = Math.max(srcSheet.getLastColumn(), 11);
+    var sRows = srcSheet.getRange(2, 1, srcSheet.getLastRow() - 1, maxCol).getValues();
+    for (var sj = 0; sj < sRows.length; sj++) {
+      allSources.push({
+        code:            String(sRows[sj][0] || ''),
+        name:            String(sRows[sj][1] || ''),
+        type:            String(sRows[sj][2] || 'staff'),
+        outlet:          String(sRows[sj][3] || ''),
+        role:            String(sRows[sj][4] || ''),
+        active:          sRows[sj][5] === true || sRows[sj][5] === 'TRUE',
+        kartu_diprogram: sRows[sj][6] === true || sRows[sj][6] === 'TRUE',
+        legacy_codes:    sRows[sj][7] ? (function(){ try{ return JSON.parse(sRows[sj][7]); }catch(e){ return []; } })() : [],
+        created_at:      sRows[sj][8] || '',
+        updated_at:      sRows[sj][9] || '',
+        whatsapp:        String(sRows[sj][10] || '')
+      });
+    }
+  }
+
+  _log('INFO', 'get_events_data', 'Kirim ' + eventsList.length + ' events dari ' + targetMonth, '');
   return _jsonOut({
     ok:            true,
     month:         targetMonth,
     events:        eventsList,
     staff_devices: staffDevices,
+    config:        fullConfig,
+    sources:       allSources,
     archive_tabs:  archiveTabs,
     total:         eventsList.length
   });
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Utility: JSON output dengan CORS headers yang benar
+   Utility: JSON output dengan MIME type JSON
 ══════════════════════════════════════════════════════════════ */
 
 function _jsonOut(obj) {

@@ -104,7 +104,7 @@
 
   /**
    * Kirim event ke backend.
-   * Jika gagal → masukkan ke retry queue.
+   * Jika respons bukan {ok:true} atau gagal jaringan → masukkan ke retry queue atau DLQ (GUE-11, API-03).
    */
   function sendEvent(payload) {
     if (!_gasUrl) return;
@@ -112,9 +112,30 @@
       method:  'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body:    JSON.stringify(payload)
-    }).catch(function() {
-      // Masukkan ke retry queue
-      if (window.BSRetryQueue) window.BSRetryQueue.enqueue(_gasUrl, payload);
+    }).then(function(r) {
+      return r.json().then(function(data) {
+        if (!r.ok || !data || data.ok !== true) {
+          var err = new Error((data && data.error) || ('HTTP ' + r.status));
+          err.status = r.status;
+          err.response = data;
+          throw err;
+        }
+      }).catch(function(jsonErr) {
+        if (!r.ok) {
+          var err = new Error('HTTP ' + r.status);
+          err.status = r.status;
+          throw err;
+        }
+        throw jsonErr;
+      });
+    }).catch(function(err) {
+      if (window.BSRetryQueue) {
+        if (typeof window.BSRetryQueue.handleSendFailure === 'function') {
+          window.BSRetryQueue.handleSendFailure(_gasUrl, payload, err);
+        } else {
+          window.BSRetryQueue.enqueue(_gasUrl, payload);
+        }
+      }
     });
   }
 

@@ -244,7 +244,7 @@
 
   /**
    * Root path aplikasi, mis. "/" atau "/hotelbumi/".
-   * Menangani deploy di domain-root (Cloudflare Pages) maupun subpath (GitHub Pages).
+   * Menangani deploy di domain-root maupun subpath (GitHub Pages).
    */
   function appRoot() {
     var p = window.location.pathname || '/';

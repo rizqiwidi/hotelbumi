@@ -78,6 +78,11 @@
     return post(Object.assign({ action: 'save_all_admin_data' }, payload));
   }
 
+  /** Ambil data konfigurasi penuh admin (config sensitif + all sources + staff_devices) */
+  function getAdminData() {
+    return post({ action: 'get_admin_data' });
+  }
+
   /** Ambil events data bulan tertentu */
   function getEventsData(month, limit) {
     return post({ action: 'get_events_data', month: month, limit: limit || 10000 });
@@ -94,6 +99,7 @@
     login:            login,
     changePassword:   changePassword,
     saveAllAdminData: saveAllAdminData,
+    getAdminData:     getAdminData,
     getEventsData:    getEventsData,
     getPublicConfig:  getPublicConfig
   };

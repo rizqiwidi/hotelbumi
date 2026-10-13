@@ -1,4 +1,4 @@
-# Bumi Surabaya — Digital Guest Experience v5.0
+# Bumi Surabaya — Digital Guest Experience v6.0
 
 Platform pelacakan tamu dan atribusi staf berbasis **NFC / QR Code** untuk Hotel Bumi Surabaya City Resort.
 
@@ -8,53 +8,62 @@ Platform pelacakan tamu dan atribusi staf berbasis **NFC / QR Code** untuk Hotel
 
 | Komponen | Teknologi | Keterangan |
 |---|---|---|
-| **Guest View** | HTML + CSS + Vanilla JS | Ultra-ringan (<40 KB), tanpa framework |
-| **Admin Portal** | HTML + Chart.js + QRCode.js | Terisolasi di `/admin/`, terproteksi token |
-| **Backend API** | Google Apps Script | Serverless, gratis, terintegrasi Google Sheets |
-| **Database** | Google Sheets | 6 tab terstruktur, partisi bulanan otomatis |
-| **Hosting** | Cloudflare Pages | CDN global, HTTPS otomatis, deploy via Git |
+| **Guest View** | HTML + CSS + Vanilla JS | Ultra-ringan (<40 KB), tanpa framework, aman XSS |
+| **Admin Portal** | HTML + Chart.js + QRCode.js | Terisolasi di `/admin/`, terproteksi sesi kriptografis 6 jam |
+| **Backend API** | Google Apps Script | Serverless, terintegrasi Google Sheets, key stretching iterative SHA-256 |
+| **Database** | Google Sheets | Tab terstruktur: `Config`, `Sources`, `Users`, `StaffDevices`, partisi bulanan `Events_YYYY_MM` |
+| **Hosting** | GitHub Pages | Di-deploy dari branch `main` pada root repository: `https://rizqiwidi.github.io/hotelbumi/` |
 
 ---
 
 ## Cara Kerja
 
-1. **Staf hotel** membawa kartu fisik NFC yang sudah diprogram dengan URL unik:  
-   `https://guest.bumisurabaya.com/?source=staff-budi-santoso`
+1. **Staf hotel** membawa kartu fisik NFC / QR Code yang diprogram dengan URL unik:  
+   `https://rizqiwidi.github.io/hotelbumi/?source=staff-budi-santoso`
 
-2. **Tamu** tap kartu → browser otomatis membuka halaman dengan sapaan personal staf.
+2. **Tamu** tap kartu / scan QR → browser membuka halaman dengan sapaan personal staf, penawaran promosi gerai, dan opsi ulasan/reservasi.
 
-3. **Sistem** mencatat event kunjungan, klik review, dan durasi kunjungan ke Google Sheets.
+3. **Sistem** mencatat event kunjungan, klik review, dan dwell time ke Google Sheets dengan timestamp server dan idempotensi `event_id`.
 
-4. **Admin** membuka `/admin/` untuk melihat leaderboard, audit kecurangan, dan laporan performa.
+4. **Admin** membuka `/admin/` untuk memantau metrik performa, audit anomali anti-fraud, dan mengelola perangkat staf.
 
 ---
 
-## Struktur Direktori
+## Struktur Direktori Repository
 
 ```
-app/
-├── index.html              # Halaman tamu (publik, <40 KB total)
+hotelbumi/
+├── index.html              # Halaman tamu publik (GitHub Pages root)
 ├── admin/
-│   └── index.html          # Portal admin (hanya admin berwenang)
+│   └── index.html          # Portal manajemen administrator (/admin/)
 ├── assets/
 │   ├── css/
-│   │   ├── guest.css       # Styling elegan tema hotel untuk tamu
-│   │   ├── admin.css       # Styling dashboard admin
-│   │   └── print.css       # Styling cetak kartu meja / QR sticker
+│   │   ├── guest.css       # Desain tema hotel tamu (Deep Emerald, Champagne Gold, dll.)
+│   │   ├── admin.css       # Desain portal admin
+│   │   └── print.css       # Desain cetak stiker meja & kartu QR
 │   ├── js/
-│   │   ├── config.js       # Konstanta & fallback defaults
-│   │   ├── guest/          # Modul khusus tamu (app, tracking, fingerprint, retry-queue)
-│   │   └── admin/          # Modul khusus admin (auth, api, dashboard, staff-manager, anti-fraud, web-nfc)
-│   └── images/
-│       └── logo-gold.svg   # Logo vektor resmi hotel
+│   │   ├── config.js       # Konfigurasi publik allowlist & fallback
+│   │   ├── guest/
+│   │   │   ├── app.js          # Logika presentasi tamu (aman XSS via DOM API)
+│   │   │   ├── tracking.js     # Tracker interaksi & sendBeacon dwell
+│   │   │   ├── fingerprint.js  # Generator pengenal pseudonim perangkat (device_id)
+│   │   │   └── retry-queue.js  # Antrean offline, backoff eksponensial & Dead-Letter Queue
+│   │   └── admin/
+│   │       ├── auth.js         # Pengelola login & sesi token kriptografis (TTL 6 jam)
+│   │       ├── api.js          # API client admin terproteksi token sesi
+│   │       ├── dashboard.js    # Visualisasi data & metrik leaderboard
+│   │       ├── staff-manager.js# Manajemen data staf & titik NFC
+│   │       ├── anti-fraud.js   # Spesifikasi terpadu 8 aturan anti-fraud (AF-01 s/d AF-08)
+│   │       └── web-nfc.js      # Pemrograman kartu Web NFC
+│   └── images/             # Aset gambar gerai & logo hotel
 ├── backend/
-│   ├── Code.gs             # Kode utama Google Apps Script (doPost, doGet)
-│   ├── Triggers.gs         # Cron job email mingguan & agregasi bulanan
-│   └── appsscript.json     # Manifest runtime Apps Script
+│   ├── Code.gs             # Handler API doPost/doGet, sesi, hashing, allowlist config
+│   ├── Triggers.gs         # Laporan email otomatis & rekapitulasi integritas data
+│   └── appsscript.json     # Manifest konfigurasi Google Apps Script
 └── docs/
-    ├── SHEETS_SETUP.md     # Panduan setup Google Sheets sebagai database
-    ├── DEPLOY.md           # Panduan deploy ke Cloudflare Pages
-    └── ASSUMPTIONS.md      # Catatan asumsi implementasi
+    ├── SHEETS_SETUP.md     # Panduan setup Google Sheets & pembuatan akun admin
+    ├── DEPLOY.md           # Panduan deployment GitHub Pages & Google Apps Script
+    └── ASSUMPTIONS.md      # Catatan asumsi teknis & batasan platform
 ```
 
 ---
@@ -62,102 +71,78 @@ app/
 ## Setup Cepat (Quick Start)
 
 ### Prasyarat
-- Akun Google (untuk Apps Script + Sheets)
-- Akun Cloudflare (gratis)
-- Repositori Git (GitHub / GitLab)
+- Akun Google (untuk Google Sheets & Google Apps Script)
+- Repository GitHub: `https://github.com/rizqiwidi/hotelbumi`
 
 ### Langkah 1 — Setup Database Google Sheets
-
 Ikuti panduan lengkap di **[docs/SHEETS_SETUP.md](./docs/SHEETS_SETUP.md)**:
+1. Buat Google Spreadsheet baru.
+2. Buat tab: `Config`, `Sources`, `StaffDevices`, `MonthlyAggregates`, `ScriptLog`.
+3. Pasang `backend/Code.gs` dan `backend/Triggers.gs` di Apps Script editor.
+4. Jalankan fungsi `setupInitialAdmin('admin', 'PasswordAnda2026!')` untuk inisialisasi akun administrator awal.
+5. Deploy sebagai Web App (Akses: *Anyone*) → salin URL Web App (`/exec`).
 
-1. Buat Google Spreadsheet baru
-2. Buat 6 tab: `Config`, `Sources`, `StaffDevices`, `MonthlyAggregates`, `ScriptLog` + tab Events otomatis
-3. Pasang kode `backend/Code.gs` dan `backend/Triggers.gs` di Apps Script
-4. Atur Script Properties: `READ_TOKEN` dan `EMAIL_MANAJEMEN`
-5. Deploy sebagai Web App → salin URL endpoint
-
-### Langkah 2 — Deploy ke Cloudflare Pages
-
+### Langkah 2 — Deploy ke GitHub Pages
 Ikuti panduan di **[docs/DEPLOY.md](./docs/DEPLOY.md)**:
-
-1. Push repositori ke GitHub / GitLab
-2. Buat project di Cloudflare Pages → Build output: `app`
-3. Opsional: konfigurasikan domain kustom `guest.bumisurabaya.com`
+1. Di GitHub repository: buka **Settings** → **Pages**.
+2. Pilih branch `main` dan folder `/ (root)`.
+3. Simpan dan tunggu proses deploy selesai.
 
 ### Langkah 3 — Konfigurasi Admin Pertama Kali
-
-1. Buka `https://[domain]/admin/`
-2. Masukkan URL GAS Backend + READ_TOKEN
-3. Login → tambah staf pertama → Simpan & Sinkronkan ke Cloud
-4. Uji tap kartu: `/?source=[kode-staf]` → sapaan personal harus muncul
+1. Buka `https://rizqiwidi.github.io/hotelbumi/admin/`.
+2. Masuk menggunakan akun admin yang telah dibuat.
+3. Di menu **Konfigurasi**, simpan URL Web App Apps Script Anda.
+4. Daftarkan staf hotel dan gerai via menu **Manajemen Staf & Titik NFC**.
+5. Daftarkan HP staf di tab **Audit Anti-Fraud** untuk pengecualian self-tap (AF-03).
 
 ---
 
 ## Fitur Utama
 
 ### Guest View (`/`)
-- ✅ Sapaan personal otomatis berdasarkan `?source=` parameter
-- ✅ Tombol Google Review & WhatsApp reservasi terpusat
-- ✅ Galeri promosi F&B (Pasar Malam, Omakase, High Tea)
-- ✅ Tracking kunjungan tanpa PII (Zero-PII)
-- ✅ Retry queue offline (exponential backoff)
-- ✅ Beacon dwell time untuk deteksi kunjungan hampa
+- ✅ Sapaan personal otomatis berdasarkan parameter `?source=` (mis. `staff-budi`, `arumanis`).
+- ✅ Tombol Google Review & direct WhatsApp concierge.
+- ✅ Galeri promosi F&B & direktori 4 gerai ikonik hotel.
+- ✅ Sanitasi URL & eliminasi XSS pada seluruh elemen dinamis (GUE-04).
+- ✅ Kebijakan privasi transparan mengenai pemrosesan data teknis pseudonim (GUE-13).
+- ✅ Antrean offline tangguh dengan klasifikasi error retryable vs permanen, serta Dead-Letter Queue (GUE-11).
 
 ### Admin Portal (`/admin/`)
-- ✅ Login terproteksi dengan brute-force lockout (5 percobaan / 15 menit)
-- ✅ Token API dikirim via POST body (bukan URL parameter)
-- ✅ Dashboard dengan 5 metrik utama + grafik tren harian
-- ✅ Leaderboard staf & gerai berdasarkan Skor Kualitas Anti-Fraud
-- ✅ Manajemen CRUD staf: tambah, edit, rotasi kode, nonaktifkan
-- ✅ Programmer Web NFC 1-klik (Android Chrome) + panduan NFC Tools (iOS)
-- ✅ Generator QR code + preview cetak kartu meja
-- ✅ Tab Audit Anti-Fraud dengan tabel event mencurigakan
-- ✅ Ekspor laporan CSV siap Excel
+- ✅ Login berbasis Username & Password dengan perlindungan brute-force lockout (5x gagal / 15 menit).
+- ✅ Pemisahan total antara URL endpoint backend dan token sesi (SEC-07).
+- ✅ Dashboard dengan 5 metrik performa + grafik tren harian.
+- ✅ Leaderboard staf & gerai berdasarkan Skor Kualitas.
+- ✅ Pendaftaran dan manajemen `StaffDevices` server-side untuk aturan AF-03 (SRC-08).
+- ✅ Manajemen CRUD staf: tambah, edit, nonaktifkan, dan sinkronisasi cloud.
+- ✅ Programmer Web NFC 1-klik & preview cetak stiker QR meja.
 
-### Backend Anti-Fraud (8 Aturan)
+### Spesifikasi Terpadu Anti-Fraud (8 Aturan — AF-01 s/d AF-08)
 
-| Kode | Aturan | Sanksi |
-|---|---|---|
-| AF-01 | Velocity Limit (>3 kunjungan/24 jam dari 1 perangkat ke 1 staf) | Skor = 0 |
-| AF-02 | Burst Detection (≥5 kunjungan dalam 10 menit) | Skor = 0 |
-| AF-03 | Self-Tap HP Staf (device_id cocok StaffDevices) | Skor = 0 |
-| AF-04 | Low-Quality Dwell (<5 detik + 0 interaksi) | Skor = 0 |
-| AF-05 | Source Hopping (≥4 sumber berbeda dalam 1 jam) | Skor = 0 |
-| AF-06 | Bot Honeypot (field tersembunyi terisi) | Blokir + Skor = 0 |
-| AF-07 | Shared IP Flood (≥5 device dari 1 IP ke 1 sumber / 10 menit) | Flag untuk review |
-| AF-08 | Odd Hour (00:00–05:30 WIB) | Flag untuk audit |
+| Kode | Aturan | Threshold Standar | Sanksi / Aksi |
+|---|---|---|---|
+| **AF-01** | Velocity Limit | >3 kunjungan / 24 jam ke sumber yang sama | `reduce_score` (Skor kualitas = 0) |
+| **AF-02** | Burst Detection | ≥5 kunjungan dalam jendela 10 menit | `reduce_score` (Skor kualitas = 0) |
+| **AF-03** | Self-Tap HP Staf | `device_id` cocok dengan tab `StaffDevices` | `reject_event` (Event ditolak/diabaikan) |
+| **AF-04** | Low-Quality Dwell | Dwell time <5 detik & 0 interaksi | `reduce_score` (Skor kualitas = 0) |
+| **AF-05** | Source Hopping | ≥4 sumber berbeda dalam 1 jam | `reduce_score` (Skor kualitas = 0) |
+| **AF-06** | Bot Signal / Honeypot | Field tersembunyi terisi atau dwell <1 detik | `reject_event` (Event ditolak/diabaikan) |
+| **AF-07** | Shared IP Flood | ≥10 device dari 1 IP dalam 10 menit (abaikan placeholder) | `flag_only` (Ditandai untuk audit) |
+| **AF-08** | Odd Hours | Kunjungan di luar jam 06.00–23.00 WIB | `flag_only` (Ditandai untuk audit) |
 
 ---
 
-## Keamanan
+## Keamanan & Kepatuhan Privasi
 
-- **Isolasi sempurna**: Guest View tidak mengandung satu pun kode admin
-- **Zero-PII**: Tidak ada nama tamu, email, atau nomor telepon yang disimpan
-- **IP tersamar**: Dua oktet terakhir disembunyikan di dashboard (`114.125.x.x`)
-- **Token via body**: READ_TOKEN tidak pernah muncul di URL / query string
-- **Brute-force protection**: Lockout 15 menit setelah 5 login gagal
-
----
-
-## Pemeliharaan
-
-| Tindakan | Kapan |
-|---|---|
-| Review laporan mingguan | Setiap Senin (email otomatis) |
-| Arsipkan tab Events lama | Tiap 6–12 bulan (jika spreadsheet melambat) |
-| Rotasi READ_TOKEN | Jika ada pergantian staf IT |
-| Update data staf | Saat ada mutasi/resign staf hotel |
+- **Pemisahan Konfigurasi Publik & Admin**: Endpoint `get_config` hanya mengekspos field aman yang diallowlist dan sumber yang aktif. Data sensitif dan threshold hanya dapat diakses dengan token sesi valid (SEC-08).
+- **Penanganan IP Klien**: Backend mengabaikan parameter IP dari klien (`?ip=`) dan tidak mempercayai header spoofing (SEC-05).
+- **Hashing Kriptografis**: Salt acak per-user dengan key stretching 1.000 iterasi SHA-256 (SEC-04).
+- **Transparansi Privasi**: Menggantikan klaim tidak realistis "Zero-PII"/"anonim" dengan penjelasan jujur mengenai penggunaan identifier pseudonim (`device_id`, `session_id`) serta masa retensi data (12 bulan log mentah, 24 bulan agregat) (GUE-13, PRD 7.9).
 
 ---
 
-## Referensi
+## Dokumentasi Terkait
 
-- [PRD v5.0](./prd/PRD_Bumi_Surabaya_v5.md) — Spesifikasi produk lengkap
-- [SHEETS_SETUP.md](./docs/SHEETS_SETUP.md) — Panduan database
-- [DEPLOY.md](./docs/DEPLOY.md) — Panduan deployment
-- [ASSUMPTIONS.md](./docs/ASSUMPTIONS.md) — Catatan asumsi implementasi
-
----
-
-*Platform ini dirancang khusus untuk **Hotel Bumi Surabaya City Resort**.*  
-*Hak Cipta © 2026 Bumi Surabaya City Resort. Semua hak dilindungi.*
+- [SHEETS_SETUP.md](./docs/SHEETS_SETUP.md) — Panduan struktur spreadsheet database & bootstrap admin
+- [DEPLOY.md](./docs/DEPLOY.md) — Panduan deployment GitHub Pages & Apps Script
+- [ASSUMPTIONS.md](./docs/ASSUMPTIONS.md) — Batasan runtime GAS & asumsi arsitektur
+- [IMPLEMENTATION_NOTES.md](./IMPLEMENTATION_NOTES.md) — Log implementasi teknis & catatan redeploy

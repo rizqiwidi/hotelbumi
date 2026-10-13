@@ -29,20 +29,100 @@
   'use strict';
 
   // ---------------------------------------------------------------------------
+  // Unified Anti-Fraud Rules Specification (PRD §7.7, AF-ALL-01 s/d AF-ALL-03)
+  // ---------------------------------------------------------------------------
+  var RULES = {
+    'AF-01': {
+      id: 'AF-01',
+      name: 'Velocity Limit',
+      severity: 'high',
+      action: 'reduce_score',
+      desc: 'Frekuensi event per perangkat melebihi batas dalam 24 jam'
+    },
+    'AF-02': {
+      id: 'AF-02',
+      name: 'Burst Detection',
+      severity: 'medium',
+      action: 'reduce_score',
+      desc: 'Lonjakan event dalam durasi singkat 10 menit'
+    },
+    'AF-03': {
+      id: 'AF-03',
+      name: 'Self-Tap Staff',
+      severity: 'critical',
+      action: 'reject_event',
+      desc: 'Event berasal dari perangkat staf terdaftar'
+    },
+    'AF-04': {
+      id: 'AF-04',
+      name: 'Low Quality',
+      severity: 'medium',
+      action: 'reduce_score',
+      desc: 'Dwell time terlalu singkat (< 5 detik) tanpa interaksi'
+    },
+    'AF-05': {
+      id: 'AF-05',
+      name: 'Source Hopping',
+      severity: 'medium',
+      action: 'reduce_score',
+      desc: 'Perangkat memindai lebih dari batas sumber unik dalam 1 jam'
+    },
+    'AF-06': {
+      id: 'AF-06',
+      name: 'Bot Signal',
+      severity: 'critical',
+      action: 'reject_event',
+      desc: 'Sinyal bot terdeteksi (honeypot terisi atau interval waktu 0ms)'
+    },
+    'AF-07': {
+      id: 'AF-07',
+      name: 'Shared IP Anomaly',
+      severity: 'low',
+      action: 'flag_only',
+      desc: 'Banyak perangkat berbagi alamat IP yang sama (informasional / flag only)'
+    },
+    'AF-08': {
+      id: 'AF-08',
+      name: 'Odd Hour',
+      severity: 'low',
+      action: 'flag_only',
+      desc: 'Kunjungan di luar jam operasional hotel (06.00-23.00 WIB)'
+    }
+  };
+
+  /** Helper klasifikasi aksi aturan (AF-ALL-01) */
+  function getEventActions(ruleIds) {
+    var hasReject = false;
+    var hasReduce = false;
+    (ruleIds || []).forEach(function(rid) {
+      var r = RULES[rid];
+      if (r) {
+        if (r.action === 'reject_event') hasReject = true;
+        if (r.action === 'reduce_score') hasReduce = true;
+      }
+    });
+    return {
+      hasReject: hasReject,
+      hasReduce: hasReduce,
+      isFlagOnly: !hasReject && !hasReduce && (ruleIds && ruleIds.length > 0)
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // Defaults (overridden by thresholds from config)
   // ---------------------------------------------------------------------------
   var DEFAULTS = {
-    velocity_window_ms:    60000,   // AF-01: rolling window (ms)
-    velocity_max_events:   10,      // AF-01: max events per device per window
-    burst_window_ms:       60000,   // AF-02: 1-minute bucket
-    burst_max_events:      50,      // AF-02: max total events in bucket
-    hopping_window_ms:     120000,  // AF-05: 2-minute window
-    hopping_max_sources:   3,       // AF-05: max unique sources per device
-    bot_min_dwell_ms:      500,     // AF-06: minimum ms between events from same device
-    shared_ip_max_devices: 5,       // AF-07: max distinct devices per IP
-    odd_hour_start:        6,       // AF-08: operating start hour (inclusive)
-    odd_hour_end:          23,      // AF-08: operating end hour (exclusive)
-    quality_min_score:     0        // AF-04: minimum quality score (0 = disabled)
+    velocity_window_ms:    86400000, // AF-01: rolling window 24 jam (ms)
+    velocity_max_events:   3,        // AF-01: max kunjungan per device per 24 jam
+    burst_window_ms:       600000,   // AF-02: 10-minute bucket (ms)
+    burst_max_events:      5,        // AF-02: max total events dalam 10 menit
+    low_dwell_ms:          5000,     // AF-04: minimum dwell ms
+    hopping_window_ms:     3600000,  // AF-05: 1-hour window (ms)
+    hopping_max_sources:   4,        // AF-05: max unique sources per device dalam 1 jam
+    bot_min_dwell_ms:      500,      // AF-06: minimum ms between events from same device
+    shared_ip_max_devices: 10,       // AF-07: max distinct devices per IP
+    odd_hour_start:        6,        // AF-08: jam operasional mulai WIB (inclusive)
+    odd_hour_end:          23        // AF-08: jam operasional selesai WIB (exclusive)
   };
 
   function mergeThresholds(thresholds) {
@@ -194,10 +274,40 @@
   }
 
   /**
-   * AF-06 bot — consecutive events from same device with dwell < threshold.
-   * Also flags events with identical ms-precision timestamps from same device.
+   * Helper: Periksa apakah IP merupakan placeholder atau nilai tidak sah (AF-07).
+   */
+  function isPlaceholderIp(ip) {
+    if (!ip) return true;
+    var s = String(ip).trim().toLowerCase();
+    return s === '' || s === 'client-ip' || s === 'unknown' || s === 'null' || s === 'undefined' || s === '-' || s === '127.0.0.1';
+  }
+
+  /**
+   * AF-04 low_quality — dwell time < threshold dan interaksi 0 pada event visit.
+   */
+  function applyLowQuality(events, flagsByEventId, t) {
+    events.forEach(function(ev) {
+      var et = String(ev.event_type || ev.event || ev.type || '');
+      if (et === 'visit') {
+        var dwell = Number(ev.dwell_ms) || 0;
+        var inter = Number(ev.interactions) || 0;
+        if (dwell > 0 && dwell < t.low_dwell_ms && inter === 0) {
+          flagEvent(flagsByEventId, String(ev.event_id), 'AF-04');
+        }
+      }
+    });
+  }
+
+  /**
+   * AF-06 bot — sinyal honeypot aktif atau event berturutan dari device sama dengan dwell < threshold.
    */
   function applyBot(events, flagsByEventId, t) {
+    events.forEach(function(ev) {
+      if (ev.bot_flag === true || ev.bot_flag === 'TRUE') {
+        flagEvent(flagsByEventId, String(ev.event_id), 'AF-06');
+      }
+    });
+
     var byDevice = {};
     events.forEach(function(ev) {
       var did = String(ev.device_id || '');
@@ -223,15 +333,16 @@
   }
 
   /**
-   * AF-07 shared_ip — many distinct devices from same IP.
+   * AF-07 shared_ip — banyak perangkat unik berbagi IP yang sama.
+   * Mengabaikan nilai placeholder ("client-ip", "unknown", kosong, dll).
    */
   function applySharedIp(events, flagsByEventId, t) {
     var byIp = {};
     events.forEach(function(ev) {
       var ip = String(ev.ip_address || ev.ip || '');
-      if (!ip || ip === 'unknown') return;
+      if (isPlaceholderIp(ip)) return; // Abaikan placeholder (AF-07)
       if (!byIp[ip]) byIp[ip] = { devices: {}, events: [] };
-      byIp[ip].devices[String(ev.device_id || '')] = true;
+      if (ev.device_id) byIp[ip].devices[String(ev.device_id)] = true;
       byIp[ip].events.push(ev);
     });
     Object.keys(byIp).forEach(function(ip) {
@@ -281,13 +392,14 @@
       return { flagsByEventId: flagsByEventId, summary: { total: 0, flagged: 0, rules: {} } };
     }
 
-    applyVelocity(events, flagsByEventId, t);
-    applyBurst(events,    flagsByEventId, t);
-    applySelfTap(events,  flagsByEventId, staffSet);
-    applyHopping(events,  flagsByEventId, t);
-    applyBot(events,      flagsByEventId, t);
-    applySharedIp(events, flagsByEventId, t);
-    applyOddHour(events,  flagsByEventId, t);
+    applyVelocity(events,   flagsByEventId, t);
+    applyBurst(events,      flagsByEventId, t);
+    applySelfTap(events,    flagsByEventId, staffSet);
+    applyLowQuality(events, flagsByEventId, t);
+    applyHopping(events,    flagsByEventId, t);
+    applyBot(events,        flagsByEventId, t);
+    applySharedIp(events,   flagsByEventId, t);
+    applyOddHour(events,    flagsByEventId, t);
     // AF-04 (low_quality) is applied after quality scoring — see getLeaderboard
 
     // Build summary
@@ -309,15 +421,15 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Quality score (PRD §7.3)
+  // Quality score (PRD §7.3 & §7.7)
   // ---------------------------------------------------------------------------
 
   /**
    * Calculate total quality score for a source (array of events belonging to it).
    *
-   * @param {Array}              srcEvents       - events for this source
+   * @param {Array}                srcEvents       - events for this source
    * @param {Map<string,string[]>} flagsByEventId - output of evaluateEvents
-   * @param {object}             excludedDevices - set of device_ids to exclude (keyed)
+   * @param {object}               excludedDevices - set of device_ids to exclude (keyed)
    * @returns {number}
    */
   function calculateQualityScore(srcEvents, flagsByEventId, excludedDevices) {
@@ -326,13 +438,16 @@
     var exSet = excludedDevices || {};
 
     srcEvents.forEach(function(ev) {
-      var eid = String(ev.event_id);
+      var eid = String(ev.event_id || '');
 
-      // Excluded device → 0
+      // Excluded device (AF-03) → 0
       if (ev.device_id && exSet[String(ev.device_id)]) return;
 
-      // Flagged event → 0
-      if (flagsByEventId.has(eid)) return;
+      // Flagged event: check action (reject_event and reduce_score zero out score; flag_only does not)
+      if (flagsByEventId && flagsByEventId.has(eid)) {
+        var actions = getEventActions(flagsByEventId.get(eid));
+        if (actions.isScoreZeroed) return;
+      }
 
       var type = String(ev.event_type || ev.type || '');
 
@@ -388,38 +503,47 @@
     var rows = [];
     var allSourceIds = {};
 
+    function processSourceEvents(sid, name, location, srcEvents) {
+      var qScore = calculateQualityScore(srcEvents, flagsByEventId, excludedDevices);
+      var validVisits = 0;
+      var flaggedCount = 0;
+
+      srcEvents.forEach(function(ev) {
+        var eid = String(ev.event_id || '');
+        var isExcluded = Boolean(ev.device_id && excludedDevices[String(ev.device_id)]);
+        var hasFlags = flagsByEventId.has(eid);
+        if (hasFlags) flaggedCount++;
+        if (isExcluded) return; // AF-03 self-tap excluded
+
+        if (hasFlags) {
+          var actions = getEventActions(flagsByEventId.get(eid));
+          if (actions.isRejected) return; // reject_event (e.g. AF-03, AF-06) drops visit
+        }
+        if ((ev.event_type || ev.type) === 'visit') validVisits++;
+      });
+
+      var af04Flagged = Boolean(t.quality_min_score > 0 && qScore < t.quality_min_score);
+
+      return {
+        source_id:    sid,
+        name:         name || sid,
+        location:     location || '',
+        total_events: srcEvents.length,
+        valid_visits: validVisits,
+        flagged:      flaggedCount,
+        quality_score:qScore,
+        af04_flagged: af04Flagged
+      };
+    }
+
     // Include configured sources
     if (Array.isArray(sources)) {
       sources.forEach(function(src) {
-        var sid = String(src.source_id || src.id || '');
+        var sid = String(src.source_id || src.code || src.id || '');
         if (!sid) return;
         allSourceIds[sid] = true;
         var srcEvents = bySource[sid] || [];
-        var qScore = calculateQualityScore(srcEvents, flagsByEventId, excludedDevices);
-
-        // Count valid (non-flagged, non-excluded) visits
-        var validVisits = 0;
-        var flaggedCount = 0;
-        srcEvents.forEach(function(ev) {
-          var eid = String(ev.event_id);
-          if (flagsByEventId.has(eid)) { flaggedCount++; return; }
-          if (ev.device_id && excludedDevices[String(ev.device_id)]) return;
-          if ((ev.event_type || ev.type) === 'visit') validVisits++;
-        });
-
-        // AF-04: flag source if quality score below threshold
-        var af04Flagged = t.quality_min_score > 0 && qScore < t.quality_min_score;
-
-        rows.push({
-          source_id:    sid,
-          name:         src.name || sid,
-          location:     src.location || '',
-          total_events: srcEvents.length,
-          valid_visits: validVisits,
-          flagged:      flaggedCount,
-          quality_score:qScore,
-          af04_flagged: af04Flagged
-        });
+        rows.push(processSourceEvents(sid, src.name || sid, src.location || src.outlet || '', srcEvents));
       });
     }
 
@@ -427,26 +551,7 @@
     Object.keys(bySource).forEach(function(sid) {
       if (allSourceIds[sid]) return;
       var srcEvents = bySource[sid];
-      var qScore = calculateQualityScore(srcEvents, flagsByEventId, excludedDevices);
-      var validVisits = 0;
-      var flaggedCount = 0;
-      srcEvents.forEach(function(ev) {
-        var eid = String(ev.event_id);
-        if (flagsByEventId.has(eid)) { flaggedCount++; return; }
-        if (ev.device_id && excludedDevices[String(ev.device_id)]) return;
-        if ((ev.event_type || ev.type) === 'visit') validVisits++;
-      });
-      var af04Flagged = t.quality_min_score > 0 && qScore < t.quality_min_score;
-      rows.push({
-        source_id:    sid,
-        name:         sid,
-        location:     '',
-        total_events: srcEvents.length,
-        valid_visits: validVisits,
-        flagged:      flaggedCount,
-        quality_score:qScore,
-        af04_flagged: af04Flagged
-      });
+      rows.push(processSourceEvents(sid, sid, '', srcEvents));
     });
 
     // Sort by quality_score DESC, then valid_visits DESC
@@ -470,7 +575,8 @@
     velocity_limit:  'velocity_max_events',
     burst_count:     'burst_max_events',
     hopping_sources: 'hopping_max_sources',
-    low_dwell_ms:    'bot_min_dwell_ms'
+    low_dwell_ms:    'bot_min_dwell_ms',
+    low_dwell_s:     'dwell_min_seconds'
   };
 
   function mapBackendThresholds(thresholds) {
@@ -541,8 +647,10 @@
   function evaluate(events, thresholds, sources, staffDevices) {
     var norm = (Array.isArray(events) ? events : []).map(normalizeEvent);
     var t = mapBackendThresholds(thresholds);
-    var evalRes = evaluateEvents(norm, staffDevices || [], t);
+    var staffList = Array.isArray(staffDevices) ? staffDevices : [];
+    var evalRes = evaluateEvents(norm, staffList, t);
     var flags = evalRes.flagsByEventId;
+    var excludedDevices = buildStaffSet(staffList);
 
     var metaById = {};
     (Array.isArray(sources) ? sources : []).forEach(function (s) {
@@ -557,8 +665,6 @@
       bySource[sid].push(ev);
     });
 
-    function isFlagged(ev) { return flags.has(String(ev.event_id)); }
-
     var totalVisits = 0, totalReviews = 0, totalWa = 0, scoreSum = 0;
     var dailyMap = {};
     var staffRows = [], outletRows = [], sourceRows = [];
@@ -566,13 +672,21 @@
     Object.keys(bySource).forEach(function (sid) {
       var list = bySource[sid];
       var meta = metaById[sid] || {};
-      var stype = String(meta.type || list[0].source_type || '');
+      var stype = String(meta.type || (list[0] && list[0].source_type) || '');
       var name = meta.name || sid;
       var outlet = meta.outlet || '';
 
       var visits = 0, reviews = 0, wa = 0;
       list.forEach(function (ev) {
-        if (isFlagged(ev)) return;
+        var eid = String(ev.event_id || '');
+        var isExcluded = Boolean(ev.device_id && excludedDevices[String(ev.device_id)]);
+        if (isExcluded) return; // AF-03 self-tap
+
+        if (flags.has(eid)) {
+          var actions = getEventActions(flags.get(eid));
+          if (actions.isRejected) return; // reject_event (e.g. AF-03, AF-06) drops the event
+        }
+
         var et = String(ev.event_type || '');
         if (et === 'visit') {
           visits++; totalVisits++;
@@ -589,7 +703,7 @@
         }
       });
 
-      var score = calculateQualityScore(list, flags, {});
+      var score = calculateQualityScore(list, flags, excludedDevices);
       scoreSum += score;
 
       var row = {
@@ -625,7 +739,8 @@
       conversionRate: totalVisits > 0 ? totalReviews / totalVisits : 0,
       daily:         daily,
       sources:       sourceRows,
-      fraudSummary:  evalRes.summary
+      fraudSummary:  evalRes.summary,
+      flagsByEventId: flags
     };
   }
 
@@ -633,10 +748,14 @@
   // Export
   // ---------------------------------------------------------------------------
   window.BSAntiFraud = {
-    evaluate:             evaluate,
-    evaluateEvents:       evaluateEvents,
-    calculateQualityScore:calculateQualityScore,
-    getLeaderboard:       getLeaderboard
+    RULES:                 RULES,
+    DEFAULTS:              DEFAULTS,
+    getEventActions:       getEventActions,
+    mapBackendThresholds:  mapBackendThresholds,
+    evaluate:              evaluate,
+    evaluateEvents:        evaluateEvents,
+    calculateQualityScore: calculateQualityScore,
+    getLeaderboard:        getLeaderboard
   };
 
 })(window);

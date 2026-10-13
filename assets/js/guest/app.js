@@ -13,13 +13,42 @@
 (function(window, document) {
   'use strict';
 
-  // ── Utilitas DOM ──────────────────────────────────────────
+  // ── Utilitas DOM & Sanitasi ──────────────────────────────
   function $(sel) { return document.querySelector(sel); }
   function $$(sel){ return document.querySelectorAll(sel); }
   function setText(el, txt) { if (el) el.textContent = txt; }
   function setHTML(el, html){ if (el) el.innerHTML   = html; }
   function show(el)  { if (el) el.classList.remove('bs-hidden'); }
   function hide(el)  { if (el) el.classList.add('bs-hidden'); }
+
+  /**
+   * Escape HTML string untuk mencegah injeksi XSS (GUE-04).
+   * @param {*} str
+   * @returns {string}
+   */
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /**
+   * Validasi dan sanitasi URL untuk mencegah javascript: dan skema berbahaya lainnya (GUE-04).
+   * @param {string} url
+   * @returns {string}
+   */
+  function sanitizeUrl(url) {
+    if (!url) return '#';
+    var u = String(url).trim();
+    if (/^(javascript|vbscript|data|file):/i.test(u)) {
+      return '#';
+    }
+    return u;
+  }
 
   // ── State ─────────────────────────────────────────────────
   var _config  = null;
@@ -65,26 +94,51 @@
     var staffBadgeEl = $('#bs-staff-badge');
 
     if (_sourceObj) {
-      // Sumber dikenali
+      // Sumber dikenali — render secara aman via DOM API (GUE-04)
       var st = _sourceObj.type || 'staff';
-      var msg = '';
       if (st === 'staff' || st === 'sales') {
-        msg = 'Halo! Anda saat ini dilayani dengan tulus oleh <strong>' +
-              (_sourceObj.name || 'Tim Kami') + '</strong>' +
-              (_sourceObj.role ? ' (' + _sourceObj.role + ')' : '') +
-              (_sourceObj.outlet ? ' dari <em>' + _sourceObj.outlet + '</em>' : '') + '.';
+        if (welcomeEl) {
+          welcomeEl.textContent = '';
+          welcomeEl.appendChild(document.createTextNode('Halo! Anda saat ini dilayani dengan tulus oleh '));
+          var strongName = document.createElement('strong');
+          strongName.textContent = _sourceObj.name || 'Tim Kami';
+          welcomeEl.appendChild(strongName);
+          if (_sourceObj.role) {
+            welcomeEl.appendChild(document.createTextNode(' (' + _sourceObj.role + ')'));
+          }
+          if (_sourceObj.outlet) {
+            welcomeEl.appendChild(document.createTextNode(' dari '));
+            var emOutlet = document.createElement('em');
+            emOutlet.textContent = _sourceObj.outlet;
+            welcomeEl.appendChild(emOutlet);
+          }
+          welcomeEl.appendChild(document.createTextNode('.'));
+        }
         if (staffBadgeEl) {
-          staffBadgeEl.innerHTML = '<span class="bs-dot"></span>' +
-            '🪄 Dilayani oleh ' + (_sourceObj.name || '-');
+          staffBadgeEl.textContent = '';
+          var dot = document.createElement('span');
+          dot.className = 'bs-dot';
+          staffBadgeEl.appendChild(dot);
+          staffBadgeEl.appendChild(document.createTextNode('🪄 Dilayani oleh ' + (_sourceObj.name || '-')));
           show(staffBadgeEl);
         }
       } else if (st === 'outlet') {
-        msg = (app.welcome_msg_outlet || 'Selamat menikmati {outlet_name}.')
-              .replace('{outlet_name}', _sourceObj.name || '');
+        if (welcomeEl) {
+          var baseMsg = app.welcome_msg_outlet || 'Selamat menikmati {outlet_name}.';
+          welcomeEl.textContent = baseMsg.replace('{outlet_name}', _sourceObj.name || '');
+        }
+        hide(staffBadgeEl);
       } else if (st === 'nfc') {
-        msg = 'Selamat datang di <strong>' + (_sourceObj.outlet || _sourceObj.name || gen.hotel_name) + '</strong>! Nikmati pengalaman tak terlupakan bersama kami.';
+        if (welcomeEl) {
+          welcomeEl.textContent = '';
+          welcomeEl.appendChild(document.createTextNode('Selamat datang di '));
+          var strongOutlet = document.createElement('strong');
+          strongOutlet.textContent = _sourceObj.outlet || _sourceObj.name || gen.hotel_name || 'Bumi Surabaya City Resort';
+          welcomeEl.appendChild(strongOutlet);
+          welcomeEl.appendChild(document.createTextNode('! Nikmati pengalaman tak terlupakan bersama kami.'));
+        }
+        hide(staffBadgeEl);
       }
-      if (welcomeEl) { welcomeEl.innerHTML = msg; }
     } else if (src && src !== 'general') {
       // Kode tidak dikenali — ramah, tanpa error teknis
       if (welcomeEl) welcomeEl.textContent = app.welcome_msg_general || BSConfig.DEFAULTS.appearance.welcome_msg_general;
@@ -97,10 +151,13 @@
 
     // Hero background
     if (app.hero_bg_url) {
-      var hero = $('.bs-hero');
-      if (hero) {
-        hero.style.backgroundImage = 'url(' + app.hero_bg_url + ')';
-        hero.classList.add('has-bg');
+      var safeBg = sanitizeUrl(app.hero_bg_url);
+      if (safeBg && safeBg !== '#') {
+        var hero = $('.bs-hero');
+        if (hero) {
+          hero.style.backgroundImage = 'url("' + encodeURI(safeBg) + '")';
+          hero.classList.add('has-bg');
+        }
       }
     }
 
@@ -108,7 +165,8 @@
     var reviewBtn = $('#bs-btn-review');
     var reviewLink = $('#bs-review-link');
     var mobReview = $('.bs-mob-review');
-    var reviewUrl = (rev && rev.review_url) || gen.google_review_url || '#';
+    var rawReviewUrl = (rev && rev.review_url) || gen.google_review_url || '#';
+    var reviewUrl = sanitizeUrl(rawReviewUrl);
     var reviewTxt = (rev && rev.button_text) || 'Berikan Ulasan di Google ⭐';
 
     if (reviewBtn) {
@@ -142,7 +200,7 @@
       }
     }
 
-    var waUrl = 'https://wa.me/' + waNum + '?text=' + encodeURIComponent(waMsg);
+    var waUrl = sanitizeUrl('https://wa.me/' + waNum + '?text=' + encodeURIComponent(waMsg));
 
     var waBtn  = $('#bs-btn-wa');
     var waLink = $('#bs-wa-link');
@@ -165,7 +223,7 @@
 
     var reviewLink = el.querySelector('#bs-review-link');
     if (reviewLink) {
-      reviewLink.href = cfg.review_url || BSConfig.DEFAULTS.review_settings.review_url;
+      reviewLink.href = sanitizeUrl(cfg.review_url || BSConfig.DEFAULTS.review_settings.review_url);
       reviewLink.textContent = cfg.button_text || BSConfig.DEFAULTS.review_settings.button_text;
     }
     show(el);
@@ -193,18 +251,27 @@
     if (!active.length) { if (section) hide(section); return; }
 
     var html = active.map(function(p) {
-      return '<div class="bs-promo-card" data-promo-id="' + (p.id || '') + '" tabindex="0">' +
-        '<div class="bs-promo-img-wrap">' +
-          (p.image_url
-            ? '<img src="' + (window.BSConfig ? BSConfig.resolveAsset(p.image_url) : p.image_url) + '" alt="' + (p.name || '') + '" loading="lazy">'
-            : '<div class="bs-promo-img-placeholder">' + (p.emoji || '🍽️') + '</div>') +
-        '</div>' +
+      var pId = escapeHtml(p.id || '');
+      var pName = escapeHtml(p.name || '');
+      var pOutlet = escapeHtml(p.outlet || 'F&amp;B');
+      var pDesc = escapeHtml(p.description || '');
+      var pPrice = escapeHtml(p.price || '');
+      var pPeriod = escapeHtml(p.period || '');
+      var pEmoji = escapeHtml(p.emoji || '🍽️');
+      var resolvedImg = p.image_url ? (window.BSConfig ? BSConfig.resolveAsset(p.image_url) : p.image_url) : '';
+      var safeImg = resolvedImg ? sanitizeUrl(resolvedImg) : '';
+      var imgHtml = safeImg && safeImg !== '#'
+        ? '<img src="' + escapeHtml(safeImg) + '" alt="' + pName + '" loading="lazy">'
+        : '<div class="bs-promo-img-placeholder">' + pEmoji + '</div>';
+
+      return '<div class="bs-promo-card" data-promo-id="' + pId + '" tabindex="0">' +
+        '<div class="bs-promo-img-wrap">' + imgHtml + '</div>' +
         '<div class="bs-promo-body">' +
-          '<div class="bs-promo-badge">' + (p.outlet || 'F&amp;B') + '</div>' +
-          '<div class="bs-promo-name">' + (p.name || '') + '</div>' +
-          '<div class="bs-promo-desc">' + (p.description || '') + '</div>' +
-          (p.price ? '<div class="bs-promo-price">' + p.price + '</div>' : '') +
-          (p.period ? '<div class="bs-promo-period">🗓️ ' + p.period + '</div>' : '') +
+          '<div class="bs-promo-badge">' + pOutlet + '</div>' +
+          '<div class="bs-promo-name">' + pName + '</div>' +
+          '<div class="bs-promo-desc">' + pDesc + '</div>' +
+          (pPrice ? '<div class="bs-promo-price">' + pPrice + '</div>' : '') +
+          (pPeriod ? '<div class="bs-promo-period">🗓️ ' + pPeriod + '</div>' : '') +
         '</div>' +
       '</div>';
     }).join('');
@@ -236,21 +303,32 @@
     if (!outlets || !outlets.length) { if (section) hide(section); return; }
 
     var html = outlets.map(function(o) {
-      return '<div class="bs-outlet-card" tabindex="0" data-outlet-id="' + (o.id || '') + '">' +
+      var oId = escapeHtml(o.id || '');
+      var oName = escapeHtml(o.name || '');
+      var oEmoji = escapeHtml(o.emoji || '🍽️');
+      var oType = escapeHtml(o.type || '');
+      var oDesc = escapeHtml(o.description || '');
+      var oHours = escapeHtml(o.hours || '');
+      var oHighlight = escapeHtml(o.highlight || '');
+      var resolvedImg = o.image_url ? (window.BSConfig ? BSConfig.resolveAsset(o.image_url) : o.image_url) : '';
+      var safeImg = resolvedImg ? sanitizeUrl(resolvedImg) : '';
+      var imgHtml = safeImg && safeImg !== '#'
+        ? '<img src="' + escapeHtml(safeImg) + '" alt="' + oName + '" loading="lazy">'
+        : '<div class="bs-outlet-img-placeholder">' + oEmoji + '</div>';
+
+      return '<div class="bs-outlet-card" tabindex="0" data-outlet-id="' + oId + '">' +
         '<div class="bs-outlet-img-wrap">' +
-          (o.image_url
-            ? '<img src="' + (window.BSConfig ? BSConfig.resolveAsset(o.image_url) : o.image_url) + '" alt="' + (o.name || '') + '" loading="lazy">'
-            : '<div class="bs-outlet-img-placeholder">' + (o.emoji || '🍽️') + '</div>') +
-          (o.highlight ? '<span class="bs-outlet-badge">' + o.highlight + '</span>' : '') +
+          imgHtml +
+          (oHighlight ? '<span class="bs-outlet-badge">' + oHighlight + '</span>' : '') +
         '</div>' +
         '<div class="bs-outlet-content">' +
           '<div class="bs-outlet-header-row">' +
-            '<div class="bs-outlet-name">' + (o.name || '') + '</div>' +
-            '<span class="bs-outlet-icon-inline" aria-hidden="true">' + (o.emoji || '') + '</span>' +
+            '<div class="bs-outlet-name">' + oName + '</div>' +
+            '<span class="bs-outlet-icon-inline" aria-hidden="true">' + oEmoji + '</span>' +
           '</div>' +
-          '<div class="bs-outlet-type">' + (o.type || '') + '</div>' +
-          '<div class="bs-outlet-desc">' + (o.description || '') + '</div>' +
-          (o.hours ? '<div class="bs-outlet-hours"><span class="bs-time-icon">🕒</span> ' + o.hours + '</div>' : '') +
+          '<div class="bs-outlet-type">' + oType + '</div>' +
+          '<div class="bs-outlet-desc">' + oDesc + '</div>' +
+          (oHours ? '<div class="bs-outlet-hours"><span class="bs-time-icon">🕒</span> ' + oHours + '</div>' : '') +
           '<div class="bs-outlet-footer">' +
             '<span class="bs-outlet-action-btn">Eksplorasi Gerai &amp; Reservasi →</span>' +
           '</div>' +
@@ -290,14 +368,16 @@
     if (sec && sec.show_social === false) { hide(el); return; }
 
     var links = [];
-    if (gen.instagram) links.push({ href: gen.instagram, label: '📸 Instagram', cls: 'instagram' });
-    if (gen.facebook)  links.push({ href: gen.facebook,  label: '👍 Facebook',  cls: 'facebook'  });
-    if (gen.tiktok)    links.push({ href: gen.tiktok,    label: '🎵 TikTok',    cls: 'tiktok'    });
+    if (gen.instagram) links.push({ href: sanitizeUrl(gen.instagram), label: '📸 Instagram', cls: 'instagram' });
+    if (gen.facebook)  links.push({ href: sanitizeUrl(gen.facebook),  label: '👍 Facebook',  cls: 'facebook'  });
+    if (gen.tiktok)    links.push({ href: sanitizeUrl(gen.tiktok),    label: '🎵 TikTok',    cls: 'tiktok'    });
+
+    var validLinks = links.filter(function(l) { return l.href && l.href !== '#'; });
 
     var container = el.querySelector('#bs-social-links');
-    if (container && links.length) {
-      setHTML(container, links.map(function(l) {
-        return '<a href="' + l.href + '" target="_blank" rel="noopener" class="bs-social-link">' + l.label + '</a>';
+    if (container && validLinks.length) {
+      setHTML(container, validLinks.map(function(l) {
+        return '<a href="' + escapeHtml(l.href) + '" target="_blank" rel="noopener noreferrer" class="bs-social-link">' + escapeHtml(l.label) + '</a>';
       }).join(''));
       show(el);
     } else {
