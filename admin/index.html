@@ -221,6 +221,12 @@
       </div>
 
       <div class="adm-topbar-actions">
+        <!-- Status Simpan & Sinkronisasi (SRC-05, SRC-06, SEC-09) -->
+        <div id="adm-sync-indicator" class="adm-sync-indicator adm-sync-saved" role="status" aria-live="polite">
+          <span id="adm-sync-dot" class="adm-sync-dot"></span>
+          <span id="adm-sync-text">Tersimpan</span>
+          <button id="adm-sync-retry-btn" class="adm-btn adm-btn-xs adm-btn-danger" style="display:none;margin-left:6px;">Coba Lagi</button>
+        </div>
         <!-- Pemilih bulan -->
         <div class="adm-select-wrap">
           <select id="adm-month-select" class="adm-select" aria-label="Pilih bulan data">
@@ -262,16 +268,16 @@
           </div>
         </div>
 
-        <div class="adm-metric-card" id="adm-metric-reviews">
+        <div class="adm-metric-card" id="adm-metric-reviews" title="Jumlah event klik tombol Google Review oleh tamu (ANA-02)">
           <div class="adm-metric-icon-wrap" style="background:rgba(234,179,8,0.15);color:#ca8a04;">⭐</div>
           <div class="adm-metric-body">
-            <div class="adm-metric-label">Total Ulasan</div>
+            <div class="adm-metric-label">Klik Google Review</div>
             <div class="adm-metric-value">—</div>
-            <div class="adm-metric-sub">Ulasan Google terkirim</div>
+            <div class="adm-metric-sub">Klik tombol buka Google Review</div>
           </div>
         </div>
 
-        <div class="adm-metric-card" id="adm-metric-wa">
+        <div class="adm-metric-card" id="adm-metric-wa" title="Jumlah event klik tombol WhatsApp oleh tamu">
           <div class="adm-metric-icon-wrap" style="background:rgba(37,211,102,0.15);color:#16a34a;">💬</div>
           <div class="adm-metric-body">
             <div class="adm-metric-label">WA Clicks</div>
@@ -280,12 +286,12 @@
           </div>
         </div>
 
-        <div class="adm-metric-card" id="adm-metric-conv">
+        <div class="adm-metric-card" id="adm-metric-conv" title="Rasio: (Klik Google Review / Total Kunjungan) × 100% (ANA-03)">
           <div class="adm-metric-icon-wrap" style="background:rgba(59,130,246,0.15);color:#2563eb;">🎯</div>
           <div class="adm-metric-body">
-            <div class="adm-metric-label">Conversion Rate</div>
+            <div class="adm-metric-label">Rasio Klik Review / Kunjungan</div>
             <div class="adm-metric-value">—</div>
-            <div class="adm-metric-sub">Rasio ulasan / kunjungan</div>
+            <div class="adm-metric-sub">Persentase sesi membuka review</div>
           </div>
         </div>
       </div>
@@ -295,7 +301,7 @@
         <div class="adm-card-header">
           <div>
             <h2 class="adm-card-title">📈 Tren Interaksi Harian</h2>
-            <p class="adm-card-subtitle">Perkembangan kunjungan, klik ulasan, dan WhatsApp per hari</p>
+            <p class="adm-card-subtitle">Perkembangan kunjungan, klik ulasan, dan WhatsApp per hari (WIB)</p>
           </div>
           <div class="adm-pill-toggle">
             <button class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-trend-7d">7 Hari</button>
@@ -313,7 +319,7 @@
           <div class="adm-card-header">
             <div>
               <h2 class="adm-card-title">🏆 Top Performa Staf</h2>
-              <p class="adm-card-subtitle">Peringkat staf terbaik berdasarkan ulasan dan skor</p>
+              <p class="adm-card-subtitle">Peringkat staf terbaik berdasarkan klik review dan skor</p>
             </div>
           </div>
           <div class="adm-table-wrap">
@@ -324,7 +330,7 @@
                   <th>Nama Staf</th>
                   <th>Gerai</th>
                   <th class="bs-num">Skor</th>
-                  <th class="bs-num">Ulasan</th>
+                  <th class="bs-num">Klik Review</th>
                 </tr>
               </thead>
               <tbody id="adm-leaderboard-staff">
@@ -348,7 +354,7 @@
                   <th>#</th>
                   <th>Gerai F&amp;B</th>
                   <th class="bs-num">Skor</th>
-                  <th class="bs-num">Ulasan</th>
+                  <th class="bs-num">Klik Review</th>
                 </tr>
               </thead>
               <tbody id="adm-leaderboard-outlets">
@@ -692,7 +698,8 @@
           </div>
         </div>
 
-        <div id="adm-nfc-status-bar" class="adm-nfc-status"></div>
+        <div id="adm-nfc-compat-banner" class="adm-alert adm-alert-warn" style="display:none;margin-top:14px;"></div>
+        <div id="adm-nfc-status-bar" class="adm-nfc-status" style="margin-top:12px;"></div>
 
         <div class="adm-form-group" style="margin-top:20px;">
           <label for="adm-nfc-source-select">Pilih Staf / Titik NFC</label>
@@ -871,12 +878,31 @@
         </div>
 
         <div class="adm-form-group">
-          <label>Warna Aksen Identitas Hotel</label>
-          <div style="display:flex;gap:12px;align-items:center;">
-            <input type="color" id="adm-app-accent" value="#c9a96e" style="width:48px;height:42px;border:none;border-radius:6px;cursor:pointer;">
-            <input type="text" id="adm-app-accent-text" class="adm-input" value="#c9a96e (Champagne Gold)" style="max-width:200px;" readonly>
-            <input type="color" id="adm-app-primary" value="#1a3c2a" style="width:48px;height:42px;border:none;border-radius:6px;cursor:pointer;">
-            <input type="text" id="adm-app-primary-text" class="adm-input" value="#1a3c2a (Deep Emerald)" style="max-width:200px;" readonly>
+          <label>Identitas Palet Merek Resmi (Terkunci Sesuai PRD 6.1)</label>
+          <p class="adm-field-hint" style="margin-bottom:8px;">
+            Palet merek resmi resor dikunci demi integritas visual dan konsistensi luxury hospitality brand.
+          </p>
+          <div class="adm-palette-preview">
+            <div class="adm-palette-chip">
+              <span class="adm-palette-swatch" style="background:#1a3c2a;"></span>
+              <span>#1a3c2a (Deep Emerald)</span>
+            </div>
+            <div class="adm-palette-chip">
+              <span class="adm-palette-swatch" style="background:#10261b;"></span>
+              <span>#10261b (Forest Dark)</span>
+            </div>
+            <div class="adm-palette-chip">
+              <span class="adm-palette-swatch" style="background:#c9a96e;"></span>
+              <span>#c9a96e (Champagne Gold)</span>
+            </div>
+            <div class="adm-palette-chip">
+              <span class="adm-palette-swatch" style="background:#faf8f5;"></span>
+              <span>#faf8f5 (Warm Ivory)</span>
+            </div>
+            <div class="adm-palette-chip">
+              <span class="adm-palette-swatch" style="background:#1c2420;"></span>
+              <span>#1c2420 (Charcoal)</span>
+            </div>
           </div>
         </div>
 
@@ -1097,17 +1123,33 @@
         <label for="adm-otl-type">Tipe Masakan / Kategori</label>
         <input type="text" id="adm-otl-type" class="adm-input" placeholder="Contoh: Authentic Indonesian Buffet">
       </div>
-      <div class="adm-form-group">
-        <label for="adm-otl-badge">Badge / Fitur Khusus</label>
-        <input type="text" id="adm-otl-badge" class="adm-input" placeholder="Contoh: Private Room 30 Pax">
+      <div class="adm-two-col-form">
+        <div class="adm-form-group">
+          <label for="adm-otl-emoji">Emoji Ikon</label>
+          <input type="text" id="adm-otl-emoji" class="adm-input" placeholder="Contoh: 🍛" style="max-width:120px;">
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-otl-badge">Badge / Fitur Khusus</label>
+          <input type="text" id="adm-otl-badge" class="adm-input" placeholder="Contoh: Private Room 30 Pax">
+        </div>
       </div>
       <div class="adm-form-group">
         <label for="adm-otl-desc">Deskripsi Singkat</label>
         <textarea id="adm-otl-desc" class="adm-input" rows="3" placeholder="Deskripsi suasana dan menu unggulan gerai"></textarea>
       </div>
+      <div class="adm-two-col-form">
+        <div class="adm-form-group">
+          <label for="adm-otl-hours">Jam Operasional</label>
+          <input type="text" id="adm-otl-hours" class="adm-input" placeholder="Contoh: 06.00 – 22.00 WIB">
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-otl-whatsapp">WhatsApp Reservasi</label>
+          <input type="tel" id="adm-otl-whatsapp" class="adm-input" placeholder="Contoh: 628113388523">
+        </div>
+      </div>
       <div class="adm-form-group">
-        <label for="adm-otl-hours">Jam Operasional</label>
-        <input type="text" id="adm-otl-hours" class="adm-input" placeholder="Contoh: 06.00 – 22.00 WIB">
+        <label for="adm-otl-res-url">URL Reservasi / Menu Online (Opsional)</label>
+        <input type="url" id="adm-otl-res-url" class="adm-input" placeholder="https://...">
       </div>
       <div class="adm-form-group">
         <label class="adm-toggle-item" style="padding:0;border:none;">
@@ -1127,7 +1169,7 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
-     MODAL TAMBAH / EDIT PROMOSI
+     MODAL TAMBAH / EDIT PROMOSI (TERSTRUKTUR: CNT-01 s/d CNT-05)
 ═══════════════════════════════════════════════════════════════ -->
 <div id="adm-promo-modal" class="adm-modal-overlay" role="dialog"
      aria-modal="true" aria-labelledby="adm-promo-modal-title" aria-hidden="true" style="display:none;">
@@ -1141,22 +1183,58 @@
         <label for="adm-prm-name">Nama Promosi <span class="adm-required">*</span></label>
         <input type="text" id="adm-prm-name" class="adm-input" placeholder="Contoh: Pasar Malam Dinner Buffet" required>
       </div>
-      <div class="adm-form-group">
-        <label for="adm-prm-outlet">Gerai Penyelenggara <span class="adm-required">*</span></label>
-        <select id="adm-prm-outlet" class="adm-input" required>
-          <option value="Arumanis Restaurant">Arumanis Restaurant</option>
-          <option value="Kizahashi">Kizahashi Japanese Restaurant</option>
-          <option value="Lobby Lounge">Lobby Lounge</option>
-          <option value="DeliKopi">DeliKopi</option>
-        </select>
+      <div class="adm-two-col-form">
+        <div class="adm-form-group">
+          <label for="adm-prm-outlet">Gerai Penyelenggara <span class="adm-required">*</span></label>
+          <select id="adm-prm-outlet" class="adm-input" required>
+            <option value="Arumanis Restaurant">Arumanis Restaurant</option>
+            <option value="Kizahashi">Kizahashi Japanese Restaurant</option>
+            <option value="Lobby Lounge">Lobby Lounge</option>
+            <option value="DeliKopi">DeliKopi</option>
+          </select>
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-prm-emoji">Emoji Ikon</label>
+          <input type="text" id="adm-prm-emoji" class="adm-input" placeholder="Contoh: 🍽️" style="max-width:120px;">
+        </div>
       </div>
       <div class="adm-form-group">
-        <label for="adm-prm-price">Harga / Penawaran</label>
-        <input type="text" id="adm-prm-price" class="adm-input" placeholder="Contoh: Rp 385.000 nett/pax">
+        <label for="adm-prm-image">Foto / Gambar Promosi</label>
+        <input type="text" id="adm-prm-image" class="adm-input" placeholder="assets/images/promos/buffet.jpg atau https://...">
       </div>
       <div class="adm-form-group">
-        <label for="adm-prm-period">Periode / Jadwal Berlaku</label>
-        <input type="text" id="adm-prm-period" class="adm-input" placeholder="Contoh: Setiap hari, 18.00 – 22.00 WIB">
+        <label for="adm-prm-desc">Deskripsi Promosi</label>
+        <textarea id="adm-prm-desc" class="adm-input" rows="3" placeholder="Deskripsi penawaran, menu unggulan, atau benefit"></textarea>
+      </div>
+      <div class="adm-two-col-form">
+        <div class="adm-form-group">
+          <label for="adm-prm-price">Harga / Penawaran</label>
+          <input type="text" id="adm-prm-price" class="adm-input" placeholder="Contoh: Rp 385.000 nett/pax">
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-prm-period">Keterangan Jadwal</label>
+          <input type="text" id="adm-prm-period" class="adm-input" placeholder="Contoh: Setiap hari, 18.00 – 22.00 WIB">
+        </div>
+      </div>
+      <div class="adm-two-col-form">
+        <div class="adm-form-group">
+          <label for="adm-prm-starts-at">Tanggal Mulai (Asia/Jakarta)</label>
+          <input type="date" id="adm-prm-starts-at" class="adm-input">
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-prm-ends-at">Tanggal Berakhir (Asia/Jakarta)</label>
+          <input type="date" id="adm-prm-ends-at" class="adm-input">
+        </div>
+      </div>
+      <div class="adm-two-col-form">
+        <div class="adm-form-group">
+          <label for="adm-prm-cta-label">Label Tombol CTA</label>
+          <input type="text" id="adm-prm-cta-label" class="adm-input" placeholder="Contoh: Reservasi Meja">
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-prm-cta-url">Tautan CTA (URL / WhatsApp)</label>
+          <input type="text" id="adm-prm-cta-url" class="adm-input" placeholder="https://wa.me/... atau https://...">
+        </div>
       </div>
       <div class="adm-form-group">
         <label class="adm-toggle-item" style="padding:0;border:none;">
@@ -1204,6 +1282,92 @@
   var _outlets         = (_configData.outlets || []).slice();
   var _promos          = (_configData.promotions || []).slice();
   var _staffDevices    = [];
+  var _lastFocusedTrigger = null;
+
+  /* ── Save / Sync Status Tracker (SRC-05, SRC-06, SEC-09) ── */
+  var _syncStatus = {
+    state:      'saved', // 'saved' | 'unsaved' | 'saving' | 'failed'
+    lastError:  null,
+    hasUnsaved: false,
+    retryFn:    null
+  };
+
+  function updateSyncStatus(state, errorMsg, retryFn) {
+    _syncStatus.state = state;
+    _syncStatus.lastError = errorMsg || null;
+    if (typeof retryFn === 'function') _syncStatus.retryFn = retryFn;
+
+    var el       = $id('adm-sync-indicator');
+    var txt      = $id('adm-sync-text');
+    var retryBtn = $id('adm-sync-retry-btn');
+    if (!el || !txt) return;
+
+    el.className = 'adm-sync-indicator adm-sync-' + state;
+    if (state === 'saved') {
+      _syncStatus.hasUnsaved = false;
+      txt.textContent = 'Tersimpan';
+      if (retryBtn) retryBtn.style.display = 'none';
+    } else if (state === 'unsaved') {
+      _syncStatus.hasUnsaved = true;
+      txt.textContent = 'Belum disimpan';
+      if (retryBtn) retryBtn.style.display = 'none';
+    } else if (state === 'saving') {
+      txt.textContent = 'Menyimpan…';
+      if (retryBtn) retryBtn.style.display = 'none';
+    } else if (state === 'failed') {
+      _syncStatus.hasUnsaved = true;
+      txt.textContent = 'Gagal' + (errorMsg ? ': ' + errorMsg : '');
+      if (retryBtn) retryBtn.style.display = _syncStatus.retryFn ? 'inline-block' : 'none';
+    }
+  }
+
+  if ($id('adm-sync-retry-btn')) {
+    $id('adm-sync-retry-btn').addEventListener('click', function () {
+      if (typeof _syncStatus.retryFn === 'function') {
+        _syncStatus.retryFn();
+      }
+    });
+  }
+
+  window.addEventListener('beforeunload', function (e) {
+    if (_syncStatus.hasUnsaved) {
+      e.preventDefault();
+      e.returnValue = 'Ada perubahan data yang belum disimpan ke server.';
+    }
+  });
+
+  /* ── Accessible Modal Manager (GUE-14, PRD 6.3) ── */
+  function setupAccessibleModal(modalId, closeFn) {
+    var modal = $id(modalId);
+    if (!modal) return;
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        e.preventDefault();
+        if (typeof closeFn === 'function') closeFn();
+        else {
+          modal.style.display = 'none';
+          modal.setAttribute('aria-hidden', 'true');
+          if (_lastFocusedTrigger && typeof _lastFocusedTrigger.focus === 'function') {
+            _lastFocusedTrigger.focus();
+          }
+        }
+        return;
+      }
+      if (e.key === 'Tab' || e.keyCode === 9) {
+        var focusables = modal.querySelectorAll('input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])');
+        if (focusables.length === 0) return;
+        var first = focusables[0];
+        var last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    });
+  }
 
   /* ── Elemen DOM utama ── */
   function $id(id) { return document.getElementById(id); }
@@ -1261,7 +1425,7 @@
     if (name === 'sources')    _renderSourcesTable();
     if (name === 'outlets')    _renderOutlets();
     if (name === 'sales-wa')   _renderSalesWa();
-    if (name === 'nfc')        _populateNfcSelect();
+    if (name === 'nfc')        { _populateNfcSelect(); _checkNfcSupport(); }
     if (name === 'bulk-qr')    _renderBulkQr();
     if (name === 'promos')     { _renderPromos(); _populateSections(); }
     if (name === 'appearance') _populateAppearance();
@@ -1614,9 +1778,12 @@
       return;
     }
     tbody.innerHTML = sources.map(function (s) {
-      var kartuBadge = s.kartu_diprogram
+      var reprintBadge = s.needs_reprint
+        ? '<span class="adm-badge-err" style="margin-left:4px;" title="Kode telah dirotasi, cetak ulang kartu/stiker fisik">🖨️ Cetak Ulang</span>'
+        : '';
+      var kartuBadge = (s.kartu_diprogram
         ? '<span class="adm-badge-ok">✅ Diprogram</span>'
-        : '<span class="adm-badge-warn">⚠ Belum</span>';
+        : '<span class="adm-badge-warn">⚠ Belum</span>') + reprintBadge;
       var statusBadge = s.active
         ? '<span class="adm-badge-ok">Aktif</span>'
         : '<span class="adm-badge-err">Nonaktif</span>';
@@ -1650,8 +1817,10 @@
   if ($id('adm-source-modal-cancel')) $id('adm-source-modal-cancel').addEventListener('click', _closeSourceModal);
   if ($id('adm-src-name')) $id('adm-src-name').addEventListener('input', _previewSlug);
   if ($id('adm-src-type')) $id('adm-src-type').addEventListener('change', _previewSlug);
+  setupAccessibleModal('adm-source-modal', _closeSourceModal);
 
   function _openSourceModal(code, defaultType) {
+    _lastFocusedTrigger = document.activeElement;
     _editingCode = code;
     var modal    = $id('adm-source-modal');
     var title    = $id('adm-source-modal-title');
@@ -1686,6 +1855,9 @@
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
     _editingCode = null;
+    if (_lastFocusedTrigger && typeof _lastFocusedTrigger.focus === 'function') {
+      _lastFocusedTrigger.focus();
+    }
   }
 
   function _previewSlug() {
@@ -1726,6 +1898,7 @@
           BSStaffManager.addSource({ name: name, type: type, role: role, outlet: outlet, whatsapp: wa });
           showToast('Sumber berhasil ditambahkan.', 'success');
         }
+        updateSyncStatus('unsaved');
         _closeSourceModal();
         _renderSourcesTable();
         _renderSalesWa();
@@ -1741,6 +1914,7 @@
     if (!confirm('Rotasi kode untuk sumber ini? Kartu NFC lama tidak lagi aktif menambah skor.')) return;
     try {
       var updated = BSStaffManager.rotateCode(code);
+      updateSyncStatus('unsaved');
       showToast('Kode dirotasi menjadi: ' + updated.code, 'success');
       _renderSourcesTable();
     } catch (err) { showToast('Gagal rotasi: ' + err.message, 'error'); }
@@ -1753,6 +1927,7 @@
     try {
       if (src.active) BSStaffManager.deactivateSource(code);
       else BSStaffManager.updateSource(code, { active: true });
+      updateSyncStatus('unsaved');
       showToast('Status berhasil diubah.', 'success');
       _renderSourcesTable();
       _renderSalesWa();
@@ -1762,6 +1937,7 @@
     if (!confirm('Hapus permanen sumber "' + code + '"? Data tidak dapat dikembalikan.')) return;
     try {
       BSStaffManager.deleteSource(code);
+      updateSyncStatus('unsaved');
       showToast('Sumber berhasil dihapus.', 'success');
       _renderSourcesTable();
       _renderSalesWa();
@@ -1774,14 +1950,20 @@
       var btn = this;
       btn.disabled = true;
       btn.textContent = '⏳ Menyinkronkan…';
-      BSStaffManager.syncToCloud().then(function () {
-        showToast('Data staf berhasil disinkronkan ke Google Sheets.', 'success');
-      }).catch(function (err) {
-        showToast('Gagal sinkronisasi: ' + err.message, 'error');
-      }).finally(function () {
-        btn.disabled = false;
-        btn.textContent = '💾 Simpan & Sinkronkan ke Cloud';
-      });
+      updateSyncStatus('saving');
+      function syncSources() {
+        BSStaffManager.syncToCloud().then(function () {
+          updateSyncStatus('saved');
+          showToast('Data staf berhasil disinkronkan ke Google Sheets.', 'success');
+        }).catch(function (err) {
+          updateSyncStatus('failed', err.message, syncSources);
+          showToast('Gagal sinkronisasi: ' + err.message, 'error');
+        }).finally(function () {
+          btn.disabled = false;
+          btn.textContent = '💾 Simpan & Sinkronkan ke Cloud';
+        });
+      }
+      syncSources();
     });
   }
 
@@ -1826,20 +2008,25 @@
   }
   if ($id('adm-outlet-modal-close'))  $id('adm-outlet-modal-close').addEventListener('click', _closeOutletModal);
   if ($id('adm-outlet-modal-cancel')) $id('adm-outlet-modal-cancel').addEventListener('click', _closeOutletModal);
+  setupAccessibleModal('adm-outlet-modal', _closeOutletModal);
 
   function _openOutletModal(idx) {
+    _lastFocusedTrigger = document.activeElement;
     _editingOutletId = (idx !== null && idx !== undefined) ? idx : null;
     var modal = $id('adm-outlet-modal');
     var title = $id('adm-outlet-modal-title');
     if (_editingOutletId !== null && _outlets[_editingOutletId]) {
       var otl = _outlets[_editingOutletId];
       title.textContent = 'Edit Gerai: ' + otl.name;
-      $id('adm-otl-name').value   = otl.name;
-      $id('adm-otl-image').value  = otl.image_url || 'assets/images/outlets/arumanis.jpg';
-      $id('adm-otl-type').value   = otl.type || '';
-      $id('adm-otl-badge').value  = otl.highlight || '';
-      $id('adm-otl-desc').value   = otl.description || '';
-      $id('adm-otl-hours').value  = otl.hours || '';
+      $id('adm-otl-name').value     = otl.name;
+      $id('adm-otl-image').value    = otl.image_url || 'assets/images/outlets/arumanis.jpg';
+      $id('adm-otl-type').value     = otl.type || '';
+      $id('adm-otl-badge').value    = otl.highlight || '';
+      $id('adm-otl-desc').value     = otl.description || '';
+      $id('adm-otl-hours').value    = otl.hours || '';
+      if ($id('adm-otl-emoji'))    $id('adm-otl-emoji').value    = otl.emoji || '';
+      if ($id('adm-otl-whatsapp')) $id('adm-otl-whatsapp').value = otl.whatsapp || '';
+      if ($id('adm-otl-res-url'))  $id('adm-otl-res-url').value  = otl.reservation_url || '';
       $id('adm-otl-active').checked = otl.active !== false;
     } else {
       title.textContent = 'Tambah Gerai F&B Baru';
@@ -1856,6 +2043,9 @@
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
     _editingOutletId = null;
+    if (_lastFocusedTrigger && typeof _lastFocusedTrigger.focus === 'function') {
+      _lastFocusedTrigger.focus();
+    }
   }
 
   if ($id('adm-outlet-form')) {
@@ -1867,23 +2057,30 @@
       var badge = ($id('adm-otl-badge').value || '').trim();
       var desc  = ($id('adm-otl-desc').value || '').trim();
       var hours = ($id('adm-otl-hours').value || '').trim();
+      var emoji = ($id('adm-otl-emoji') ? $id('adm-otl-emoji').value : '').trim() || '🍽️';
+      var wa    = ($id('adm-otl-whatsapp') ? $id('adm-otl-whatsapp').value : '').trim();
+      var rUrl  = ($id('adm-otl-res-url') ? $id('adm-otl-res-url').value : '').trim();
       var act   = $id('adm-otl-active').checked;
 
       if (!name) { showToast('Nama gerai wajib diisi.', 'error'); return; }
 
       var record = {
-        id:          name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        name:        name,
-        image_url:   img,
-        type:        type,
-        highlight:   badge,
-        description: desc,
-        hours:       hours,
-        active:      act
+        id:              name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        name:            name,
+        image_url:       img,
+        type:            type,
+        highlight:       badge,
+        description:     desc,
+        hours:           hours,
+        emoji:           emoji,
+        whatsapp:        wa,
+        reservation_url: rUrl,
+        active:          act
       };
 
       if (_editingOutletId !== null && _outlets[_editingOutletId]) {
-        _outlets[_editingOutletId] = record;
+        // PERTAHANKAN field lain yang tidak diubah (CNT-01, CNT-02)
+        _outlets[_editingOutletId] = Object.assign({}, _outlets[_editingOutletId], record);
       } else {
         _outlets.push(record);
       }
@@ -1891,12 +2088,18 @@
       _closeOutletModal();
       _renderOutlets();
 
-      BSApi.saveAllAdminData({ config: { outlets: _outlets } }).then(function () {
-        BSConfig.clearCache();
-        showToast('Daftar gerai berhasil disimpan ke cloud.', 'success');
-      }).catch(function (err) {
-        showToast('Gagal menyimpan gerai: ' + err.message, 'error');
-      });
+      function saveOutlets() {
+        updateSyncStatus('saving');
+        BSApi.saveAllAdminData({ config: { outlets: _outlets } }).then(function () {
+          BSConfig.clearCache();
+          updateSyncStatus('saved');
+          showToast('Daftar gerai berhasil disimpan ke cloud.', 'success');
+        }).catch(function (err) {
+          updateSyncStatus('failed', err.message, saveOutlets);
+          showToast('Gagal menyimpan gerai: ' + err.message, 'error');
+        });
+      }
+      saveOutlets();
     });
   }
 
@@ -1906,12 +2109,18 @@
     if (!confirm('Hapus gerai "' + _outlets[idx].name + '"?')) return;
     _outlets.splice(idx, 1);
     _renderOutlets();
-    BSApi.saveAllAdminData({ config: { outlets: _outlets } }).then(function () {
-      BSConfig.clearCache();
-      showToast('Gerai dihapus dan konfigurasi disinkronkan.', 'success');
-    }).catch(function (err) {
-      showToast('Gagal: ' + err.message, 'error');
-    });
+    function saveOutlets() {
+      updateSyncStatus('saving');
+      BSApi.saveAllAdminData({ config: { outlets: _outlets } }).then(function () {
+        BSConfig.clearCache();
+        updateSyncStatus('saved');
+        showToast('Gerai dihapus dan konfigurasi disinkronkan.', 'success');
+      }).catch(function (err) {
+        updateSyncStatus('failed', err.message, saveOutlets);
+        showToast('Gagal: ' + err.message, 'error');
+      });
+    }
+    saveOutlets();
   };
 
   /* ── TAB SALES WA & RESERVASI ── */
@@ -2063,19 +2272,28 @@
   }
   if ($id('adm-promo-modal-close'))  $id('adm-promo-modal-close').addEventListener('click', _closePromoModal);
   if ($id('adm-promo-modal-cancel')) $id('adm-promo-modal-cancel').addEventListener('click', _closePromoModal);
+  setupAccessibleModal('adm-promo-modal', _closePromoModal);
 
   function _openPromoModal(idx) {
+    _lastFocusedTrigger = document.activeElement;
     _editingPromoIdx = (idx !== null && idx !== undefined) ? idx : null;
     var modal = $id('adm-promo-modal');
     var title = $id('adm-promo-modal-title');
     if (_editingPromoIdx !== null && _promos[_editingPromoIdx]) {
       var p = _promos[_editingPromoIdx];
       title.textContent = 'Edit Promosi: ' + p.name;
-      $id('adm-prm-name').value   = p.name;
-      $id('adm-prm-outlet').value = p.outlet || 'Arumanis Restaurant';
-      $id('adm-prm-price').value  = p.price || '';
-      $id('adm-prm-period').value = p.period || '';
-      $id('adm-prm-active').checked = p.active !== false;
+      $id('adm-prm-name').value       = p.name;
+      $id('adm-prm-outlet').value     = p.outlet || 'Arumanis Restaurant';
+      $id('adm-prm-price').value      = p.price || '';
+      $id('adm-prm-period').value     = p.period || '';
+      if ($id('adm-prm-emoji'))     $id('adm-prm-emoji').value     = p.emoji || '';
+      if ($id('adm-prm-image'))     $id('adm-prm-image').value     = p.image_url || '';
+      if ($id('adm-prm-desc'))      $id('adm-prm-desc').value      = p.description || '';
+      if ($id('adm-prm-starts-at')) $id('adm-prm-starts-at').value = p.starts_at || '';
+      if ($id('adm-prm-ends-at'))   $id('adm-prm-ends-at').value   = p.ends_at || '';
+      if ($id('adm-prm-cta-label')) $id('adm-prm-cta-label').value = p.cta_label || '';
+      if ($id('adm-prm-cta-url'))   $id('adm-prm-cta-url').value   = p.cta_url || '';
+      $id('adm-prm-active').checked   = p.active !== false;
     } else {
       title.textContent = 'Tambah Promosi Baru';
       $id('adm-promo-form').reset();
@@ -2091,16 +2309,26 @@
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
     _editingPromoIdx = null;
+    if (_lastFocusedTrigger && typeof _lastFocusedTrigger.focus === 'function') {
+      _lastFocusedTrigger.focus();
+    }
   }
 
   if ($id('adm-promo-form')) {
     $id('adm-promo-form').addEventListener('submit', function (e) {
       e.preventDefault();
-      var name   = ($id('adm-prm-name').value || '').trim();
-      var outlet = $id('adm-prm-outlet').value;
-      var price  = ($id('adm-prm-price').value || '').trim();
-      var period = ($id('adm-prm-period').value || '').trim();
-      var act    = $id('adm-prm-active').checked;
+      var name     = ($id('adm-prm-name').value || '').trim();
+      var outlet   = $id('adm-prm-outlet').value;
+      var price    = ($id('adm-prm-price').value || '').trim();
+      var period   = ($id('adm-prm-period').value || '').trim();
+      var emoji    = ($id('adm-prm-emoji') ? $id('adm-prm-emoji').value : '').trim() || '🍽️';
+      var img      = ($id('adm-prm-image') ? $id('adm-prm-image').value : '').trim();
+      var desc     = ($id('adm-prm-desc') ? $id('adm-prm-desc').value : '').trim();
+      var startsAt = ($id('adm-prm-starts-at') ? $id('adm-prm-starts-at').value : '').trim();
+      var endsAt   = ($id('adm-prm-ends-at') ? $id('adm-prm-ends-at').value : '').trim();
+      var ctaLbl   = ($id('adm-prm-cta-label') ? $id('adm-prm-cta-label').value : '').trim();
+      var ctaUrl   = ($id('adm-prm-cta-url') ? $id('adm-prm-cta-url').value : '').trim();
+      var act      = $id('adm-prm-active').checked;
 
       if (!name) { showToast('Nama promosi wajib diisi.', 'error'); return; }
 
@@ -2110,11 +2338,19 @@
         outlet:      outlet,
         price:       price,
         period:      period,
+        emoji:       emoji,
+        image_url:   img,
+        description: desc,
+        starts_at:   startsAt,
+        ends_at:     endsAt,
+        cta_label:   ctaLbl,
+        cta_url:     ctaUrl,
         active:      act
       };
 
       if (_editingPromoIdx !== null && _promos[_editingPromoIdx]) {
-        _promos[_editingPromoIdx] = record;
+        // PERTAHANKAN semua field yang tidak diubah (CNT-02)
+        _promos[_editingPromoIdx] = Object.assign({}, _promos[_editingPromoIdx], record);
       } else {
         _promos.push(record);
       }
@@ -2122,12 +2358,18 @@
       _closePromoModal();
       _renderPromos();
 
-      BSApi.saveAllAdminData({ config: { promotions: _promos } }).then(function () {
-        BSConfig.clearCache();
-        showToast('Daftar promosi berhasil disimpan ke cloud.', 'success');
-      }).catch(function (err) {
-        showToast('Gagal menyimpan promosi: ' + err.message, 'error');
-      });
+      function savePromos() {
+        updateSyncStatus('saving');
+        BSApi.saveAllAdminData({ config: { promotions: _promos } }).then(function () {
+          BSConfig.clearCache();
+          updateSyncStatus('saved');
+          showToast('Daftar promosi berhasil disimpan ke cloud.', 'success');
+        }).catch(function (err) {
+          updateSyncStatus('failed', err.message, savePromos);
+          showToast('Gagal menyimpan promosi: ' + err.message, 'error');
+        });
+      }
+      savePromos();
     });
   }
 
@@ -2137,12 +2379,18 @@
     if (!confirm('Hapus promosi "' + _promos[idx].name + '"?')) return;
     _promos.splice(idx, 1);
     _renderPromos();
-    BSApi.saveAllAdminData({ config: { promotions: _promos } }).then(function () {
-      BSConfig.clearCache();
-      showToast('Promosi dihapus dan disinkronkan.', 'success');
-    }).catch(function (err) {
-      showToast('Gagal: ' + err.message, 'error');
-    });
+    function savePromos() {
+      updateSyncStatus('saving');
+      BSApi.saveAllAdminData({ config: { promotions: _promos } }).then(function () {
+        BSConfig.clearCache();
+        updateSyncStatus('saved');
+        showToast('Promosi dihapus dan disinkronkan.', 'success');
+      }).catch(function (err) {
+        updateSyncStatus('failed', err.message, savePromos);
+        showToast('Gagal: ' + err.message, 'error');
+      });
+    }
+    savePromos();
   };
 
   /* ── TAB BULK QR: Render & Cetak Massal ── */
@@ -2163,10 +2411,11 @@
     }
 
     container.innerHTML = '';
-    var origin = window.location.origin + ((window.BSConfig && BSConfig.appRoot) ? BSConfig.appRoot() : '/');
+    var appRoot = (window.BSConfig && BSConfig.appRoot) ? BSConfig.appRoot() : '/';
+    var origin = (window.location.origin + appRoot).replace(/\/+$/, '') + '/';
 
     activeSources.forEach(function (s, index) {
-      var fullUrl = origin + '/?source=' + encodeURIComponent(s.code);
+      var fullUrl = origin + '?source=' + encodeURIComponent(s.code);
       var subText = (s.type === 'staff')
         ? ((s.role || 'Staf Hotel') + (s.outlet ? ' · ' + s.outlet : ''))
         : (s.type === 'sales'
@@ -2175,6 +2424,9 @@
       var instText = (s.type === 'staff')
         ? 'ID Badge Resmi Staf Bumi Surabaya City Resort'
         : 'Tap kartu NFC atau scan QR code untuk pelayanan prima';
+      var reprintBadge = s.needs_reprint
+        ? '<div style="margin-top:4px;"><span class="adm-badge-err" style="font-size:0.68rem;padding:2px 6px;">⚠️ Perlu Dicetak Ulang</span></div>'
+        : '';
 
       var cardEl = document.createElement('div');
 
@@ -2184,11 +2436,13 @@
           '<div class="print-tent-half flip">' +
             '<div class="adm-pc-title">' + _esc(s.name) + '</div>' +
             '<div class="adm-pc-sub">' + _esc(subText) + '</div>' +
+            reprintBadge +
             '<div class="adm-pc-qr" id="bulk-qr-top-' + index + '"></div>' +
           '</div>' +
           '<div class="print-tent-half">' +
             '<div class="adm-pc-logo"><img src="../assets/images/logo-hotel.png" alt="Logo" width="90"></div>' +
             '<div class="adm-pc-title">' + _esc(s.name) + '</div>' +
+            reprintBadge +
             '<div class="adm-pc-qr" id="bulk-qr-bot-' + index + '"></div>' +
             '<div class="adm-pc-inst">' + _esc(instText) + '</div>' +
           '</div>';
@@ -2207,6 +2461,7 @@
           '<div class="adm-pc-qr" id="bulk-qr-' + index + '"></div>' +
           '<div class="adm-pc-title">' + _esc(s.name) + '</div>' +
           '<div class="adm-pc-sub">' + _esc(subText) + '</div>' +
+          reprintBadge +
           '<div class="adm-pc-inst">' + _esc(instText) + '</div>';
         container.appendChild(cardEl);
 
@@ -2230,24 +2485,12 @@
     if ($id('adm-app-hero-sub'))       $id('adm-app-hero-sub').value       = app.hero_subtitle || 'Hotel Bintang Lima di Jantung Surabaya';
     if ($id('adm-app-welcome-gen'))    $id('adm-app-welcome-gen').value    = app.welcome_msg_general || 'Kami dengan bangga menyambut Anda di Bumi Surabaya City Resort.';
     if ($id('adm-app-welcome-staff'))  $id('adm-app-welcome-staff').value  = app.welcome_msg_staff || 'Halo! Anda saat ini dilayani dengan tulus oleh {staff_name} ({role}) dari {outlet}.';
-    if ($id('adm-app-accent'))         $id('adm-app-accent').value         = app.accent_color || '#c9a96e';
-  }
-
-  if ($id('adm-app-accent')) {
-    $id('adm-app-accent').addEventListener('input', function () {
-      if ($id('adm-app-accent-text')) $id('adm-app-accent-text').value = this.value + ' (Custom Accent)';
-    });
-  }
-  if ($id('adm-app-primary')) {
-    $id('adm-app-primary').addEventListener('input', function () {
-      if ($id('adm-app-primary-text')) $id('adm-app-primary-text').value = this.value + ' (Custom Primary)';
-    });
   }
 
   if ($id('adm-app-save-btn')) {
     $id('adm-app-save-btn').addEventListener('click', function () {
       var appData = {
-        accent_color:        $id('adm-app-accent') ? $id('adm-app-accent').value : '#c9a96e',
+        accent_color:        '#c9a96e', // Brand token terkunci (PRD 6.1)
         hero_text:           $id('adm-app-hero-title').value.trim(),
         hero_subtitle:       $id('adm-app-hero-sub').value.trim(),
         welcome_msg_general: $id('adm-app-welcome-gen').value.trim(),
@@ -2258,15 +2501,21 @@
       var btn = this;
       btn.disabled = true;
       btn.textContent = '⏳ Menyimpan…';
-      BSApi.saveAllAdminData({ config: { appearance: appData } }).then(function () {
-        BSConfig.clearCache();
-        showToast('Pengaturan tampilan berhasil diperbarui.', 'success');
-      }).catch(function (err) {
-        showToast('Gagal: ' + err.message, 'error');
-      }).finally(function () {
-        btn.disabled = false;
-        btn.textContent = '💾 Simpan Perubahan Tampilan';
-      });
+      updateSyncStatus('saving');
+      function saveApp() {
+        BSApi.saveAllAdminData({ config: { appearance: appData } }).then(function () {
+          BSConfig.clearCache();
+          updateSyncStatus('saved');
+          showToast('Pengaturan tampilan berhasil diperbarui.', 'success');
+        }).catch(function (err) {
+          updateSyncStatus('failed', err.message, saveApp);
+          showToast('Gagal: ' + err.message, 'error');
+        }).finally(function () {
+          btn.disabled = false;
+          btn.textContent = '💾 Simpan Perubahan Tampilan';
+        });
+      }
+      saveApp();
     });
   }
 
@@ -2562,7 +2811,28 @@
     });
   }
 
-  /* ── TAB NFC: Web NFC Programmer ── */
+  /* ── TAB NFC: Web NFC Programmer (QRN-03, QRN-04) ── */
+  function _checkNfcSupport() {
+    var banner   = $id('adm-nfc-compat-banner');
+    var writeBtn = $id('adm-nfc-write-btn');
+    var supported = typeof BSNfc !== 'undefined' && BSNfc.isSupported();
+    if (!supported) {
+      if (banner) {
+        banner.style.display = '';
+        banner.innerHTML = '⚠️ <strong>Web NFC tidak didukung di browser ini.</strong> Web NFC membutuhkan Google Chrome di perangkat Android dengan sensor NFC aktif. Browser iOS (Safari) dan Desktop tidak menyediakan Web NFC API. Silakan salin URL lalu ikuti <em>Panduan Alternatif NFC Tools</em> di bawah.';
+      }
+      if (writeBtn) {
+        writeBtn.disabled = true;
+        writeBtn.title = 'Web NFC tidak didukung di browser ini';
+      }
+    } else {
+      if (banner) banner.style.display = 'none';
+      if (writeBtn && $id('adm-nfc-source-select') && $id('adm-nfc-source-select').value) {
+        writeBtn.disabled = false;
+      }
+    }
+  }
+
   function _populateNfcSelect() {
     var sel = $id('adm-nfc-source-select');
     if (!sel) return;
@@ -2574,6 +2844,7 @@
       opt.textContent = s.name + ' (' + s.type + ')';
       sel.appendChild(opt);
     });
+    _checkNfcSupport();
   }
 
   if ($id('adm-nfc-source-select')) {
@@ -2594,11 +2865,14 @@
         return;
       }
 
-      var baseUrl = window.location.origin + ((window.BSConfig && BSConfig.appRoot) ? BSConfig.appRoot() : '/');
+      var appRoot = (window.BSConfig && BSConfig.appRoot) ? BSConfig.appRoot() : '/';
+      var baseUrl = (window.location.origin + appRoot).replace(/\/+$/, '') + '/';
       var fullUrl = baseUrl + '?source=' + encodeURIComponent(code);
       if (urlEl) urlEl.value = fullUrl;
-      if (writeBtn) writeBtn.disabled = false;
-      if (markBtn) markBtn.disabled  = false;
+
+      var nfcSupported = typeof BSNfc !== 'undefined' && BSNfc.isSupported();
+      if (writeBtn) writeBtn.disabled = !nfcSupported;
+      if (markBtn)  markBtn.disabled  = false;
       if (printBtn) printBtn.disabled = false;
 
       if (qrWrap) {
@@ -2628,22 +2902,38 @@
     $id('adm-nfc-write-btn').addEventListener('click', function () {
       var url = $id('adm-nfc-url-preview').value;
       if (!url) { showToast('Pilih sumber terlebih dahulu.', 'error'); return; }
-      if (typeof BSWebNfc === 'undefined' || typeof BSWebNfc.writeUrl !== 'function') {
-        showToast('Web NFC tidak tersedia di perangkat / browser ini.', 'error'); return;
+      if (typeof BSNfc === 'undefined' || !BSNfc.isSupported()) {
+        showToast('Web NFC tidak didukung di perangkat / browser ini.', 'error');
+        _checkNfcSupport();
+        return;
       }
-      $id('adm-nfc-status-bar').textContent = '⏳ Menunggu kartu… Tempelkan kartu NFC ke belakang ponsel.';
-      $id('adm-nfc-status-bar').className   = 'adm-nfc-status adm-nfc-waiting';
-      BSWebNfc.writeUrl(url, function (ok, msg) {
-        if (ok) {
-          $id('adm-nfc-status-bar').textContent = '✅ Kartu berhasil ditulis!';
-          $id('adm-nfc-status-bar').className   = 'adm-nfc-status adm-nfc-ok';
+
+      var bar = $id('adm-nfc-status-bar');
+      bar.textContent = '🔒 Meminta izin akses NFC dari browser…';
+      bar.className   = 'adm-nfc-status adm-nfc-waiting';
+
+      BSNfc.writeCard(url, function (ev) {
+        if (ev.status === 'permission') {
+          bar.textContent = '🔒 Meminta izin akses NFC dari browser… Harap izinkan dialog.';
+          bar.className   = 'adm-nfc-status adm-nfc-waiting';
+        } else if (ev.status === 'waiting') {
+          bar.textContent = '⏳ Izin aktif. Menunggu kartu NFC… Tempelkan kartu fisik ke belakang ponsel.';
+          bar.className   = 'adm-nfc-status adm-nfc-waiting';
+        } else if (ev.status === 'writing') {
+          bar.textContent = '📡 Kartu terdeteksi — sedang memprogram URL ke tag NFC…';
+          bar.className   = 'adm-nfc-status adm-nfc-waiting';
+        } else if (ev.status === 'success') {
+          bar.textContent = '✅ ' + ev.message;
+          bar.className   = 'adm-nfc-status adm-nfc-ok';
           _markCardProgrammed($id('adm-nfc-source-select').value);
           showToast('Kartu NFC berhasil diprogram!', 'success');
-        } else {
-          $id('adm-nfc-status-bar').textContent = '❌ Gagal: ' + (msg || 'error');
-          $id('adm-nfc-status-bar').className   = 'adm-nfc-status adm-nfc-err';
-          showToast('Gagal menulis kartu: ' + (msg || 'error'), 'error');
+        } else if (ev.status === 'error') {
+          bar.textContent = '❌ Gagal: ' + (ev.message || 'error tidak dikenal');
+          bar.className   = 'adm-nfc-status adm-nfc-err';
+          showToast('Gagal memprogram kartu: ' + (ev.message || 'error'), 'error');
         }
+      }).catch(function () {
+        // error telah ditangani dalam onStatus
       });
     });
   }
@@ -2659,7 +2949,8 @@
 
   function _markCardProgrammed(code) {
     try {
-      BSStaffManager.updateSource(code, { kartu_diprogram: true });
+      BSStaffManager.updateSource(code, { kartu_diprogram: true, needs_reprint: false });
+      updateSyncStatus('unsaved');
       _renderSourcesTable();
     } catch (_) {}
   }
@@ -2669,6 +2960,8 @@
       window.print();
     });
   }
+
+  setupAccessibleModal('adm-must-change-modal');
 
   /* ── String & Format Helpers ── */
   function _esc(str) {

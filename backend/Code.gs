@@ -400,7 +400,13 @@ function _handleGetConfig() {
       number: '628113388523', template_staff: '', template_general: ''
     },
     promotions: Array.isArray(rawConfig.promotions) ? rawConfig.promotions.filter(function(p) {
-      return p && p.active !== false;
+      if (!p || p.active === false) return false;
+      // Filter periode tanggal Asia/Jakarta (CNT-03, GUE-08)
+      var nowWib = Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ss");
+      var todayWib = nowWib.substring(0, 10);
+      if (p.starts_at && String(p.starts_at) > todayWib && String(p.starts_at) > nowWib) return false;
+      if (p.ends_at && (String(p.ends_at) < todayWib || (p.ends_at.length > 10 && String(p.ends_at) < nowWib))) return false;
+      return true;
     }).map(function(p) {
       return {
         id:          String(p.id || ''),
@@ -411,6 +417,10 @@ function _handleGetConfig() {
         period:      String(p.period || ''),
         emoji:       String(p.emoji || '🍽️'),
         image_url:   String(p.image_url || ''),
+        starts_at:   String(p.starts_at || ''),
+        ends_at:     String(p.ends_at || ''),
+        cta_label:   String(p.cta_label || ''),
+        cta_url:     String(p.cta_url || ''),
         active:      true
       };
     }) : [],
@@ -418,15 +428,17 @@ function _handleGetConfig() {
       return o && o.active !== false;
     }).map(function(o) {
       return {
-        id:          String(o.id || ''),
-        name:        String(o.name || ''),
-        type:        String(o.type || ''),
-        description: String(o.description || ''),
-        hours:       String(o.hours || ''),
-        emoji:       String(o.emoji || '🍽️'),
-        highlight:   String(o.highlight || ''),
-        image_url:   String(o.image_url || ''),
-        active:      true
+        id:              String(o.id || ''),
+        name:            String(o.name || ''),
+        type:            String(o.type || ''),
+        description:     String(o.description || ''),
+        hours:           String(o.hours || ''),
+        emoji:           String(o.emoji || '🍽️'),
+        highlight:       String(o.highlight || ''),
+        image_url:       String(o.image_url || ''),
+        whatsapp:        String(o.whatsapp || ''),
+        reservation_url: String(o.reservation_url || ''),
+        active:          true
       };
     }) : []
   };
@@ -648,20 +660,20 @@ function _handleLogEvent(data) {
   var botFlag  = (data.hp && String(data.hp).trim() !== '') ? true : false;
   var eventId  = String(data.event_id || '').trim() || Utilities.getUuid();
 
-  // Rekonsiliasi dwell_update: cari baris sesi yang cocok dan perbarui kolom dwell
+  // Rekonsiliasi dwell_update: cari baris sesi yang cocok dan perbarui kolom dwell (API-05)
   if (data.event === 'dwell_update' && data.session_id) {
-    var lastRow  = sheet.getLastRow();
+    var lastRow = sheet.getLastRow();
     if (lastRow > 1) {
-      var scanRows = Math.min(200, lastRow - 1);
-      var range    = sheet.getRange(lastRow - scanRows + 1, 1, scanRows, 14);
-      var values   = range.getValues();
-      for (var i = values.length - 1; i >= 0; i--) {
-        if (String(values[i][1]) === String(data.session_id)) {
-          var targetRow = (lastRow - scanRows + 1) + i;
-          sheet.getRange(targetRow, 12).setValue(Number(data.dwell_ms)    || 0);
+      // Scan kolom session_id (kolom 2) untuk seluruh baris aktif (API-05: bukan hanya 200 baris terakhir)
+      var sessionCol = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+      for (var i = sessionCol.length - 1; i >= 0; i--) {
+        if (String(sessionCol[i][0]) === String(data.session_id)) {
+          var targetRow = i + 2;
+          sheet.getRange(targetRow, 12).setValue(Number(data.dwell_ms)     || 0);
           sheet.getRange(targetRow, 13).setValue(Number(data.interactions) || 0);
-          sheet.getRange(targetRow, 14).setValue(Number(data.scroll_max)  || 0);
-          return _jsonOut({ ok: true, action: 'reconciled', event_id: values[i][0] });
+          sheet.getRange(targetRow, 14).setValue(Number(data.scroll_max)   || 0);
+          var matchedEventId = sheet.getRange(targetRow, 1).getValue();
+          return _jsonOut({ ok: true, action: 'reconciled', event_id: matchedEventId });
         }
       }
     }
@@ -958,7 +970,9 @@ function _handleGetEventsData(data) {
     config:        fullConfig,
     sources:       allSources,
     archive_tabs:  archiveTabs,
-    total:         eventsList.length
+    total:         eventsList.length,
+    total_rows:    (evSheet && evSheet.getLastRow() > 1) ? (evSheet.getLastRow() - 1) : 0,
+    limit:         limit
   });
 }
 

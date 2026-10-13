@@ -49,32 +49,63 @@
     return _sessionId;
   }
 
-  /** Baca source dari URL dan simpan ke sessionStorage */
+  /** Masa berlaku atribusi sesi jika tidak ada query parameter baru (30 menit inaktivitas, GUE-12) */
+  var SOURCE_ATTRIBUTION_TTL_MS = 30 * 60 * 1000;
+
+  /**
+   * Resolusi source dengan prioritas terdokumentasi (GUE-02, GUE-12):
+   * 1. Query param ?source= di URL (prioritas tertinggi — langsung menimpa sesi lama).
+   * 2. Sesi aktif tersimpan di sessionStorage (selama belum kedaluwarsa 30 menit).
+   * 3. Fallback default ('general').
+   */
   function resolveSource() {
     var cfgKey = (window.BSConfig && window.BSConfig.SESSION_SOURCE_KEY) || 'bs_session_source';
-    // Cek apakah sumber sudah disimpan sesi ini
-    var saved = sessionStorage.getItem(cfgKey);
-    if (saved) {
-      try {
-        var p = JSON.parse(saved);
-        _source     = p.code  || 'general';
-        _sourceType = p.type  || 'general';
-        return;
-      } catch(e) {}
-    }
-    // Baca dari URL
     var params = new URLSearchParams(window.location.search);
-    var raw    = params.get('source') || '';
-    _source    = raw || 'general';
+    var rawQuery = (params.get('source') || '').trim();
 
-    // Tentukan type dari prefix
-    if (/^staff-/i.test(_source))   _sourceType = 'staff';
-    else if (/^nfc-/i.test(_source)) _sourceType = 'nfc';
-    else if (raw)                    _sourceType = 'outlet';
-    else                             _sourceType = 'general';
+    // 1. Prioritas Utama: Query param eksplisit dari URL
+    if (rawQuery) {
+      _source = rawQuery;
+      if (/^staff-/i.test(_source))        _sourceType = 'staff';
+      else if (/^nfc-/i.test(_source))    _sourceType = 'nfc';
+      else if (/^sales-/i.test(_source))  _sourceType = 'sales';
+      else if (_source !== 'general')     _sourceType = 'outlet';
+      else                                _sourceType = 'general';
 
-    // Simpan ke sessionStorage untuk atribusi persisten
-    sessionStorage.setItem(cfgKey, JSON.stringify({ code: _source, type: _sourceType }));
+      // Simpan ke sessionStorage dengan timestamp pembaruan
+      try {
+        sessionStorage.setItem(cfgKey, JSON.stringify({
+          code: _source,
+          type: _sourceType,
+          ts: Date.now()
+        }));
+      } catch(e) {}
+      return;
+    }
+
+    // 2. Prioritas Kedua: Sesi aktif tersimpan (jika dalam batas TTL 30 menit)
+    try {
+      var saved = sessionStorage.getItem(cfgKey);
+      if (saved) {
+        var p = JSON.parse(saved);
+        var age = Date.now() - (Number(p.ts) || 0);
+        if (p.code && age >= 0 && age < SOURCE_ATTRIBUTION_TTL_MS) {
+          _source     = p.code;
+          _sourceType = p.type || 'general';
+          // Perbarui timestamp interaksi sesi (sliding inactivity window)
+          p.ts = Date.now();
+          sessionStorage.setItem(cfgKey, JSON.stringify(p));
+          return;
+        } else {
+          // Kedaluwarsa: hapus atribusi sesi yang sudah kadaluarsa
+          sessionStorage.removeItem(cfgKey);
+        }
+      }
+    } catch(e) {}
+
+    // 3. Fallback Default
+    _source     = 'general';
+    _sourceType = 'general';
   }
 
   /** Buat payload event standar */
@@ -82,6 +113,7 @@
     var ua = navigator.userAgent.substring(0, 150);
     var scr= screen.width + 'x' + screen.height + '@' + (screen.devicePixelRatio || 1).toFixed(1);
     var evId = window.BSFingerprint ? window.BSFingerprint.uuid4() : ('ev_' + Date.now());
+    var hpValue = (window._bsHpValue || (document.getElementById('bs-hp-website') ? document.getElementById('bs-hp-website').value : '') || '').substring(0, 100);
     return {
       action:      'log_event',
       event_id:    evId,
@@ -97,7 +129,7 @@
       dwell_ms:    _dwellAccum,
       interactions:_interactions,
       scroll_max:  _scrollMax,
-      hp:          '',   // honeypot diisi oleh form di app.js
+      hp:          hpValue,   // honeypot terhubung ke field dan window._bsHpValue (AF-06)
       extra:       extra || {}
     };
   }
@@ -156,7 +188,7 @@
       dwell_ms:    getCurrentDwell(),
       interactions:_interactions,
       scroll_max:  _scrollMax,
-      hp:          '',
+      hp:          (window._bsHpValue || (document.getElementById('bs-hp-website') ? document.getElementById('bs-hp-website').value : '') || '').substring(0, 100),
       extra:       {}
     };
     try {

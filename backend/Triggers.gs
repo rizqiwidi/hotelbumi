@@ -34,19 +34,16 @@ function laporanMingguan() {
       return;
     }
 
-    // Ambil data 7 hari terakhir dari tab Events bulan ini
-    var evSheet  = _getCurrentEventsSheet(ss);
-    var events   = evSheet ? _readAllEvents(evSheet) : [];
-    var weekAgo  = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    var recent   = events.filter(function (ev) {
-      try { return new Date(ev.ts_server) >= weekAgo; } catch (e) { return false; }
-    });
+    // Ambil data 7 hari terakhir mencakup lintas bulan bila terjadi pergantian bulan (API-07)
+    var now      = new Date();
+    var weekAgo  = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    var recent   = _getEventsInRange(ss, weekAgo, now);
 
     // Hitung ringkasan
     var summary = _summarizeEvents(recent);
 
     // Susun dan kirim email
-    var subject = '[Bumi Surabaya] Laporan Mingguan — ' + _formatTanggal(new Date());
+    var subject = '[Bumi Surabaya] Laporan Mingguan — ' + _formatTanggal(now);
     var body    = _buildEmailBody(summary);
     GmailApp.sendEmail(emailTarget, subject, '', { htmlBody: body });
 
@@ -58,11 +55,12 @@ function laporanMingguan() {
 
 /* ══════════════════════════════════════════════════════════════
    AGREGASI BULANAN — Berjalan tanggal 1 setiap bulan pukul 02:00 WIB
+   Idempotent (API-08): dapat dijalankan ulang tanpa duplikasi
 ══════════════════════════════════════════════════════════════ */
 
 /**
  * Entry point trigger agregasi bulanan.
- * Menulis ringkasan bulan LALU ke tab MonthlyAggregates.
+ * Menulis ringkasan bulan LALU ke tab MonthlyAggregates secara idempotent.
  */
 function agregatBulanan() {
   try {
@@ -91,6 +89,16 @@ function agregatBulanan() {
       'total_visits', 'total_reviews', 'total_wa', 'total_promos',
       'quality_score', 'fraud_events_flagged'
     ]);
+
+    // Hapus data bulan ini jika sudah ada sebelumnya agar idempotent (API-08)
+    if (aggSheet.getLastRow() > 1) {
+      var oldVals = aggSheet.getRange(2, 1, aggSheet.getLastRow() - 1, 1).getValues();
+      for (var r = oldVals.length - 1; r >= 0; r--) {
+        if (String(oldVals[r][0]) === monthKey) {
+          aggSheet.deleteRow(r + 2);
+        }
+      }
+    }
 
     var rows = [];
     Object.keys(summary.bySource).forEach(function (code) {
@@ -436,6 +444,40 @@ function _summarizeEvents(events) {
 function _getCurrentEventsSheet(ss) {
   var monthStr = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy_MM');
   return ss.getSheetByName('Events_' + monthStr) || null;
+}
+
+/**
+ * Ambil semua event dalam rentang waktu tertentu, mencakup lintas bulan (API-06, API-07).
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @param {Date} startDate
+ * @param {Date} endDate
+ * @returns {Array<Object>}
+ */
+function _getEventsInRange(ss, startDate, endDate) {
+  var allEvents = [];
+  var startMonth = Utilities.formatDate(startDate, 'Asia/Jakarta', 'yyyy_MM');
+  var endMonth   = Utilities.formatDate(endDate, 'Asia/Jakarta', 'yyyy_MM');
+  var monthTabs  = [startMonth];
+  if (endMonth !== startMonth) {
+    monthTabs.push(endMonth);
+  }
+
+  monthTabs.forEach(function(mTab) {
+    var sh = ss.getSheetByName('Events_' + mTab);
+    if (sh) {
+      var rows = _readAllEvents(sh);
+      allEvents = allEvents.concat(rows);
+    }
+  });
+
+  return allEvents.filter(function(ev) {
+    try {
+      var t = new Date(ev.ts_server).getTime();
+      return t >= startDate.getTime() && t <= endDate.getTime();
+    } catch(e) {
+      return false;
+    }
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════

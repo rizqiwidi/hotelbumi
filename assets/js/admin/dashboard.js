@@ -113,6 +113,17 @@
    * @param {number}  data.conversionRate   - reviews / visits (0–1)
    * @param {Object}  [data.prev]           - same shape for previous period (optional)
    */
+  /**
+   * Render the five metric summary cards with strict definitions (ANA-01, ANA-02, ANA-03).
+   *
+   * @param {Object} data - Evaluated events / leaderboard data
+   * @param {number}  data.totalVisits      - total scan / page-load events
+   * @param {number}  data.qualityScore     - weighted avg quality score (0–5)
+   * @param {number}  data.totalReviews     - clicks on Google Review link (ANA-02)
+   * @param {number}  data.waClicks         - WhatsApp button clicks
+   * @param {number}  data.conversionRate   - review clicks / visits (0–1) (ANA-03)
+   * @param {Object}  [data.prev]           - same shape for previous period (optional)
+   */
   function renderMetrics(data = {}) {
     const {
       totalVisits    = 0,
@@ -125,54 +136,77 @@
 
     const metrics = [
       {
-        id:    'adm-metric-visits',
-        label: 'Total Kunjungan',
-        value: _fmt(totalVisits),
+        id:      'adm-metric-visits',
+        label:   'Total Kunjungan',
+        value:   _fmt(totalVisits),
+        sub:     'Kunjungan halaman tamu valid',
+        tooltip: 'Total event kunjungan (visit) yang valid setelah evaluasi anti-fraud. Formula: COUNT(event == "visit"). Window: Bulan terpilih (WIB). Satuan: kunjungan.',
         ...( prev.totalVisits !== undefined
             ? _trend(totalVisits, prev.totalVisits)
             : {} ),
       },
       {
-        id:    'adm-metric-score',
-        label: 'Quality Score',
-        value: _score(qualityScore) + ' / 5',
+        id:      'adm-metric-score',
+        label:   'Quality Score',
+        value:   _score(qualityScore) + ' / 5',
+        sub:     'Skor interaksi rata-rata (0–5)',
+        tooltip: 'Skor kualitas interaksi valid: Visit (+1), Scroll >50% (+1), Klik WA (+2), Promo/Outlet (+2), Klik Review (+3). Event ditolak/dikurangi anti-fraud = 0 poin. Satuan: poin skala 0–5.',
         ...( prev.qualityScore !== undefined
             ? _trend(qualityScore, prev.qualityScore)
             : {} ),
       },
       {
-        id:    'adm-metric-reviews',
-        label: 'Total Ulasan',
-        value: _fmt(totalReviews),
+        id:      'adm-metric-reviews',
+        label:   'Klik Google Review',
+        value:   _fmt(totalReviews),
+        sub:     'Klik tombol ulasan (bukan ulasan terkirim)',
+        tooltip: 'Total klik tombol menuju Google Review (ANA-02). Data mengukur intensi klik tamu, bukan konfirmasi ulasan terkirim di Google Maps. Formula: COUNT(event == "google_review_click"). Satuan: klik.',
         ...( prev.totalReviews !== undefined
             ? _trend(totalReviews, prev.totalReviews)
             : {} ),
       },
       {
-        id:    'adm-metric-wa',
-        label: 'WA Clicks',
-        value: _fmt(waClicks),
+        id:      'adm-metric-wa',
+        label:   'Klik WhatsApp',
+        value:   _fmt(waClicks),
+        sub:     'Klik chat & reservasi WhatsApp',
+        tooltip: 'Total klik tombol WhatsApp (staf / concierge hotel). Formula: COUNT(event == "whatsapp_click"). Satuan: klik.',
         ...( prev.waClicks !== undefined
             ? _trend(waClicks, prev.waClicks)
             : {} ),
       },
       {
-        id:    'adm-metric-conv',
-        label: 'Conversion Rate',
-        value: _pct(conversionRate),
+        id:      'adm-metric-conv',
+        label:   'Rasio Klik Review / Kunjungan',
+        value:   _pct(conversionRate),
+        sub:     'Formula: (Klik Review / Kunjungan) × 100%',
+        tooltip: 'Rasio klik review terhadap kunjungan (ANA-03). Formula: (Total Klik Google Review / Total Kunjungan) × 100%. Denominator: Total Kunjungan.',
         ...( prev.conversionRate !== undefined
             ? _trend(conversionRate, prev.conversionRate)
             : {} ),
       },
     ];
 
-    metrics.forEach(({ id, label, value, arrow = '', cls = '' }) => {
-      const el = _el(id);
-      if (!el) return;
-      _setHtml(el, `
-        <div class="bs-metric-label">${_escHtml(label)}</div>
-        <div class="bs-metric-value">${_escHtml(String(value))}<span class="bs-metric-trend ${_escHtml(cls)}">${_escHtml(arrow)}</span></div>
-      `);
+    metrics.forEach(({ id, label, value, sub, tooltip, arrow = '', cls = '' }) => {
+      const cardEl = _el(id);
+      if (!cardEl) return;
+      cardEl.setAttribute('title', tooltip);
+
+      const labelEl = cardEl.querySelector('.adm-metric-label');
+      const valEl   = cardEl.querySelector('.adm-metric-value');
+      const subEl   = cardEl.querySelector('.adm-metric-sub');
+
+      if (labelEl) labelEl.textContent = label;
+      if (subEl)   subEl.textContent   = sub;
+      if (valEl) {
+        valEl.innerHTML = `${_escHtml(String(value))}<span class="bs-metric-trend ${_escHtml(cls)}">${_escHtml(arrow)}</span>`;
+      } else {
+        _setHtml(cardEl, `
+          <div class="bs-metric-label">${_escHtml(label)}</div>
+          <div class="bs-metric-value">${_escHtml(String(value))}<span class="bs-metric-trend ${_escHtml(cls)}">${_escHtml(arrow)}</span></div>
+          <div class="bs-metric-sub">${_escHtml(sub)}</div>
+        `);
+      }
     });
   }
 
@@ -453,12 +487,17 @@
 
   /**
    * Escape a value for safe CSV cell output.
-   * Wraps in double-quotes if it contains commas, newlines, or quotes.
+   * Mitigasi Formula Injection (ANA-07):
+   * Sel yang diawali '=', '+', '-', '@', tab (\t), atau carriage return (\r)
+   * diberi prefix tanda kutip satu (') agar dianggap sebagai string teks murni di Excel/Sheets.
    * @param {*} val
    * @returns {string}
    */
   function _csvCell(val) {
-    const str = (val === null || val === undefined) ? '' : String(val);
+    let str = (val === null || val === undefined) ? '' : String(val);
+    if (/^[=+\-@\t\r]/.test(str)) {
+      str = "'" + str;
+    }
     if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
       return '"' + str.replace(/"/g, '""') + '"';
     }

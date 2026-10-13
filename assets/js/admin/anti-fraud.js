@@ -104,6 +104,8 @@
     return {
       hasReject: hasReject,
       hasReduce: hasReduce,
+      isRejected: hasReject,
+      isScoreZeroed: hasReject || hasReduce,
       isFlagOnly: !hasReject && !hasReduce && (ruleIds && ruleIds.length > 0)
     };
   }
@@ -715,9 +717,12 @@
       };
       sourceRows.push(row);
 
-      if (stype === 'staff') {
-        staffRows.push({ name: name, code: sid, score: score, reviews: reviews, outlet: outlet });
-      } else {
+      // Pengelompokan leaderboard terstandar (ANA-08):
+      // Hanya staf dan sales yang masuk peringkat staf. Hanya outlet F&B yang masuk peringkat gerai.
+      // NFC (stiker meja) dan general tidak dicampur ke peringkat gerai F&B.
+      if (stype === 'staff' || stype === 'sales') {
+        staffRows.push({ name: name, code: sid, score: score, reviews: reviews, outlet: outlet, role: meta.role || stype });
+      } else if (stype === 'outlet') {
         outletRows.push({ name: name, score: score, reviews: reviews, visits: visits });
       }
     });

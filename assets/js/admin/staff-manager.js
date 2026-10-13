@@ -173,27 +173,43 @@
   }
 
   /**
-   * Rotate the code for a source:
-   *  1. Pushes the current code into legacy_codes
-   *  2. Generates a new versioned code  (e.g. "staff-budi-v2", "staff-budi-v3")
-   *  3. Sets kartu_diprogram = false  (card needs re-programming)
+   * Rotate the code for a source (SRC-04, QRN-05):
+   *  1. MENCABUT kode lama secara default (revoked = true, legacy migration off by default).
+   *  2. Menghasilkan kode baru berversi (e.g. "staff-budi-v2").
+   *  3. Menandai kartu_diprogram = false dan needs_reprint = true (aset fisik perlu diganti, QRN-05).
+   *  4. Mode migrasi hanya jika eksplisit diminta (opts.migration_mode === true) dengan masa tenggang berlabel.
    *
    * @param {string} code  - current code of the source to rotate
+   * @param {Object} [opts]
+   * @param {boolean} [opts.migration_mode=false]
+   * @param {number}  [opts.grace_days=7]
    * @returns {SourceRecord}  - updated record with new code
    */
-  function rotateCode(code) {
+  function rotateCode(code, opts = {}) {
     const idx    = _findIndex(code);
     const source = _sources[idx];
 
-    // Determine next version number based on how many rotations have happened
-    const version = source.legacy_codes.length + 2; // v2, v3, …
-    const newCode = _uniquifyCode(code + '-v' + version);
+    // Tentukan versi baru
+    const version = (source.legacy_codes || []).length + 2; // v2, v3, …
+    const baseCode = code.replace(/-v\d+$/, '');
+    const newCode = _uniquifyCode(baseCode + '-v' + version);
+
+    const now = new Date();
+    const isMigration = Boolean(opts.migration_mode);
+    const graceDays = Number(opts.grace_days) || 7;
+    const migrationUntil = isMigration
+      ? new Date(now.getTime() + graceDays * 86400000).toISOString()
+      : null;
 
     _sources[idx] = Object.assign({}, source, {
       code:            newCode,
-      legacy_codes:    [...source.legacy_codes, code],
-      kartu_diprogram: false,
-      updated_at:      new Date().toISOString(),
+      legacy_codes:    [...(source.legacy_codes || []), code],
+      revoked_codes:   [...(source.revoked_codes || []), (!isMigration ? code : null)].filter(Boolean),
+      migration_mode:  isMigration,
+      migration_until: migrationUntil,
+      kartu_diprogram: false, // Kartu lama dicabut, perlu diprogram ulang (QRN-05)
+      needs_reprint:   true,  // Menandai aset stiker/kartu perlu diganti
+      updated_at:      now.toISOString(),
     });
 
     _persistLocal();
@@ -313,12 +329,13 @@
   function generateQrDataUrl(sourceCode, baseUrl) {
     if (!sourceCode) throw new Error('[BSStaffManager] generateQrDataUrl: sourceCode is required');
 
-    const base = baseUrl
-      ? String(baseUrl).replace(/\/$/, '') + '/'
+    let base = baseUrl
+      ? String(baseUrl)
       : (global.location
           ? global.location.origin + ((window.BSConfig && BSConfig.appRoot) ? BSConfig.appRoot() : '/')
-          : 'https://bumi-surabaya.example.com/');
+          : 'https://rizqiwidi.github.io/hotelbumi/');
 
+    base = base.replace(/\/+$/, '') + '/';
     return base + '?source=' + encodeURIComponent(sourceCode);
   }
 

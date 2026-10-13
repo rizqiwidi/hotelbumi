@@ -1100,3 +1100,119 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 480px) {
+  .adm-topbar-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .adm-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .adm-modal-box {
+    width: 95%;
+    max-width: 95%;
+    padding: 20px 16px;
+    margin: 16px auto;
+  }
+}
+
+/* ── ACCESSIBILITY & FOCUS (GUE-14, PRD 6.3) ──────────────── */
+:focus-visible {
+  outline: 2px solid var(--champagne-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── STATUS SINKRONISASI & SAVE (SRC-05, SRC-06, SEC-09) ──── */
+.adm-sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.adm-sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.adm-sync-saved {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+}
+.adm-sync-saved .adm-sync-dot {
+  background: var(--success);
+}
+.adm-sync-unsaved {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+.adm-sync-unsaved .adm-sync-dot {
+  background: var(--warning);
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+}
+.adm-sync-saving {
+  background: var(--info-bg);
+  color: var(--info);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+.adm-sync-saving .adm-sync-dot {
+  background: var(--info);
+  animation: adm-pulse 1s infinite alternate;
+}
+.adm-sync-failed {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+.adm-sync-failed .adm-sync-dot {
+  background: var(--danger);
+}
+@keyframes adm-pulse {
+  from { opacity: 0.3; }
+  to { opacity: 1; }
+}
+
+/* ── BRAND PALETTE TOKENS (CNT-07, PRD 6.1) ───────────────── */
+.adm-palette-preview {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.adm-palette-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--charcoal);
+}
+.adm-palette-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}

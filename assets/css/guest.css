@@ -787,6 +787,29 @@ img {
 .bs-promo-period {
   font-size: 0.78rem;
   color: var(--charcoal-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bs-promo-footer {
+  border-top: 1px solid var(--ivory-dark);
+  padding-top: 14px;
+  margin-top: 14px;
+}
+
+.bs-promo-action-btn {
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  min-height: 44px;
 }
 
 /* ── WHATSAPP CONCIERGE SECTION ───────────────────────────── */
@@ -1264,5 +1287,64 @@ img {
   }
   .bs-modal-drag {
     display: none;
+  }
+}
+
+/* ── AKSESIBILITAS: FOKUS KEYBOARD VISIBEL (PRD 6.4) ──────── */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--champagne-gold) !important;
+  outline-offset: 3px !important;
+}
+
+/* ── AKSESIBILITAS: PREFERS-REDUCED-MOTION (PRD 6.4) ──────── */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+    scroll-behavior: auto !important;
+  }
+  .bs-hero-ambient-glow {
+    animation: none !important;
+  }
+  .bs-btn, .bs-promo-card, .bs-outlet-card {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ── RESPONSIVE SAFEGUARD: 360px - 400px VIEWPORT OVERFLOW ── */
+@media (max-width: 400px) {
+  .bs-container {
+    padding: 0 14px;
+  }
+  .bs-hero {
+    padding: 40px 14px 60px;
+  }
+  .bs-hero h1 {
+    font-size: 1.7rem;
+  }
+  .bs-btn {
+    padding: 12px 14px;
+    font-size: 0.88rem;
+  }
+  .bs-hero-highlights {
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+  .bs-promos-grid, .bs-outlets-grid {
+    grid-template-columns: 1fr;
+  }
+  .bs-modal {
+    padding: 24px 16px;
   }
 }
