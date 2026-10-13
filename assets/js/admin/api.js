@@ -93,6 +93,11 @@
     return get({ action: 'get_config' });
   }
 
+  /** Ambil log jejak audit mutasi terbaru (SEC-11, SEC-12, SRC-09) */
+  function getAuditLogs(limit) {
+    return post({ action: 'get_audit_logs', limit: limit || 200 });
+  }
+
   window.BSApi = {
     post:             post,
     get:              get,
@@ -101,7 +106,8 @@
     saveAllAdminData: saveAllAdminData,
     getAdminData:     getAdminData,
     getEventsData:    getEventsData,
-    getPublicConfig:  getPublicConfig
+    getPublicConfig:  getPublicConfig,
+    getAuditLogs:     getAuditLogs
   };
 
 })(window);

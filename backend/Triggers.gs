@@ -539,16 +539,121 @@ function _buildEmailBody(summary) {
       anomalyHtml,
       '<div style="margin-top:24px;padding:16px;background:#f0ece4;border-radius:8px;">',
         '<p style="margin:0;font-size:13px;color:#888;">',
-          'Email ini dikirim otomatis oleh sistem Digital Guest Experience v5.0. ',
+          'Email ini dikirim otomatis oleh sistem Digital Guest Experience v6.2 (Fase 2). ',
           'Untuk detail lengkap, buka portal admin di: ',
-          '<a href="https://guest.bumisurabaya.com/admin/" style="color:#c9a96e;">',
-            'guest.bumisurabaya.com/admin',
+          '<a href="https://rizqiwidi.github.io/hotelbumi/admin/" style="color:#c9a96e;">',
+            'Portal Admin Bumi Surabaya',
           '</a>',
         '</p>',
       '</div>',
     '</div>',
     '</div>'
   ].join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RETENSI DATA OTOMATIS (PRD 7.9, API-10, API-11)
+══════════════════════════════════════════════════════════════ */
+
+/**
+ * Eksekusi Kebijakan Retensi Data Terjadwal / Manual.
+ *
+ * REKOMENDASI PRD 7.9:
+ *   - Events mentah bulanan (Events_YYYY_MM): retensi 12 bulan.
+ *   - Agregat bulanan (MonthlyAggregates): retensi 24 bulan.
+ *   - Audit log (AuditLog): retensi 12 bulan.
+ *   - System script log (ScriptLog): retensi 3 bulan.
+ *
+ * CATATAN PENTING (PRD Bagian 12):
+ *   Fungsi ini disediakan untuk dieksekusi berkala via trigger atau manual.
+ *   Sebelum mengaktifkan trigger penghapusan otomatis permanen,
+ *   WAJIB MENDAPATKAN PERSETUJUAN TERTULIS dari pemilik data / manajemen hotel.
+ *
+ * @param {boolean} [dryRun=false] - jika true, hanya menghitung dan mencatat tanpa menghapus
+ * @returns {object} ringkasan eksekusi
+ */
+function jalankanRetensiData(dryRun) {
+  var isDry = dryRun === true;
+  _log('INFO', 'jalankanRetensiData', 'Pemeriksaan retensi dimulai (dryRun=' + isDry + ')', '');
+
+  var ss = getSpreadsheet();
+  var now = new Date();
+  var result = {
+    dryRun: isDry,
+    eventsSheetsScanned: 0,
+    eventsSheetsPruned: [],
+    auditRowsPruned: 0,
+    scriptLogsPruned: 0,
+    timestamp: now.toISOString()
+  };
+
+  try {
+    // 1. Periksa partisi Events_YYYY_MM (cutoff 12 bulan yang lalu)
+    var cutoffEvents = new Date(now.getFullYear(), now.getMonth() - 12, 1);
+    var cutoffMonthKey = Utilities.formatDate(cutoffEvents, 'Asia/Jakarta', 'yyyy_MM');
+
+    var allSheets = ss.getSheets();
+    for (var i = 0; i < allSheets.length; i++) {
+      var sName = allSheets[i].getName();
+      if (sName.indexOf('Events_') === 0 && sName.length === 14) {
+        result.eventsSheetsScanned++;
+        var sheetMonthKey = sName.substring(7); // 'yyyy_MM'
+        if (sheetMonthKey < cutoffMonthKey) {
+          result.eventsSheetsPruned.push(sName);
+          if (!isDry) {
+            ss.deleteSheet(allSheets[i]);
+            _log('INFO', 'retensi_events', 'Partisi lembar ' + sName + ' dihapus sesuai kebijakan 12 bulan.', '');
+          }
+        }
+      }
+    }
+
+    // 2. Periksa AuditLog (cutoff 12 bulan yang lalu)
+    var auditSheet = ss.getSheetByName('AuditLog');
+    if (auditSheet && auditSheet.getLastRow() > 1) {
+      var cutoffIso = cutoffEvents.toISOString();
+      var auditDates = auditSheet.getRange(2, 1, auditSheet.getLastRow() - 1, 1).getValues();
+      var rowsToDelete = [];
+      for (var a = 0; a < auditDates.length; a++) {
+        var aTs = auditDates[a][0];
+        if (aTs && String(aTs) < cutoffIso) {
+          rowsToDelete.push(a + 2);
+        }
+      }
+      result.auditRowsPruned = rowsToDelete.length;
+      if (!isDry && rowsToDelete.length > 0) {
+        for (var d = rowsToDelete.length - 1; d >= 0; d--) {
+          auditSheet.deleteRow(rowsToDelete[d]);
+        }
+      }
+    }
+
+    // 3. Periksa ScriptLog (cutoff 3 bulan yang lalu)
+    var scriptSheet = ss.getSheetByName('ScriptLog');
+    if (scriptSheet && scriptSheet.getLastRow() > 1) {
+      var cutoffScript = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString();
+      var scriptDates = scriptSheet.getRange(2, 1, scriptSheet.getLastRow() - 1, 1).getValues();
+      var sRowsToDelete = [];
+      for (var sl = 0; sl < scriptDates.length; sl++) {
+        var sTs = scriptDates[sl][0];
+        if (sTs && String(sTs) < cutoffScript) {
+          sRowsToDelete.push(sl + 2);
+        }
+      }
+      result.scriptLogsPruned = sRowsToDelete.length;
+      if (!isDry && sRowsToDelete.length > 0) {
+        for (var sd = sRowsToDelete.length - 1; sd >= 0; sd--) {
+          scriptSheet.deleteRow(sRowsToDelete[sd]);
+        }
+      }
+    }
+
+    _log('INFO', 'jalankanRetensiData', 'Selesai: ' + JSON.stringify(result), '');
+  } catch (err) {
+    _log('ERROR', 'jalankanRetensiData', err.toString(), '');
+  }
+
+  return result;
 }
 
 /* ══════════════════════════════════════════════════════════════

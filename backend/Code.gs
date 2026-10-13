@@ -97,6 +97,54 @@ function _log(level, action, message, ip) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   HELPER: Audit Trail ke tab AuditLog (SEC-11, SEC-12, SRC-09)
+══════════════════════════════════════════════════════════════ */
+
+var VALID_ROLES = ['super_admin', 'manager', 'content_editor', 'analyst_readonly'];
+
+function _sanitizeRole(role) {
+  var r = String(role || '').trim().toLowerCase();
+  if (VALID_ROLES.indexOf(r) !== -1) return r;
+  return 'super_admin';
+}
+
+/**
+ * Catat satu baris ke tab AuditLog untuk setiap mutasi sensitif.
+ * Format: timestamp, actor, role, action, target_object, status, details, ip
+ * PENTING: Dilarang menyimpan password, hash mentah, atau token sesi di sini!
+ *
+ * @param {string} actor
+ * @param {string} role
+ * @param {string} action
+ * @param {string} targetObject
+ * @param {'SUCCESS'|'FAILED'|'REJECTED'} status
+ * @param {string} details
+ * @param {string} [ip]
+ */
+function _recordAudit(actor, role, action, targetObject, status, details, ip) {
+  try {
+    var auditSheet = getOrCreateSheet('AuditLog', [
+      'timestamp', 'actor', 'role', 'action', 'target_object', 'status', 'details', 'ip'
+    ]);
+    var nowStr = Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX");
+    auditSheet.appendRow([
+      nowStr,
+      String(actor || 'system').substring(0, 50),
+      String(role || 'unknown').substring(0, 30),
+      String(action || '').substring(0, 50),
+      String(targetObject || '').substring(0, 100),
+      String(status || 'SUCCESS').substring(0, 20),
+      String(details || '').substring(0, 500),
+      String(ip || '').substring(0, 50)
+    ]);
+  } catch (e) {
+    // Fail-safe jika gagal menulis audit, tetap catat ke ScriptLog
+    _log('WARN', 'audit_write_failed', e.toString(), '');
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
    HELPER: Rate limiting via CacheService
 ══════════════════════════════════════════════════════════════ */
 
@@ -210,8 +258,8 @@ function _verifyPassword(salt, password, storedHash) {
 
 /**
  * Dapatkan atau buat tab Users.
- * PENTING (SEC-02): Hapus auto-seed kredensial default yang bisa ditebak (mis. widi/946217).
- * Akun admin pertama kali harus diinisialisasi secara eksplisit melalui fungsi setupInitialAdmin()
+ * PENTING (SEC-02, SEC-11): Tab Users mencakup kolom role (super_admin, manager, content_editor, analyst_readonly).
+ * Akun admin pertama kali diinisialisasi melalui fungsi setupInitialAdmin()
  * yang dijalankan manual di Apps Script Editor oleh pemilik spreadsheet.
  *
  * @returns {GoogleAppsScript.Spreadsheet.Sheet}
@@ -219,7 +267,7 @@ function _verifyPassword(salt, password, storedHash) {
 function _getOrCreateUsersSheet() {
   var ss = getSpreadsheet();
   var sheet = ss.getSheetByName('Users');
-  var headers = ['username', 'password_hash', 'salt', 'must_change', 'created_at', 'updated_at'];
+  var headers = ['username', 'password_hash', 'salt', 'must_change', 'created_at', 'updated_at', 'role'];
   if (!sheet) {
     sheet = ss.insertSheet('Users');
     sheet.appendRow(headers);
@@ -227,7 +275,9 @@ function _getOrCreateUsersSheet() {
          .setFontWeight('bold')
          .setBackground('#f0ece4');
     sheet.setFrozenRows(1);
-    _log('INFO', 'create_sheet', 'Tab Users dibuat tanpa kredensial default (SEC-02)', '');
+    _log('INFO', 'create_sheet', 'Tab Users dibuat dengan kolom role (SEC-02, SEC-11)', '');
+  } else if (sheet.getLastColumn() < 7) {
+    sheet.getRange(1, 7).setValue('role').setFontWeight('bold').setBackground('#f0ece4');
   }
   return sheet;
 }
@@ -235,14 +285,16 @@ function _getOrCreateUsersSheet() {
 /**
  * Inisialisasi akun admin pertama kali (dijalankan MANUAL oleh pemilik di Apps Script Editor).
  * Contoh pemanggilan di Apps Script:
- *   setupInitialAdmin('admin_bumi', 'KataSandiKuat2026!#');
+ *   setupInitialAdmin('admin_bumi', 'KataSandiKuat2026!#', 'super_admin');
  *
  * @param {string} username
  * @param {string} password
+ * @param {'super_admin'|'manager'|'content_editor'|'analyst_readonly'} [role='super_admin']
  */
-function setupInitialAdmin(username, password) {
+function setupInitialAdmin(username, password, role) {
   var u = String(username || '').trim().toLowerCase();
   var p = String(password || '').trim();
+  var r = _sanitizeRole(role || 'super_admin');
   if (!u || !p || p.length < 8) {
     throw new Error('Username wajib diisi dan password minimal 8 karakter.');
   }
@@ -257,15 +309,101 @@ function setupInitialAdmin(username, password) {
     sheet.getRange(existing.rowIndex, 3).setValue(salt);
     sheet.getRange(existing.rowIndex, 4).setValue(false);
     sheet.getRange(existing.rowIndex, 6).setValue(now);
-    Logger.log('Admin ' + u + ' berhasil diperbarui.');
+    sheet.getRange(existing.rowIndex, 7).setValue(r);
+    Logger.log('Admin ' + u + ' (role: ' + r + ') berhasil diperbarui.');
+    _recordAudit('system', 'super_admin', 'SETUP_ADMIN', 'user:' + u, 'SUCCESS', 'Admin diinisialisasi/diperbarui dengan role: ' + r, '');
   } else {
-    sheet.appendRow([u, hash, salt, false, now, now]);
-    Logger.log('Admin baru ' + u + ' berhasil dibuat.');
+    sheet.appendRow([u, hash, salt, false, now, now, r]);
+    Logger.log('Admin baru ' + u + ' (role: ' + r + ') berhasil dibuat.');
+    _recordAudit('system', 'super_admin', 'CREATE_ADMIN', 'user:' + u, 'SUCCESS', 'Admin baru dibuat dengan role: ' + r, '');
   }
 }
 
 /**
+ * Buat atau perbarui akun pengguna operasional dengan peran tertentu (SEC-11).
+ * Dijalankan di Apps Script Editor oleh super_admin.
+ * Akun diset must_change=true agar user wajib mengganti password saat login pertama.
+ *
+ * @param {string} username
+ * @param {string} password
+ * @param {'super_admin'|'manager'|'content_editor'|'analyst_readonly'} role
+ */
+function setupUser(username, password, role) {
+  var u = String(username || '').trim().toLowerCase();
+  var p = String(password || '').trim();
+  var r = _sanitizeRole(role);
+  if (!u || !p || p.length < 8) {
+    throw new Error('Username wajib diisi dan password minimal 8 karakter.');
+  }
+  var sheet = _getOrCreateUsersSheet();
+  var existing = _findUser(u);
+  var salt = _generateSecureRandomHex(16);
+  var hash = _hashPassword(salt, p);
+  var now = new Date();
+
+  if (existing) {
+    sheet.getRange(existing.rowIndex, 2).setValue(hash);
+    sheet.getRange(existing.rowIndex, 3).setValue(salt);
+    sheet.getRange(existing.rowIndex, 4).setValue(true);
+    sheet.getRange(existing.rowIndex, 6).setValue(now);
+    sheet.getRange(existing.rowIndex, 7).setValue(r);
+    _recordAudit('system', 'super_admin', 'UPDATE_USER', 'user:' + u, 'SUCCESS', 'Pengguna ' + u + ' diperbarui ke role ' + r + ' (must_change=true)', '');
+    Logger.log('Pengguna ' + u + ' (' + r + ') diperbarui.');
+  } else {
+    sheet.appendRow([u, hash, salt, true, now, now, r]);
+    _recordAudit('system', 'super_admin', 'CREATE_USER', 'user:' + u, 'SUCCESS', 'Pengguna baru ' + u + ' dibuat dengan role ' + r + ' (must_change=true)', '');
+    Logger.log('Pengguna baru ' + u + ' (' + r + ') dibuat.');
+  }
+}
+
+/**
+ * Prosedur Pemulihan Darurat (Break-Glass Recovery) (SEC-12).
+ * Dijalankan MANUAL di Apps Script Editor saat akun admin terkunci total.
+ * - TIDAK mengembalikan password publik atau token statis.
+ * - Menghasilkan kata sandi baru dengan salt unik & 1.000 iterasi SHA-256.
+ * - Mewajibkan penggantian kata sandi pada login pertama (must_change = true).
+ * - Mencatat jejak audit lengkap ke tab AuditLog.
+ *
+ * @param {string} targetUsername - username admin (default 'admin')
+ * @param {string} temporaryPassword - password sementara baru (minimal 10 karakter)
+ */
+function breakGlassRecovery(targetUsername, temporaryPassword) {
+  var u = String(targetUsername || 'admin').trim().toLowerCase();
+  var p = String(temporaryPassword || '').trim();
+  if (!p || p.length < 10) {
+    throw new Error('Password sementara break-glass wajib diisi dan minimal 10 karakter.');
+  }
+  var sheet = _getOrCreateUsersSheet();
+  var existing = _findUser(u);
+  var salt = _generateSecureRandomHex(16);
+  var hash = _hashPassword(salt, p);
+  var now = new Date();
+
+  if (existing) {
+    sheet.getRange(existing.rowIndex, 2).setValue(hash);
+    sheet.getRange(existing.rowIndex, 3).setValue(salt);
+    sheet.getRange(existing.rowIndex, 4).setValue(true);
+    sheet.getRange(existing.rowIndex, 6).setValue(now);
+    sheet.getRange(existing.rowIndex, 7).setValue('super_admin');
+  } else {
+    sheet.appendRow([u, hash, salt, true, now, now, 'super_admin']);
+  }
+
+  _recordAudit(
+    'BREAK_GLASS_SYSTEM',
+    'super_admin',
+    'BREAK_GLASS_RESET',
+    'user:' + u,
+    'SUCCESS',
+    'Break-glass recovery dieksekusi via Apps Script Editor. Akun diwajibkan ganti password.',
+    ''
+  );
+  Logger.log('BREAK-GLASS SUKSES untuk akun: ' + u + '. Akun wajib ganti password pada login pertama.');
+}
+
+/**
  * Cari pengguna berdasarkan username (case-insensitive).
+ * Membaca hingga kolom ke-7 (role) dengan fallback ke 'super_admin'.
  * @param {string} username
  * @returns {object|null}
  */
@@ -273,7 +411,8 @@ function _findUser(username) {
   var sheet = _getOrCreateUsersSheet();
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) return null;
-  var rows = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
+  var maxCol = Math.max(sheet.getLastColumn(), 7);
+  var rows = sheet.getRange(2, 1, lastRow - 1, maxCol).getValues();
   var target = String(username).toLowerCase().trim();
   for (var i = 0; i < rows.length; i++) {
     if (String(rows[i][0]).toLowerCase().trim() === target) {
@@ -284,7 +423,8 @@ function _findUser(username) {
         salt: String(rows[i][2]),
         must_change: rows[i][3] === true || rows[i][3] === 'TRUE',
         created_at: rows[i][4],
-        updated_at: rows[i][5]
+        updated_at: rows[i][5],
+        role: _sanitizeRole(rows[i][6])
       };
     }
   }
@@ -292,39 +432,62 @@ function _findUser(username) {
 }
 
 /**
- * Verifikasi sesi admin via CacheService (key: sess_<token> -> username).
+ * Verifikasi sesi admin via CacheService (key: sess_<token> -> JSON {username, role} atau string username).
  * Bila must_change=TRUE dan !allowMustChange, akses ditolak sampai ganti password.
- * PENTING (SEC-01, SEC-07): Tidak ada pintu darurat READ_TOKEN statis.
- * Semua akses admin wajib memiliki sesi aktif yang valid di server.
+ * PENTING (SEC-01, SEC-07, SEC-11): Izin diverifikasi di level backend per request.
  *
  * @param {string} token
  * @param {boolean} [allowMustChange=false]
- * @returns {{valid:boolean, username?:string, must_change?:boolean, error?:string}}
+ * @returns {{valid:boolean, username?:string, role?:string, must_change?:boolean, error?:string}}
  */
 function _verifySession(token, allowMustChange) {
   if (!token) return { valid: false, error: 'Token sesi diperlukan' };
 
   var cache = CacheService.getScriptCache();
-  var username = cache.get('sess_' + token);
+  var cachedRaw = cache.get('sess_' + token);
 
-  if (!username) {
+  if (!cachedRaw) {
     return { valid: false, error: 'Unauthorized: Sesi kedaluwarsa atau tidak valid' };
   }
 
-  var user = _findUser(username);
+  var sessionUser = '';
+  var sessionRole = 'super_admin';
+  try {
+    var parsed = JSON.parse(cachedRaw);
+    if (parsed && parsed.username) {
+      sessionUser = parsed.username;
+      sessionRole = _sanitizeRole(parsed.role);
+    } else {
+      sessionUser = String(cachedRaw);
+    }
+  } catch (_) {
+    sessionUser = String(cachedRaw);
+  }
+
+  var user = _findUser(sessionUser);
   if (!user) {
     return { valid: false, error: 'Pengguna sesi tidak ditemukan' };
   }
 
+  // Gunakan role terkini dari database lembar Users
+  var currentRole = user.role || sessionRole;
+
   if (user.must_change && !allowMustChange) {
     return {
       valid: false,
+      username: user.username,
+      role: currentRole,
       must_change: true,
       error: 'Wajib mengganti kata sandi terlebih dahulu sebelum mengakses fitur ini'
     };
   }
 
-  return { valid: true, username: user.username, must_change: user.must_change };
+  return {
+    valid: true,
+    username: user.username,
+    role: currentRole,
+    must_change: user.must_change
+  };
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -466,6 +629,11 @@ function _handleGetConfig() {
   return _jsonOut({
     ok:      true,
     version: Date.now(),
+    system_health: {
+      backend_version: 'v6.2.0-phase2',
+      server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
+      timezone:        'Asia/Jakarta'
+    },
     config:  publicConfig,
     sources: activeSources
   });
@@ -498,7 +666,7 @@ function doPost(e) {
       return _handleChangePassword(data);
     }
 
-    /* ── 3. Endpoint Terproteksi Sesi Admin (SEC-01) ── */
+    /* ── 3. Endpoint Terproteksi Sesi Admin (SEC-01, SEC-11) ── */
     var session = _verifySession(data.token, false);
     if (!session.valid) {
       _log('WARN', 'doPost', 'Unauthorized — aksi: ' + action + ' (' + (session.error || '') + ')', '');
@@ -506,15 +674,19 @@ function doPost(e) {
     }
 
     if (action === 'get_admin_data') {
-      return _handleGetAdminData(data);
+      return _handleGetAdminData(data, session);
     }
 
     if (action === 'save_all_admin_data') {
-      return _handleSaveAllAdminData(data);
+      return _handleSaveAllAdminData(data, session);
     }
 
     if (action === 'get_events_data') {
-      return _handleGetEventsData(data);
+      return _handleGetEventsData(data, session);
+    }
+
+    if (action === 'get_audit_logs') {
+      return _handleGetAuditLogs(data, session);
     }
 
     _log('WARN', 'doPost', 'Aksi tidak dikenali: ' + action, '');
@@ -527,10 +699,11 @@ function doPost(e) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Handler: login (SEC-04, SEC-05, SEC-06)
+   Handler: login (SEC-04, SEC-05, SEC-06, SEC-11, SEC-12)
    - Rate limit per user dan global (TIDAK percaya IP klien)
    - Respon generik seragam tanpa bocor keberadaan akun
    - Sesi 6 jam (21600 detik) via CacheService
+   - Catat audit trail login berhasil dan gagal
 ══════════════════════════════════════════════════════════════ */
 
 function _handleLogin(data) {
@@ -560,24 +733,30 @@ function _handleLogin(data) {
 
   if (!isValid) {
     _log('WARN', 'login', 'Percobaan login gagal untuk: ' + username, '');
+    _recordAudit(username || 'unknown', 'unknown', 'LOGIN', 'session', 'FAILED', 'Percobaan kata sandi tidak cocok', '');
     // Pesan kesalahan generik (SEC-04)
     return _jsonOut({ ok: false, error: 'Nama pengguna atau kata sandi tidak valid.' });
   }
 
   // Generate cryptographically secure session token (32 hex, SEC-03)
   var token = _generateSecureRandomHex(32);
-  // Simpan di CacheService TTL 6 jam = 21600 detik (SEC-06)
+  // Simpan di CacheService TTL 6 jam = 21600 detik (SEC-06) dengan payload JSON { username, role }
   var cache = CacheService.getScriptCache();
-  cache.put('sess_' + token, user.username, 21600);
+  var sessionPayload = JSON.stringify({
+    username: user.username,
+    role:     user.role
+  });
+  cache.put('sess_' + token, sessionPayload, 21600);
 
-  _log('INFO', 'login', 'Login sukses: ' + user.username + ' (must_change=' + user.must_change + ')', '');
+  _recordAudit(user.username, user.role, 'LOGIN', 'session', 'SUCCESS', 'Login berhasil (must_change=' + user.must_change + ')', '');
+  _log('INFO', 'login', 'Login sukses: ' + user.username + ' (role=' + user.role + ', must_change=' + user.must_change + ')', '');
 
   return _jsonOut({
     ok:          true,
     token:       token,
     username:    user.username,
     must_change: user.must_change,
-    role:        'super_admin'
+    role:        user.role
   });
 }
 
@@ -610,6 +789,7 @@ function _handleChangePassword(data) {
 
   if (!_verifyPassword(user.salt, oldPassword, user.password_hash)) {
     _log('WARN', 'change_password', 'Kata sandi lama salah untuk: ' + user.username, '');
+    _recordAudit(user.username, session.role || 'user', 'CHANGE_PASSWORD', 'user:' + user.username, 'FAILED', 'Kata sandi lama salah', '');
     return _jsonOut({ ok: false, error: 'Kata sandi saat ini tidak cocok.' });
   }
 
@@ -623,6 +803,7 @@ function _handleChangePassword(data) {
   sheet.getRange(user.rowIndex, 4).setValue(false);
   sheet.getRange(user.rowIndex, 6).setValue(now);
 
+  _recordAudit(user.username, session.role || 'user', 'CHANGE_PASSWORD', 'user:' + user.username, 'SUCCESS', 'Kata sandi berhasil diperbarui', '');
   _log('INFO', 'change_password', 'Kata sandi berhasil diperbarui untuk: ' + user.username, '');
 
   return _jsonOut({
@@ -723,7 +904,7 @@ function _handleLogEvent(data) {
    dan staff devices hanya untuk sesi admin terotentikasi.
 ══════════════════════════════════════════════════════════════ */
 
-function _handleGetAdminData(data) {
+function _handleGetAdminData(data, session) {
   var ss       = getSpreadsheet();
   var cfgSheet = ss.getSheetByName('Config');
   var srcSheet = ss.getSheetByName('Sources');
@@ -777,17 +958,52 @@ function _handleGetAdminData(data) {
     config:        fullConfig,
     sources:       allSources,
     staff_devices: staffDevices,
-    timestamp:     new Date().toISOString()
+    timestamp:     new Date().toISOString(),
+    system_health: {
+      backend_version: 'v6.2.0-phase2',
+      server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
+      timezone:        'Asia/Jakarta',
+      current_user:    session ? session.username : '',
+      current_role:    session ? session.role : 'super_admin'
+    }
   });
 }
 
 /* ══════════════════════════════════════════════════════════════
    Handler: save_all_admin_data (token-protected)
-   SRC-08: Mendukung persistensi StaffDevices
+   SRC-08: Persistensi StaffDevices
+   SEC-11: Enforce izin mutasi berbasis role (super_admin, manager, content_editor, analyst_readonly)
+   SEC-12, SRC-09: Audit trail lengkap per mutasi sensitif
 ══════════════════════════════════════════════════════════════ */
 
-function _handleSaveAllAdminData(data) {
-  var ss = getSpreadsheet();
+function _handleSaveAllAdminData(data, session) {
+  var ss    = getSpreadsheet();
+  var actor = session ? session.username : 'system';
+  var role  = session ? session.role : 'super_admin';
+
+  /* ── 1. Penegakan Izin Role (SEC-11) ── */
+  if (role === 'analyst_readonly') {
+    _recordAudit(actor, role, 'MUTATION_DENIED', 'all', 'REJECTED', 'Ditolak: analyst_readonly tidak boleh menyimpan data', '');
+    return _jsonOut({ ok: false, error: 'Akses ditolak: Peran analyst_readonly bersifat baca-saja dan tidak diizinkan melakukan mutasi data.' });
+  }
+
+  if (role === 'content_editor') {
+    // Content editor hanya berhak mengubah promotions, outlets, appearance, guest_sections
+    if (data.sources || data.staff_devices || data.fraud_settings || (data.config && (data.config.fraud_thresholds || data.config.general || data.config.whatsapp_settings))) {
+      _recordAudit(actor, role, 'MUTATION_DENIED', 'sources/fraud/config', 'REJECTED', 'Ditolak: content_editor tidak berhak mengubah sumber, perangkat staf, atau konfigurasi sistem', '');
+      return _jsonOut({ ok: false, error: 'Akses ditolak: Peran content_editor hanya berhak mengubah promosi, outlet, dan tema tampilan.' });
+    }
+  }
+
+  if (role === 'manager') {
+    // Manager berhak kelola staf, gerai, promo, sales, tapi TIDAK boleh ubah fraud_settings / config.fraud_thresholds
+    if (data.fraud_settings || (data.config && data.config.fraud_thresholds)) {
+      _recordAudit(actor, role, 'MUTATION_DENIED', 'fraud_settings', 'REJECTED', 'Ditolak: manager tidak berhak mengubah parameter anti-fraud', '');
+      return _jsonOut({ ok: false, error: 'Akses ditolak: Peran manager tidak diizinkan mengubah konfigurasi anti-fraud sistem.' });
+    }
+  }
+
+  var auditParts = [];
 
   /* ── Simpan tab Config ── */
   var cfgSheet = getOrCreateSheet('Config', ['key', 'value_json', 'updated_at']);
@@ -825,6 +1041,8 @@ function _handleSaveAllAdminData(data) {
     if (cfgRows.length > 0) {
       cfgSheet.getRange(2, 1, cfgRows.length, 3).setValues(cfgRows);
     }
+    if (data.config) auditParts.push('config: ' + Object.keys(data.config).join(','));
+    if (data.fraud_settings) auditParts.push('fraud_thresholds updated');
   }
 
   /* ── Simpan tab Sources ── */
@@ -855,6 +1073,7 @@ function _handleSaveAllAdminData(data) {
       });
       srcSheet.getRange(2, 1, srcRows.length, 11).setValues(srcRows);
     }
+    auditParts.push('sources count: ' + data.sources.length);
   }
 
   /* ── Simpan tab StaffDevices (SRC-08) ── */
@@ -868,10 +1087,56 @@ function _handleSaveAllAdminData(data) {
       });
       devSheet.getRange(2, 1, devRows.length, 4).setValues(devRows);
     }
+    auditParts.push('staff_devices count: ' + data.staff_devices.length);
   }
 
-  _log('INFO', 'save_all_admin_data', 'Data admin disimpan. Sources: ' + (data.sources || []).length, '');
+  var details = auditParts.join('; ') || 'Penyimpanan data admin';
+  _recordAudit(actor, role, 'MUTATION_SAVE', 'admin_data', 'SUCCESS', details, '');
+  _log('INFO', 'save_all_admin_data', 'Data admin disimpan oleh ' + actor + ' (' + role + '). ' + details, '');
   return _jsonOut({ ok: true, updated_at: new Date().toISOString() });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Handler: get_audit_logs (token-protected)
+   SEC-11, SEC-12, SRC-09: Mengembalikan log audit terbaru
+══════════════════════════════════════════════════════════════ */
+
+function _handleGetAuditLogs(data, session) {
+  // Hanya super_admin, manager, analyst_readonly yang berhak melihat audit log
+  if (session && session.role === 'content_editor') {
+    return _jsonOut({ ok: false, error: 'Akses ditolak: content_editor tidak memiliki izin melihat jejak audit.' });
+  }
+
+  var ss       = getSpreadsheet();
+  var sheet    = ss.getSheetByName('AuditLog');
+  var logsList = [];
+  var limit    = Math.min(Number(data.limit) || 200, 500);
+
+  if (sheet && sheet.getLastRow() > 1) {
+    var totalRows = sheet.getLastRow() - 1;
+    var readRows  = Math.min(totalRows, limit);
+    var startRow  = totalRows - readRows + 2;
+    var rows      = sheet.getRange(startRow, 1, readRows, 8).getValues();
+
+    for (var i = rows.length - 1; i >= 0; i--) {
+      logsList.push({
+        timestamp:     rows[i][0],
+        actor:         rows[i][1],
+        role:          rows[i][2],
+        action:        rows[i][3],
+        target_object: rows[i][4],
+        status:        rows[i][5],
+        details:       rows[i][6],
+        ip:            rows[i][7]
+      });
+    }
+  }
+
+  return _jsonOut({
+    ok:    true,
+    logs:  logsList,
+    total: logsList.length
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════

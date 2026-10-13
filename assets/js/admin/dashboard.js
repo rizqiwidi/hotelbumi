@@ -288,9 +288,31 @@
     if (!canvas) return;
 
     if (typeof global.Chart === 'undefined') {
-      console.error('[BSDashboard] Chart.js (global Chart) is not loaded');
+      console.warn('[BSDashboard] Chart.js tidak tersedia. Menampilkan fallback ringkasan data (GUE-14).');
+      var parent = canvas.parentElement;
+      if (parent) {
+        var existingFb = parent.querySelector('.adm-chart-fallback');
+        if (existingFb) existingFb.remove();
+        canvas.style.display = 'none';
+        var fb = document.createElement('div');
+        fb.className = 'adm-chart-fallback';
+        fb.style.cssText = 'padding:16px;background:#fcfbf9;border:1px dashed #d1c7b7;border-radius:6px;font-size:0.85rem;color:#555;';
+        var daysCount = period === '30d' ? 30 : 7;
+        var dailyList = (data.daily || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-daysCount);
+        var rowsHtml = dailyList.map(function(d){ return '<tr><td style="padding:4px 8px;">' + _shortDate(d.date) + '</td><td style="padding:4px 8px;text-align:right;"><strong>' + (d.visits||0) + '</strong></td><td style="padding:4px 8px;text-align:right;"><strong>' + (d.reviews||0) + '</strong></td></tr>'; }).join('');
+        fb.innerHTML = '<div style="margin-bottom:8px;font-weight:600;color:var(--deep-green,#1a3c2a);">📊 Ringkasan Tren Harian (' + period + ') — Tampilan Teks Fallback (GUE-14)</div>' +
+          '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;"><thead><tr style="border-bottom:1px solid #ddd;text-align:left;"><th style="padding:4px 8px;">Tanggal</th><th style="padding:4px 8px;text-align:right;">Kunjungan</th><th style="padding:4px 8px;text-align:right;">Ulasan</th></tr></thead><tbody>' +
+          (rowsHtml || '<tr><td colspan="3" style="padding:8px;text-align:center;">Belum ada data harian</td></tr>') +
+          '</tbody></table>';
+        parent.appendChild(fb);
+      }
       return;
     }
+
+    /* Kembalikan tampilan canvas jika Chart.js tersedia */
+    canvas.style.display = '';
+    var oldFb = canvas.parentElement ? canvas.parentElement.querySelector('.adm-chart-fallback') : null;
+    if (oldFb) oldFb.remove();
 
     /* Destroy any existing chart instance to avoid canvas re-use errors */
     if (_chartRegistry.has('trend')) {

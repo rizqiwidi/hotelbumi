@@ -137,4 +137,54 @@
   .print-tent-half.flip { 
     transform: rotate(180deg); 
   }
+
+  /* ── STIKER MEJA COMPACT (50 x 50 mm) (QRN-06) ── */
+  .print-sticker, .adm-print-sticker {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    width: 50mm;
+    height: 50mm;
+    margin: 3mm auto;
+    border: 1px solid #c9a96e !important;
+    border-radius: 3mm;
+    padding: 3mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: #fff !important;
+    color: #1a3c2a !important;
+  }
+  .print-sticker .adm-pc-qr {
+    width: 25mm;
+    height: 25mm;
+    margin-bottom: 1.5mm;
+  }
+
+  /* ── A4 GRID 8 KARTU (QRN-06) ── */
+  .print-layout-a4grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 85mm) !important;
+    grid-gap: 5mm !important;
+    justify-content: center !important;
+    page-break-after: always;
+  }
+  .print-card-grid, .adm-print-a4-cell {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    width: 85mm;
+    height: 54mm;
+    border: 1px dashed #c9a96e !important;
+    border-radius: 3mm;
+    padding: 3.5mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: #fff !important;
+    color: #1a3c2a !important;
+  }
 }
+

@@ -1,148 +1,184 @@
-# DEPLOY.md — Panduan Deployment GitHub Pages & Google Apps Script
+# DEPLOY.md — Panduan Deployment, Rollback & Pemulihan Platform v6.2 (Fase 2)
 
-Panduan resmi deployment aplikasi **Bumi Surabaya Digital Guest Experience v6.0**.
+Panduan operasional dan deployment resmi untuk **Bumi Surabaya Digital Guest Experience v6.2 (Fase 2 — Operasional, Auditabilitas, dan Skala)**.
 
 > [!IMPORTANT]
-> **Arsitektur Deployment**:
+> **Arsitektur Deployment Aktual**:
 > - **Frontend**: Website statis di-deploy via **GitHub Pages dari root repository** (`main` branch) pada URL: `https://rizqiwidi.github.io/hotelbumi/`.
-> - **Backend**: Google Apps Script Web App yang terhubung ke Google Sheets sebagai penyimpanan basis data. File backend (`backend/Code.gs` dan `backend/Triggers.gs`) di-deploy **secara manual** oleh pemilik/administrator di editor Apps Script.
+> - **Backend**: Google Apps Script (GAS) Web App terhubung ke Google Sheets sebagai basis data. File backend (`backend/Code.gs` dan `backend/Triggers.gs`) di-deploy **secara manual** oleh pemilik/administrator di Google Apps Script editor.
 
 ---
 
-## 1. Struktur Direktori Repository
-
-Repository menggunakan struktur root statis tanpa framework dan tanpa build step:
+## 1. Struktur Direktori Repository v6.2 (Modular & Tanpa Build Step)
 
 ```
 hotelbumi/
-├── index.html              ← Halaman tamu publik (GitHub Pages root)
+├── index.html                  ← Halaman tamu publik (GitHub Pages root)
 ├── admin/
-│   └── index.html          ← Portal admin resmi (/admin/)
+│   └── index.html              ← Portal admin resmi (/admin/)
 ├── assets/
 │   ├── css/
-│   │   ├── guest.css       ← Styling halaman tamu (token palet warna resmi)
-│   │   ├── admin.css       ← Styling portal admin
-│   │   └── print.css       ← Styling cetak QR & stiker meja
+│   │   ├── guest.css           ← Styling halaman tamu (token palet warna resmi)
+│   │   ├── admin.css           ← Styling portal admin (sinyal health, tag peran, modal preview)
+│   │   └── print.css           ← Styling cetak QR massal (kartu 85x55, tent A6, stiker 50x50, A4 grid)
 │   ├── js/
-│   │   ├── config.js       ← Konfigurasi publik & konstanta fallback
+│   │   ├── config.js           ← Konfigurasi publik & konstanta fallback
 │   │   ├── guest/
-│   │   │   ├── app.js          ← Logika presentasi tamu (aman XSS)
+│   │   │   ├── app.js          ← Logika presentasi tamu & deteksi draft preview (?preview=1)
 │   │   │   ├── tracking.js     ← Pelacak interaksi & beacon
 │   │   │   ├── fingerprint.js  ← Pengenal pseudonim perangkat (device_id)
 │   │   │   └── retry-queue.js  ← Antrean offline, backoff & dead-letter queue
 │   │   └── admin/
-│   │       ├── auth.js         ← Pengelola sesi login (username/password, 6h TTL)
-│   │       ├── api.js          ← Klien API admin terproteksi token sesi
-│   │       ├── dashboard.js    ← Visualisasi metrik & grafik tren
-│   │       ├── staff-manager.js← Manajemen data staf & titik NFC
-│   │       ├── anti-fraud.js   ← Engine evaluasi 8 aturan anti-fraud (AF-01 s/d AF-08)
-│   │       └── web-nfc.js      ← Utilitas baca/tulis kartu Web NFC
-│   └── images/             ← Logo dan foto gerai resmi
+│   │       ├── admin-core.js       ← Central state manager, navigasi, auth & health signals
+│   │       ├── admin-sources.js    ← CRUD staf & sumber, rotasi kode, slug preview
+│   │       ├── admin-content.js    ← CRUD outlet, promosi, visibilitas seksi, draft preview
+│   │       ├── admin-appearance.js ← Editor tema visual & kunci palet brand PRD 6.1
+│   │       ├── admin-reports.js    ← Filter tren, preset favorit (ANA-10), cetak QR batch (QRN-06)
+│   │       ├── admin-fraud-ops.js  ← Deteksi 8 fraud, StaffDevices, threshold, config backend
+│   │       ├── admin-audit.js      ← Jejak audit & riwayat mutasi server (SEC-11, SEC-12)
+│   │       ├── admin-nfc-ops.js    ← Programmer Web NFC & preview QR tunggal
+│   │       ├── admin-init.js       ← Bootstrapper lifecycle, beforeunload & login/logout
+│   │       ├── auth.js             ← Pengelola sesi login (username/password, 6h TTL)
+│   │       ├── api.js              ← Klien API admin terproteksi token sesi (termasuk audit)
+│   │       ├── dashboard.js        ← Visualisasi metrik & grafik tren (+ fallback teks jika Chart.js gagal)
+│   │       ├── staff-manager.js    ← Pengelola data staf & titik NFC di storage
+│   │       ├── anti-fraud.js       ← Engine evaluasi 8 aturan anti-fraud (AF-01 s/d AF-08)
+│   │       └── web-nfc.js          ← Utilitas baca/tulis kartu Web NFC
+│   └── images/                 ← Logo dan foto gerai resmi hotel
 ├── backend/
-│   ├── Code.gs             ← Logika API, sesi kriptografis, hashing, rate limiting
-│   ├── Triggers.gs         ← Laporan email otomatis & agregasi integritas
-│   └── appsscript.json     ← Manifest Google Apps Script runtime
+│   ├── Code.gs                 ← Logika API, otorisasi RBAC backend, AuditLog, break-glass
+│   ├── Triggers.gs             ← Laporan email otomatis & trigger retensi data (dryRun)
+│   └── appsscript.json         ← Manifest Google Apps Script runtime V8
 └── docs/
-    ├── SHEETS_SETUP.md     ← Panduan struktur tab Sheets & bootstrap admin
-    ├── DEPLOY.md           ← Panduan ini (GitHub Pages & GAS deployment)
-    └── ASSUMPTIONS.md      ← Catatan teknis, limitasi runtime & asumsi
+    ├── SHEETS_SETUP.md         ← Panduan struktur tab Sheets, schema RBAC & bootstrap admin
+    ├── DEPLOY.md               ← Panduan ini (GitHub Pages & GAS deployment)
+    └── ASSUMPTIONS.md          ← Catatan asumsi, batasan kuota, dan retensi data
 ```
 
 ---
 
-## 2. Deployment Backend (Google Apps Script Manual)
+## 2. Prosedur Deployment Manual Backend (Google Apps Script)
 
-File backend berada di folder `backend/` dan memerlukan pembaruan manual di konsol Google Apps Script:
+Setiap ada perubahan pada file `backend/Code.gs` atau `backend/Triggers.gs`, pemilik sistem wajib memperbarui deployment di Google Apps Script:
 
-### Langkah Deploy Backend:
 1. Buka spreadsheet Google Sheets resmi hotel.
 2. Klik menu **Extensions** (Ekstensi) → **Apps Script**.
 3. Di editor Apps Script:
-   - Salin seluruh isi `backend/Code.gs` ke file `Code.gs`.
-   - Salin seluruh isi `backend/Triggers.gs` ke file `Triggers.gs`.
-   - Pastikan `appsscript.json` menggunakan runtime V8 dan zona waktu `Asia/Jakarta`.
-4. Jalankan bootstrap administrator awal:
-   - Di editor, pilih fungsi `setupInitialAdmin`.
-   - Ubah parameter pemanggilan atau jalankan:
-     ```javascript
-     setupInitialAdmin('admin', 'PasswordKuatAnda2026!');
-     ```
-   - Klik **Run** dan berikan izin akses spreadsheet. Akun admin akan dibuat dengan flag `must_change = true`.
-5. Deploy Web App:
-   - Klik tombol **Deploy** → **New deployment**.
-   - Pilih jenis: **Web app**.
-   - **Execute as**: *Me (pemilik akun Google)*.
-   - **Who has access**: *Anyone* (Siapa saja, termasuk tamu tanpa login Google).
-   - Klik **Deploy**, lalu salin **Web App URL** (berakhiran `/exec`).
-6. Siapkan Trigger Otomatis:
-   - Di Apps Script, pilih menu **Triggers** (Ikon jam di sidebar kiri).
-   - Tambahkan trigger mingguan untuk fungsi `laporanMingguan` (setiap Senin pukul 07.00 WIB).
-   - Tambahkan trigger bulanan untuk fungsi `rekapBulanan` (tanggal 1 setiap bulan).
+   - Ganti seluruh isi `Code.gs` dengan konten terbaru dari `backend/Code.gs`.
+   - Ganti seluruh isi `Triggers.gs` dengan konten terbaru dari `backend/Triggers.gs`.
+   - Pastikan file `appsscript.json` (jika terlihat di Project Settings) menyetel timezone `Asia/Jakarta`.
+4. Jika memperbarui dari versi sebelumnya ke Fase 2:
+   - Jalankan fungsi `_getOrCreateAuditSheet()` sekali untuk memastikan tab `AuditLog` dibuat otomatis dengan header resmi.
+   - Tab `Users` akan otomatis menyesuaikan menjadi 7 kolom (`user_id`, `username`, `password_hash`, `salt`, `created_at`, `must_change`, `role`).
+5. Buat Deployment Baru / Perbarui Versi:
+   - Klik tombol **Deploy** → **Manage deployments**.
+   - Pilih deployment Web App aktif, klik ikon pensil (**Edit**).
+   - Pada dropdown **Version**, pilih **New version**. Beri catatan deskripsi: `v6.2.0-phase2 — RBAC, AuditLog, and health signals`.
+   - Klik **Deploy**.
+   - Salin **Web App URL** (URL berakhiran `/exec`).
 
 ---
 
-## 3. Deployment Frontend (GitHub Pages)
+## 3. Prosedur Deployment Frontend (GitHub Pages)
 
-Frontend di-deploy langsung dari root repository GitHub:
+Deployment frontend berjalan otomatis saat commit di-push ke branch `main`:
 
-1. Buka repository GitHub: `https://github.com/rizqiwidi/hotelbumi`.
-2. Masuk ke **Settings** → **Pages**.
-3. Pada bagian **Build and deployment**:
-   - **Source**: `Deploy from a branch`
-   - **Branch**: `main`
-   - **Folder**: `/ (root)`
-4. Klik **Save**.
-5. Tunggu proses GitHub Actions Pages selesai. Website akan tayang di:
+1. Pastikan perubahan telah di-commit ke Git:
+   ```bash
+   git add .
+   git commit -m "feat(p2): implement Phase 2 operations, audit trail, modular admin and reliability"
+   git push origin main
    ```
-   https://rizqiwidi.github.io/hotelbumi/
+2. GitHub Pages akan otomatis memperbarui file statis dalam 60–120 detik dari root repository.
+3. Akses halaman tamu publik: `https://rizqiwidi.github.io/hotelbumi/`
+4. Akses portal admin: `https://rizqiwidi.github.io/hotelbumi/admin/`
+
+---
+
+## 4. Sinyal Health Sistem di Portal Admin (PRD 8.3, 11E)
+
+Setelah login ke portal admin, periksa bilah **Sinyal Health & Keandalan Operasional** di bawah bilah atas:
+
+- **Status Backend**:
+  - `🟢 Backend Terhubung`: Backend merespons normal dengan versi yang cocok.
+  - `🔴 Backend Terputus / Belum Diuji`: URL backend belum diisi atau terjadi kegagalan jaringan.
+- **Frontend Version**: Menampilkan versi klien statis (`v6.2.0-phase2 (P2)`).
+- **Backend Version**: Menampilkan versi yang dilaporkan oleh Google Apps Script (`v6.2.0-phase2`).
+- **Waktu Server**: Menampilkan timestamp resmi server Google Apps Script (WIB) untuk mendeteksi drift jam lokal.
+- **Dead-Letter Queue (DLQ)**:
+  - `0 event gagal`: Seluruh beacon tamu berhasil dikirim ke server.
+  - `> 0 event gagal`: Terdapat event yang gagal terkirim setelah maksimal 5 kali retry, tersimpan aman di antrean lokal peramban tamu.
+
+---
+
+## 5. Checklist Smoke Test Pasca-Deployment (Verification Gate)
+
+Lakukan verifikasi langkah demi langkah segera setelah deployment selesai:
+
+- [ ] **1. Halaman Tamu Normal**: Buka `https://rizqiwidi.github.io/hotelbumi/?source=staff-test`. Pastikan ucapan selamat datang dari staf muncul, gambar outlet tidak broken (fallback SVG/emoji aktif jika gambar gagal).
+- [ ] **2. Tracking Beacon**: Klik tombol review Google. Periksa lembar `Events_YYYY_MM` di Google Sheets untuk memastikan baris baru tercatat dengan `event_id` unik.
+- [ ] **3. Live Draft Preview (CNT-09)**: Buka `https://rizqiwidi.github.io/hotelbumi/?preview=1`. Banner kuning sticky pratinjau draft harus muncul di bagian atas layar.
+- [ ] **4. Autentikasi Admin & Role Badge (SEC-11)**: Login ke `/admin/`. Pastikan badge peran pengguna (`Super Administrator`, `Manager`, `Editor`, atau `Analis`) tampil dengan benar di bilah sisi.
+- [ ] **5. Penegakan Otorisasi Backend**: Coba simpan konfigurasi menggunakan akun `analyst_readonly` — permintaan harus ditolak oleh backend dengan notifikasi `MUTATION_DENIED`.
+- [ ] **6. Jejak Audit Server (SEC-11, SEC-12)**: Buka tab **Jejak Audit** di portal admin. Klik **Perbarui Log** dan pastikan riwayat login dan mutasi tercatat lengkap di tabel dengan masked IP.
+- [ ] **7. Cetak QR Massal (QRN-06)**: Buka tab **Cetak QR Massal**. Ubah format tata letak ke *Table Tent Lipat*, *Stiker Meja*, dan *A4 Grid*. Pastikan kode QR ter-render dengan sempurna tanpa galat konsol.
+- [ ] **8. Fallback Chart Offline (GUE-14)**: Matikan koneksi internet atau blokir CDN Chart.js. Buka tab Dashboard, pastikan ringkasan tabel tren muncul menggantikan kanvas grafik.
+
+---
+
+## 6. Prosedur Rollback Deployment (Keandalan Operasional)
+
+### A. Rollback Frontend (GitHub Pages)
+Jika terdapat regresi fungsi atau kesalahan tampilan pada frontend:
+1. Temukan commit stabil sebelumnya via riwayat git:
+   ```bash
+   git log --oneline -n 5
    ```
+2. Lakukan revert pada commit yang bermasalah:
+   ```bash
+   git revert <commit-hash-yang-bermasalah>
+   git push origin main
+   ```
+3. Tunggu 1–2 menit hingga GitHub Pages mem-publish ulang revisi sebelumnya.
+4. Bersihkan cache peramban klien via *Hard Reload* (`Ctrl + Shift + R` atau `Cmd + Shift + R`).
+
+### B. Rollback Backend (Google Apps Script)
+Jika terjadi galat pada script backend yang baru di-deploy:
+1. Buka spreadsheet Google Sheets → **Extensions** → **Apps Script**.
+2. Klik tombol **Deploy** → **Manage deployments**.
+3. Pilih deployment aktif, klik ikon pensil (**Edit**).
+4. Pada dropdown **Version**, pilih nomor versi stabil sebelumnya (misalnya versi sebelum pembaruan).
+5. Klik **Deploy**. Web App URL akan tetap sama, namun langsung kembali menjalankan kode versi sebelumnya dalam hitungan detik tanpa downtime.
 
 ---
 
-## 4. Konfigurasi Pertama Kali di Portal Admin
+## 7. Prosedur Teruji Pencadangan & Pemulihan Spreadsheet (*Backup & Restore*)
 
-Setelah frontend dan backend tayang:
+Basis data berada di Google Sheets, sehingga prosedur pencadangan dan pemulihan memanfaatkan infrastruktur Google Workspace:
 
-1. Buka portal manajemen: `https://rizqiwidi.github.io/hotelbumi/admin/`.
-2. Masuk menggunakan akun admin yang telah dibuat via `setupInitialAdmin`.
-3. Jika akun diset dengan `must_change = true`, sistem akan meminta Anda mengganti password ke kata sandi baru.
-4. Buka menu **Konfigurasi**:
-   - Pastikan **URL Google Apps Script** terisi dengan Web App URL dari Langkah 2.
-   - Klik **Simpan URL Backend** dan **Uji Koneksi Backend** untuk memverifikasi komunikasi.
-5. Kelola Sumber & Staf:
-   - Buka menu **Manajemen Staf & Titik NFC** untuk mendaftarkan staf hotel dan meja gerai.
-   - Klik **Simpan & Sinkronkan ke Cloud**.
-6. Atur Ambang Batas Anti-Fraud:
-   - Buka menu **Audit Anti-Fraud & Integritas**.
-   - Daftarkan perangkat staf hotel ke **StaffDevices (AF-03)** agar kunjungan uji coba staf tidak merusak metrik kualitas.
+### A. Prosedur Backup Rutin (Mingguan / Bulanan)
+1. **Backup Otomatis Google Drive Version History**:
+   - Google Drive secara otomatis menyimpan riwayat versi dokumen setiap kali terjadi perubahan.
+   - Beri nama versi bersejarah: Buka spreadsheet → **File** → **Version history** → **Name current version** (mis. `Backup_Akhir_Bulan_2026_10`).
+2. **Snapshot Salinan Spreadsheet Independen**:
+   - Buka spreadsheet → **File** → **Make a copy** (Buat salinan).
+   - Beri nama: `Bumi_Surabaya_DB_BACKUP_YYYY-MM-DD`.
+   - Pindahkan salinan ke folder Google Drive khusus `Backups_Arsip_Hotel`.
+3. **Ekspor File Dingin (*Cold Storage Export*)**:
+   - Buka **File** → **Download** → **Microsoft Excel (.xlsx)**.
+   - Simpan berkas `.xlsx` di penyimpanan aman offline sebagai arsip fisik.
 
----
-
-## 5. Prosedur Uji Coba (Smoke Test)
-
-Lakukan pengujian berikut sebelum digunakan operasional:
-
-### A. Uji Halaman Tamu
-- Buka `https://rizqiwidi.github.io/hotelbumi/?source=staff-test`.
-- Pastikan sapaan staf muncul sesuai kode sumber.
-- Klik tombol ulasan Google Review.
-- Periksa tab `Events_YYYY_MM` di Google Sheets untuk memastikan event `google_review_click` tercatat dengan `event_id` unik dan timestamp server.
-
-### B. Uji Anti-Kecurangan (Anti-Fraud)
-- Buka portal admin di `/admin/` dan buka tab **Audit Anti-Fraud**.
-- Verifikasi ringkasan 8 aturan anti-fraud (AF-01 s/d AF-08).
-- Uji pendaftaran HP staf: klik tombol **📌 Daftarkan HP Staf** pada baris event atau gunakan formulir pendaftaran manual. Pastikan status tersimpan ke server dan muncul di tabel `StaffDevices`.
-
-### C. Uji Ketahanan Offline (Retry Queue & DLQ)
-- Buka halaman tamu, aktifkan mode Airplane / matikan koneksi.
-- Lakukan interaksi (misalnya klik promosi).
-- Nyalakan kembali koneksi internet: antrean offline harus mengirimkan event secara otomatis dengan backoff eksponensial tanpa menduplikasi baris berkat idempotensi `event_id`.
-
----
-
-## 6. Prosedur Pembaruan & Rollback
-
-- **Pembaruan Frontend**: Cukup lakukan `git commit` dan `git push` ke branch `main`. GitHub Pages akan memperbarui situs dalam 1–2 menit.
-- **Pembaruan Backend**: Edit kode di `backend/Code.gs` atau `backend/Triggers.gs`, lalu buat versi baru via **Deploy** → **Manage deployments** → **Edit** → **New version** → **Deploy**.
-- **Rollback Frontend**: Lakukan `git revert` pada commit bermasalah dan push ke `main`.
-- **Rollback Backend**: Di editor Apps Script, pilih versi deployment sebelumnya pada menu **Manage deployments**.
+### B. Prosedur Pemulihan (*Restore Step-by-Step*)
+Jika spreadsheet rusak, terhapus sebagian, atau terjadi kekacauan formula/baris:
+1. **Opsi 1: Restore dari Riwayat Versi (Paling Cepat)**:
+   - Buka spreadsheet → **File** → **Version history** → **See version history**.
+   - Pilih titik waktu sebelum kerusakan terjadi.
+   - Klik **Restore this version** (Pulihkan versi ini).
+2. **Opsi 2: Restore dari Dokumen Salinan Cadangan**:
+   - Jika dokumen utama rusak total, buka salinan `Bumi_Surabaya_DB_BACKUP_YYYY-MM-DD`.
+   - Buat salinan baru dengan nama spreadsheet utama resmi.
+   - Buka **Extensions** → **Apps Script** pada spreadsheet baru tersebut.
+   - Salin kembali file `backend/Code.gs` dan `backend/Triggers.gs`.
+   - Deploy sebagai Web App baru dan salin Web App URL baru.
+   - Buka portal admin di `/admin/`, masukkan URL baru di tab **Konfigurasi Backend**, lalu klik **Simpan URL Backend** dan **Uji Koneksi Backend**.
+   - Lakukan uji login dan verifikasi tab `Users`, `AuditLog`, `Config`, dan `Sources`.

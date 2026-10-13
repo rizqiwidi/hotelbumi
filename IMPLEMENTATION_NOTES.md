@@ -161,12 +161,110 @@ Jika administrator lupa kata sandi:
 
 ---
 
-## 6. Keterbatasan yang Masih Ada (Catatan untuk Fase 2)
+## 7. Ringkasan Implementasi Fase 2 (P2 — Operasional, Auditabilitas, dan Skala)
 
-1. **Dukungan Web NFC Browser**:
-   - Web NFC API (`NDEFReader`) secara native saat ini hanya tersedia di browser Google Chrome pada perangkat Android dengan hardware NFC aktif.
-   - Perangkat iOS (iPhone) dan browser desktop tidak menyediakan Web NFC API langsung; penulisan kartu NFC pada perangkat tersebut memerlukan aplikasi eksternal seperti *NFC Tools* dengan menyalin URL yang disediakan di portal admin.
-2. **Kuota Eksekusi Google Apps Script**:
-   - Runtime Google Apps Script memiliki batas waktu eksekusi 6 menit per panggilan fungsi dan batas kuota email harian (100–1.500 email tergantung tier Google Workspace). Laporan mingguan dan rekapitulasi bulanan sudah dioptimalkan agar berjalan dalam hitungan detik.
-3. **Penyelarasan Multi-Admin Real-Time**:
-   - Sinkronisasi konfigurasi antar-admin berbasis REST/HTTP request (polling & manual save status) dengan peringatan `beforeunload`, belum menggunakan WebSocket live-collaboration. Mode multi-admin simultan berpotensi menimpa data jika dua admin menyimpan perubahan di waktu yang bersamaan.
+Implementasi Fase 2 mencakup penguatan operasional, tata kelola data, jejak audit, keandalan deployment, dan modularisasi arsitektur portal admin tanpa mengubah stack atau menambah build step:
+
+### A. Modularisasi Controller Admin Monolitik (PRD 5 P2)
+- Skrip inline berukuran >1.700 baris di `admin/index.html` berhasil dipecah menjadi 9 modul domain terpisah di `assets/js/admin/` yang dimuat via tag `<script src="...">` standar peramban:
+  1. `admin-core.js`: State manager global (`BSAdmin.state`), toast helper, status sinkronisasi, navigasi tab, auth lifecycle, penegakan izin UI, dan sinyal health.
+  2. `admin-sources.js`: Manajemen staf, gerai, dan titik NFC, rotasi token (SRC-04), dan sinkronisasi ke cloud.
+  3. `admin-content.js`: Kurasi gerai F&B, promosi terjadwal (CNT-01 s/d CNT-08), pengaturan visibilitas seksi, dan live draft preview (CNT-09).
+  4. `admin-appearance.js`: Pengaturan tema visual, teks hero, dan penguncian palet warna resmi hotel (PRD 6.1).
+  5. `admin-reports.js`: Pengendali filter tren, preset filter favorit (ANA-10), ekspor CSV terproteksi formula injection, dan generator cetak QR massal (QRN-06).
+  6. `admin-fraud-ops.js`: Tabel anomali anti-fraud, pendaftaran HP staf (`StaffDevices` — AF-03), pengaturan ambang batas fraud, pengujian koneksi backend, dan ganti kata sandi admin.
+  7. `admin-audit.js`: Visualisasi dan pemfilteran log jejak audit mutasi server (`AuditLog` — SEC-11, SEC-12).
+  8. `admin-nfc-ops.js`: Programmer Web NFC (`window.NDEFReader`), status interaktif 4-tahap, dan preview QR individual.
+  9. `admin-init.js`: Bootstrapper lifecycle aplikasi, integrasi mobile sidebar, auto-resume sesi, peringatan `beforeunload`, dan event binding global.
+- **Nol Regresi & Tanpa Build Step**: Seluruh antarmuka tetap berjalan menggunakan vanilla JavaScript, mempertahankan compatibility inline event handlers (`window.adminEditSource`, `window.adminRotateSource`, `window.adminMarkDevice`, dll.).
+
+### B. Otorisasi Peran Berjenjang & Jejak Audit (SEC-11, SEC-12, SEC-10, SRC-09)
+- **Penegakan Izin Backend (`backend/Code.gs`)**:
+  - Didefinisikan 4 peran minimum: `super_admin`, `manager`, `content_editor`, `analyst_readonly`.
+  - Backend memvalidasi `session.role` pada setiap operasi mutasi `save_all_admin_data`:
+    - `analyst_readonly`: Ditolak seketika dengan respon error `MUTATION_DENIED`.
+    - `content_editor`: Dibatasi secara ketat hanya boleh memodifikasi gerai, promosi, tampilan, dan visibilitas seksi tamu. Mutasi data staf atau threshold fraud ditolak.
+    - `manager`: Diizinkan memodifikasi staf dan konten, namun ditolak jika mencoba memodifikasi threshold fraud atau konfigurasi sistem.
+    - `super_admin`: Memiliki hak penuh mutasi seluruh domain.
+- **Jejak Audit Mutasi Server (`AuditLog`)**:
+  - Setiap operasi sensitif (login berhasil/gagal, simpan konfigurasi, ganti kata sandi, break-glass recovery) dicatat otomatis ke lembar `AuditLog` di Google Sheets via fungsi internal `_recordAudit`.
+  - Kolom audit: `log_id`, `ts_server`, `actor`, `role`, `action`, `target_object`, `status`, `details`, `ip`.
+  - Kata sandi mentah, token sesi, dan salt tidak pernah dicatat di log audit.
+- **Pemulihan Darurat Teruji (Break-Glass Recovery — SEC-12)**:
+  - Tersedia fungsi `breakGlassRecovery(targetUsername, temporaryPassword)` di `backend/Code.gs`.
+  - Dijalankan langsung dari Google Apps Script editor saat seluruh akses terkunci.
+  - Memaksa flag `must_change = true`, menghapus sesi aktif di cache server, dan mencatat aksi ke `AuditLog` tanpa menghidupkan kembali token backdoor publik.
+
+### C. Operasional Data, Kuota & Prosedur Retensi (API-10, API-11, PRD 7.9)
+- **Dokumentasi Batas Beban & Kuota**:
+  - Terdokumentasi lengkap di `docs/ASSUMPTIONS.md` & `docs/DEPLOY.md`:
+    - Google Sheets: Batas 10 juta sel (kapasitas operasional ~7 tahun untuk 10.000 event/bulan).
+    - Google Apps Script: Timeout 30 detik untuk Web App, 6 menit untuk trigger terjadwal, kuota URL Fetch harian 20.000 (consumer) / 100.000 (Workspace), kuota email 100–1.500/hari.
+    - Strategi mitigasi: Partisi tab bulanan (`Events_YYYY_MM`), caching lokal, Dead-Letter Queue eksponensial di klien, dan pengarsipan tahunan.
+- **Kebijakan Retensi Data Otomatis (PRD 7.9)**:
+  - Fungsi `jalankanRetensiData(dryRun)` diimplementasikan di `backend/Triggers.gs` dengan masa retensi:
+    - Raw Events: 12 Bulan
+    - Monthly Aggregates: 24 Bulan (2 Tahun)
+    - AuditLog: 12 Bulan
+    - ScriptLog: 3 Bulan (90 Hari)
+  - Secara default berjalan dalam mode aman `dryRun = true` dan **ditandai sebagai rekomendasi yang membutuhkan persetujuan pemilik data / GM sebelum penghapusan fisik diaktifkan**.
+- **Prosedur Teruji Backup & Restore Spreadsheet**:
+  - Terdokumentasi lengkap di `docs/DEPLOY.md` dan `docs/SHEETS_SETUP.md`: Snapshot salinan Google Drive, ekspor Excel offline, serta langkah pemulihan versi dan penyambungan ulang Apps Script Web App.
+
+### D. Keandalan Operasional & Sinyal Health (PRD 8.3, 11E)
+- **Sinyal Health di UI Admin**:
+  - Bilah status visual di bawah header menampilkan: Status backend (🟢 Terhubung / 🔴 Terputus), versi frontend statis (`v6.2.0-phase2`), versi backend Apps Script (`v6.2.0-phase2`), waktu server resmi (WIB), dan jumlah antrean event gagal (DLQ count).
+- **Prosedur Rollback & Smoke Test**:
+  - Terdokumentasi langkah rollback Git untuk frontend dan rollback versi deployment Apps Script untuk backend.
+  - Checklist 8 butir smoke test pasca-deploy mencakup pengujian halaman tamu, beacon tracking, live draft preview, otorisasi RBAC, log audit, cetak QR, dan fallback offline Chart.js.
+
+### E. Peningkatan Kebutuhan Operasional (GUE-14, CNT-09, ANA-10, QRN-06)
+- **Live Draft Preview (CNT-09)**:
+  - Tombol *"👁️ Preview Draft Tamu"* di tab Promosi & Outlet membuka modal pratinjau responsif dengan viewport switch (Mobile 414px / Desktop 100%).
+  - Memanfaatkan parameter `?preview=1` dan `sessionStorage.getItem('bs_preview_config')` pada `assets/js/guest/app.js` untuk melihat draft perubahan sebelum diterbitkan ke tamu asli, disertai sticky alert banner mode draft.
+- **Filter Favorit & Rentang Laporan Cepat (ANA-10)**:
+  - Bilah preset analitik cepat di dashboard: Staf (7 Hari), Gerai (30 Hari), Semua (30 Hari).
+  - Tombol simpan dan muat preset favorit kustom yang disimpan di `localStorage` peramban admin.
+- **Cetak QR Massal Beragam Format (QRN-06)**:
+  - 4 pilihan tata letak cetak fisik: Kartu Nama Staf (85x55mm), Table Tent Lipat A6 (105x148mm), Stiker Meja Compact (50x50mm), dan Lembar A4 Grid (8 kartu/halaman).
+  - Filter pencarian teks langsung, filter tipe sumber, filter "Perlu Cetak Ulang Saja", dan filter "Sertakan Sumber Nonaktif".
+- **Fallback Grafik Offline (GUE-14)**:
+  - Jika CDN Chart.js gagal dimuat atau diblokir jaringan, sistem secara otomatis merender ringkasan tabel HTML tren harian di dalam kontainer grafik tanpa galat JavaScript.
+  - Gambar outlet dan promosi dilengkapi penanganan `onerror` anggun dengan fallback SVG/emoji.
+
+---
+
+## 8. Catatan Deployment Manual Google Apps Script (.gs) untuk Pemilik
+
+Pemilik/administrator wajib memperbarui file backend di Google Apps Script:
+
+1. **`backend/Code.gs`**:
+   - Salin seluruh isi file ke editor Apps Script.
+   - Menyediakan endpoint baru `get_audit_logs`, penegakan otorisasi peran RBAC, fungsi `breakGlassRecovery`, `setupUser`, dan atribut kesehatan `system_health`.
+2. **`backend/Triggers.gs`**:
+   - Salin seluruh isi file ke editor Apps Script.
+   - Menyediakan fungsi `jalankanRetensiData(dryRun)` dan penyelarasan URL footer email mingguan ke GitHub Pages.
+3. **Deploy Versi Baru**:
+   - Di editor Apps Script, klik **Deploy** → **Manage deployments** → **Edit** → pilih **New version** (deskripsi: `v6.2.0-phase2`) → klik **Deploy**.
+
+---
+
+## 9. Daftar Keputusan yang Membutuhkan Persetujuan Pemilik (PRD Bagian 12)
+
+Sesuai PRD Bagian 12 (Keputusan & Pertimbangan Bisnis), item-item berikut telah diimplementasikan dengan aman dan kini menunggu keputusan / konfirmasi formal dari manajemen hotel:
+
+1. **Kebijakan & Jadwal Retensi Otomatis Data Tamu (PRD 7.9)**:
+   - *Status Saat Ini*: Diimplementasikan dalam mode simulasi (`dryRun = true`) di `backend/Triggers.gs`.
+   - *Keputusan yang Dibutuhkan*: Persetujuan formal dari General Manager / DPO hotel mengenai rekomendasi masa simpan:
+     - Apakah retensi raw events 12 bulan dan agregat bulanan 24 bulan disetujui untuk dihapus otomatis secara permanen dari spreadsheet?
+     - Jika disetujui, pemilik dapat menjadwalkan trigger bulanan Apps Script untuk fungsi `jalankanRetensiData(false)`.
+2. **Penugasan Akun & Peran Staf Operasional (SEC-11)**:
+   - *Status Saat Ini*: Fondasi RBAC 4 peran aktif di backend dan UI admin. Akun admin utama default disiapkan sebagai `super_admin`.
+   - *Keputusan yang Dibutuhkan*: Daftar username staf hotel yang akan didaftarkan sebagai `manager` (operasional harian F&B), `content_editor` (tim marketing promosi), dan `analyst_readonly` (analis internal / konsultan audit).
+3. **Pemberitahuan Retensi & Privasi di Halaman Tamu (GUE-13)**:
+   - *Status Saat Ini*: Menampilkan transparansi pemrosesan identifier pseudonim (`device_id` & `session_id`) tanpa klaim keliru "Zero-PII".
+   - *Keputusan yang Dibutuhkan*: Peninjauan oleh tim legal/manajemen hotel apakah kalimat transparansi privasi di footer sudah selaras dengan kebijakan privasi korporat Bumi Surabaya City Resort.
+4. **Pilihan Format Cetak Fisik Meja & ID Badge (QRN-06)**:
+   - *Status Saat Ini*: 4 tata letak siap cetak tersedia di panel Cetak QR Massal (Kartu Nama, Table Tent Lipat A6, Stiker Meja 50x50mm, A4 Grid).
+   - *Keputusan yang Dibutuhkan*: Pemilihan jenis material fisik (akrilik tent card, stiker vinyl anti-air, atau ID badge lanyard staf) oleh tim Housekeeping & F&B sebelum pencetakan massal dilakukan.
+

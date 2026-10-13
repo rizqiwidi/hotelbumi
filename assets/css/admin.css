@@ -1216,3 +1216,134 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.12);
   flex-shrink: 0;
 }
+
+/* ── HEALTH SIGNALS BAR (PRD 8.3, 11E) ─────────────────────── */
+.adm-health-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  background: var(--white);
+  border-bottom: 1px solid var(--border-light);
+  padding: 8px 24px;
+  font-size: 0.78rem;
+  color: var(--charcoal-muted);
+}
+.adm-health-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.adm-health-label {
+  color: var(--charcoal-light);
+  font-weight: 500;
+}
+.adm-health-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.74rem;
+}
+.adm-health-online {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid rgba(22, 101, 52, 0.2);
+}
+.adm-health-offline {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+/* ── RBAC ROLE TAGS (SEC-11) ───────────────────────────────── */
+.adm-sidebar-role {
+  font-size: 0.76rem;
+  color: var(--gold);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.adm-role-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.adm-role-super_admin {
+  background: rgba(201, 169, 110, 0.18);
+  color: #8b6d34;
+  border: 1px solid rgba(201, 169, 110, 0.4);
+}
+.adm-role-manager {
+  background: rgba(26, 60, 42, 0.1);
+  color: var(--deep-green);
+  border: 1px solid rgba(26, 60, 42, 0.2);
+}
+.adm-role-content_editor {
+  background: rgba(176, 143, 81, 0.12);
+  color: #b08f51;
+  border: 1px solid rgba(176, 143, 81, 0.35);
+}
+.adm-role-analyst_readonly {
+  background: rgba(71, 84, 77, 0.1);
+  color: #47544d;
+  border: 1px solid rgba(71, 84, 77, 0.25);
+}
+
+/* ── FAVORITE FILTER TOOLBAR (ANA-10) ──────────────────────── */
+.adm-fav-filter-card {
+  border-left: 3px solid var(--gold);
+  background: var(--white);
+}
+
+/* ── LIVE DRAFT PREVIEW MODAL (CNT-09) ─────────────────────── */
+.adm-preview-modal-box {
+  background: var(--white);
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+}
+.adm-preview-frame-wrap {
+  position: relative;
+}
+
+/* ── BULK QR PRINT LAYOUT PREVIEWS (QRN-06) ────────────────── */
+.print-layout-sticker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+.adm-print-sticker {
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.print-layout-a4grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.adm-print-a4-cell {
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+

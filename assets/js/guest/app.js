@@ -307,7 +307,7 @@
       var resolvedImg = p.image_url ? (window.BSConfig ? BSConfig.resolveAsset(p.image_url) : p.image_url) : '';
       var safeImg = resolvedImg ? sanitizeUrl(resolvedImg) : '';
       var imgHtml = safeImg && safeImg !== '#'
-        ? '<img src="' + escapeHtml(safeImg) + '" alt="' + pName + '" loading="lazy">'
+        ? '<img src="' + escapeHtml(safeImg) + '" alt="' + pName + '" loading="lazy" onerror="this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';"><div class="bs-promo-img-placeholder" style="display:none;">' + pEmoji + '</div>'
         : '<div class="bs-promo-img-placeholder">' + pEmoji + '</div>';
 
       // Tujuan CTA promo tervalidasi (GUE-10, CNT-04)
@@ -384,7 +384,7 @@
       var resolvedImg = o.image_url ? (window.BSConfig ? BSConfig.resolveAsset(o.image_url) : o.image_url) : '';
       var safeImg = resolvedImg ? sanitizeUrl(resolvedImg) : '';
       var imgHtml = safeImg && safeImg !== '#'
-        ? '<img src="' + escapeHtml(safeImg) + '" alt="' + oName + '" loading="lazy">'
+        ? '<img src="' + escapeHtml(safeImg) + '" alt="' + oName + '" loading="lazy" onerror="this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';"><div class="bs-outlet-img-placeholder" style="display:none;">' + oEmoji + '</div>'
         : '<div class="bs-outlet-img-placeholder">' + oEmoji + '</div>';
 
       // Tujuan CTA tervalidasi: URL reservasi khusus / WhatsApp reservasi (GUE-07, GUE-10, CNT-01)
@@ -580,6 +580,37 @@
     initPrivacyModal();
   }
 
+  // ── Pratinjau Draft Admin (CNT-09) ──────────────────────
+  function checkPreviewDraft() {
+    var isPreview = (new URLSearchParams(window.location.search).get('preview') === '1');
+    if (!isPreview) return;
+    try {
+      var raw = sessionStorage.getItem('bs_preview_config');
+      if (raw) {
+        var draft = JSON.parse(raw);
+        if (draft) {
+          _config = Object.assign({}, _config || BSConfig.DEFAULTS, draft);
+          if (Array.isArray(draft.promotions)) _config.promotions = draft.promotions;
+          if (Array.isArray(draft.outlets)) _config.outlets = draft.outlets;
+        }
+      }
+      var sRaw = sessionStorage.getItem('bs_preview_sources');
+      if (sRaw) {
+        var sDraft = JSON.parse(sRaw);
+        if (Array.isArray(sDraft)) _sources = sDraft;
+      }
+      if (!$('#bs-draft-preview-banner')) {
+        var banner = document.createElement('div');
+        banner.id = 'bs-draft-preview-banner';
+        banner.style.cssText = 'position:sticky;top:0;z-index:9999;background:#1a3c2a;color:#c9a96e;padding:10px 16px;text-align:center;font-size:0.84rem;font-weight:600;border-bottom:2px solid #c9a96e;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
+        banner.innerHTML = '👁️ <strong>Mode Pratinjau Draft Admin (CNT-09)</strong> — Menampilkan simulasi konten sebelum dipublikasikan ke tamu.';
+        document.body.insertBefore(banner, document.body.firstChild);
+      }
+    } catch (e) {
+      console.warn('[BSApp] Gagal menerapkan preview draft:', e);
+    }
+  }
+
   // ── Inisialisasi utama ────────────────────────────────────
   function init() {
     var gasUrl = window.BSConfig ? BSConfig.getGasUrl() : '';
@@ -594,6 +625,7 @@
       BSConfig.loadConfig(gasUrl, function(cfg, sources) {
         _config  = cfg;
         _sources = sources || [];
+        checkPreviewDraft();
         renderAll();
         // Sembunyikan loading screen
         var loading = $('#bs-loading');
@@ -602,6 +634,7 @@
         if (main)    main.classList.remove('bs-hidden');
       }, function(err) {
         console.warn('[BSApp] Config load error:', err);
+        checkPreviewDraft();
         renderAll();
         var loading = $('#bs-loading');
         var main    = $('#bs-main');
@@ -609,6 +642,7 @@
         if (main)    main.classList.remove('bs-hidden');
       });
     } else {
+      checkPreviewDraft();
       renderAll();
     }
   }
