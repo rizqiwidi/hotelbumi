@@ -88,10 +88,17 @@ body {
 }
 .bs-hero-content { position: relative; z-index: 2; max-width: 440px; width: 100%; }
 
-.bs-logo-container { margin-bottom: 28px; }
+.bs-logo-container {
+  display: inline-block;
+  background: var(--white);
+  border-radius: 22px;
+  padding: 16px 30px;
+  margin-bottom: 28px;
+  box-shadow: 0 10px 32px rgba(0,0,0,0.28);
+}
 .bs-hotel-logo {
-  max-width: 210px; height: auto;
-  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.25));
+  display: block;
+  max-width: 200px; height: auto;
 }
 
 .bs-staff-badge {
@@ -424,7 +431,13 @@ body {
   text-align: center;
   font-size: 0.82rem;
 }
-.bs-footer-logo { max-width: 150px; height: auto; margin-bottom: 16px; opacity: 0.9; }
+.bs-footer-logo {
+  max-width: 150px; height: auto;
+  background: var(--white);
+  border-radius: 14px;
+  padding: 10px 18px;
+  margin-bottom: 16px;
+}
 .bs-footer-hotel-name { color: var(--white); font-size: 0.95rem; margin-bottom: 6px; }
 .bs-footer-address { max-width: 340px; margin: 0 auto 4px; line-height: 1.7; }
 .bs-footer-divider {
