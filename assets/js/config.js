@@ -42,11 +42,11 @@
     },
     appearance: {
       accent_color:    '#c9a96e',
-      hero_text:       'Selamat Datang di Bumi Surabaya',
-      hero_subtitle:   'Hotel Bintang Lima di Jantung Surabaya',
-      welcome_msg_staff:  'Anda saat ini dilayani dengan sepenuh hati oleh tim kami.',
-      welcome_msg_outlet: 'Nikmati pengalaman kuliner eksklusif di {outlet_name}.',
-      welcome_msg_general:'Kami dengan bangga menyambut Anda di Bumi Surabaya City Resort.'
+      hero_text:       'Welcome to Bumi Surabaya',
+      hero_subtitle:   'Five-Star City Resort in the Heart of Surabaya',
+      welcome_msg_staff:  'You are currently being served wholeheartedly by our team.',
+      welcome_msg_outlet: 'Enjoy an exclusive culinary experience at {outlet_name}.',
+      welcome_msg_general:'We are delighted to welcome you to Bumi Surabaya City Resort.'
     },
     guest_sections: {
       show_review:    true,
@@ -58,8 +58,8 @@
     },
     review_settings: {
       review_url:    'https://g.page/r/CbSXVEVxrNXhEB0/review',
-      button_text:   'Berikan Ulasan di Google ⭐',
-      review_prompt: 'Pengalaman Anda berarti bagi kami. Bagikan kesan Anda dan bantu tamu lain menemukan keindahan Bumi Surabaya.'
+      button_text:   'Share Your Experience',
+      review_prompt: 'Your experience means a lot to us. Share your impression and help other guests discover the beauty of Bumi Surabaya.'
     },
     whatsapp_settings: {
       number: '628113388523',

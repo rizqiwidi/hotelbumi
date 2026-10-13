@@ -187,7 +187,7 @@
           var dot = document.createElement('span');
           dot.className = 'bs-dot';
           staffBadgeEl.appendChild(dot);
-          staffBadgeEl.appendChild(document.createTextNode('🪄 Dilayani oleh ' + (_sourceObj.name || '-')));
+          staffBadgeEl.appendChild(document.createTextNode('Served by ' + (_sourceObj.name || '-')));
           show(staffBadgeEl);
         }
       } else if (st === 'outlet') {
@@ -231,13 +231,17 @@
     var mobReview = $('.bs-mob-review');
     // REV-01: URL review mengikuti outlet pada halaman tamu (lihat resolveReviewUrl)
     var reviewUrl = resolveReviewUrl();
-    var reviewTxt = (rev && rev.button_text) || 'Berikan Ulasan di Google ⭐';
+    var reviewTxt = (rev && rev.button_text) || 'Share Your Experience';
+    var finalReview = $('#bs-final-review');
 
     if (reviewBtn) {
       reviewBtn.href = reviewUrl;
-      reviewBtn.textContent = reviewTxt;
-      if (sec && sec.show_review === false) hide(reviewBtn.closest('.bs-hero-cta-review'));
+      // Teks tombol memakai <span> agar ikon FA tidak tertimpa
+      var reviewLabel = reviewBtn.querySelector('span');
+      if (reviewLabel) reviewLabel.textContent = reviewTxt; else reviewBtn.textContent = reviewTxt;
+      if (sec && sec.show_review === false) hide(reviewBtn);
     }
+    if (finalReview) finalReview.href = reviewUrl;
     if (mobReview) mobReview.href = reviewUrl;
 
     // Tombol WhatsApp (GUE-06: dinormalisasi dan divalidasi)
@@ -264,9 +268,11 @@
     var waBtn  = $('#bs-btn-wa');
     var waLink = $('#bs-wa-link');
     var mobWa  = $('.bs-mob-wa');
+    var finalWa = $('#bs-final-wa');
     if (waBtn)  waBtn.href  = waUrl;
     if (waLink) waLink.href = waUrl;
     if (mobWa)  mobWa.href  = waUrl;
+    if (finalWa) finalWa.href = waUrl;
   }
 
   // ── Render seksi Google Review ────────────────────────────
@@ -284,7 +290,9 @@
     if (reviewLink) {
       // REV-01: samakan dengan tombol utama — URL mengikuti outlet halaman tamu
       reviewLink.href = resolveReviewUrl();
-      reviewLink.textContent = cfg.button_text || BSConfig.DEFAULTS.review_settings.button_text;
+      var linkLabel = reviewLink.querySelector('span');
+      var linkText = cfg.button_text || BSConfig.DEFAULTS.review_settings.button_text;
+      if (linkLabel) linkLabel.textContent = linkText; else reviewLink.textContent = linkText;
     }
     show(el);
   }
@@ -343,7 +351,7 @@
         var promoMsg = 'Halo Bumi Surabaya, saya tertarik dengan penawaran promosi: ' + (p.name || 'Penawaran Spesial') + ' di ' + (p.outlet || 'Bumi Surabaya') + '. Mohon informasi reservasi.';
         targetUrl = 'https://wa.me/' + defaultWaNum + '?text=' + encodeURIComponent(promoMsg);
       }
-      var ctaLabel = escapeHtml(p.cta_label || 'Pesan Penawaran Spesial →');
+      var ctaLabel = escapeHtml(p.cta_label || 'Discover More →');
 
       return '<div class="bs-promo-card" data-promo-id="' + pId + '">' +
         '<div class="bs-promo-img-wrap">' + imgHtml + '</div>' +
@@ -438,8 +446,8 @@
           '<p class="bs-outlet-desc">' + oDesc + '</p>' +
           (oHours ? '<div class="bs-outlet-hours"><span class="bs-time-icon">🕒</span> ' + oHours + '</div>' : '') +
           '<div class="bs-outlet-footer">' +
-            '<a href="' + escapeHtml(targetUrl) + '" target="_blank" rel="noopener noreferrer" class="bs-outlet-action-btn" data-outlet-id="' + oId + '" aria-label="Eksplorasi Gerai dan Reservasi ' + oName + '">' +
-              'Eksplorasi Gerai &amp; Reservasi →' +
+            '<a href="' + escapeHtml(targetUrl) + '" target="_blank" rel="noopener noreferrer" class="bs-outlet-action-btn" data-outlet-id="' + oId + '" aria-label="Explore outlet and reservations ' + oName + '">' +
+              'Explore &amp; Reserve →' +
             '</a>' +
           '</div>' +
         '</div>' +
@@ -572,7 +580,8 @@
     var reviewBtn = $('#bs-btn-review');
     var reviewLink = $('#bs-review-link');
     var mobReview = $('.bs-mob-review');
-    [reviewBtn, reviewLink, mobReview].forEach(function(btn) {
+    var finalReview = $('#bs-final-review');
+    [reviewBtn, reviewLink, mobReview, finalReview].forEach(function(btn) {
       if (btn) {
         btn.addEventListener('click', function() {
           if (window.BSTracker) BSTracker.track('google_review_click', {});
@@ -583,7 +592,8 @@
     var waBtn  = $('#bs-btn-wa');
     var waBtn2 = $('#bs-wa-link');
     var mobWa  = $('.bs-mob-wa');
-    [waBtn, waBtn2, mobWa].forEach(function(btn) {
+    var finalWa = $('#bs-final-wa');
+    [waBtn, waBtn2, mobWa, finalWa].forEach(function(btn) {
       if (btn) {
         btn.addEventListener('click', function() {
           if (window.BSTracker) BSTracker.track('whatsapp_click', {});
