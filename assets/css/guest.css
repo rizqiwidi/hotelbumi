@@ -169,23 +169,23 @@ body {
 .bs-btn-outline {
   background: rgba(255,255,255,0.08);
   color: var(--white);
-  border: 1.5px solid rgba(255,255,255,0.25);
+  border: 1.5px solid rgba(255,255,255,0.9);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
-.bs-btn-outline:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.4); }
+.bs-btn-outline:hover { background: rgba(255,255,255,0.15); border-color: #ffffff; }
 .bs-btn-dark {
   background: var(--deep-green); color: var(--white);
   box-shadow: var(--shadow-soft);
 }
 .bs-btn-dark:hover { background: var(--deep-green-light); transform: translateY(-2px); }
 .bs-btn-sm { padding: 12px 22px; font-size: 0.82rem; width: auto; }
-.bs-btn-outline {
+.bs-btn-outline-dark {
   background: transparent; color: var(--deep-green);
   border: 2px solid var(--deep-green);
   margin-top: 12px;
 }
-.bs-btn-outline:hover { background: rgba(26,60,42,0.06); transform: translateY(-2px); }
+.bs-btn-outline-dark:hover { background: rgba(26,60,42,0.06); transform: translateY(-2px); }
 
 /* ── Direct Feedback form (REV-02) ── */
 #bs-feedback-form-wrap { margin-top: 20px; text-align: left; }
