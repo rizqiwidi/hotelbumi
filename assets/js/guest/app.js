@@ -153,14 +153,14 @@
           welcomeEl.textContent = '';
           var prefixText = (app.welcome_msg_staff && app.welcome_msg_staff.indexOf('{staff_name}') !== -1)
             ? ''
-            : 'Halo! Anda saat ini dilayani dengan tulus oleh ';
+            : 'Hello! You are currently being served wholeheartedly by ';
           if (prefixText) welcomeEl.appendChild(document.createTextNode(prefixText));
 
           if (app.welcome_msg_staff && app.welcome_msg_staff.indexOf('{staff_name}') !== -1) {
             var parts = app.welcome_msg_staff.split('{staff_name}');
             welcomeEl.appendChild(document.createTextNode(parts[0]));
             var strongName = document.createElement('strong');
-            strongName.textContent = _sourceObj.name || 'Tim Kami';
+            strongName.textContent = _sourceObj.name || 'our team';
             welcomeEl.appendChild(strongName);
             var rest = (parts[1] || '')
               .replace('{role}', _sourceObj.role || '')
@@ -168,13 +168,13 @@
             welcomeEl.appendChild(document.createTextNode(rest));
           } else {
             var strongName = document.createElement('strong');
-            strongName.textContent = _sourceObj.name || 'Tim Kami';
+            strongName.textContent = _sourceObj.name || 'our team';
             welcomeEl.appendChild(strongName);
             if (_sourceObj.role) {
               welcomeEl.appendChild(document.createTextNode(' (' + _sourceObj.role + ')'));
             }
             if (_sourceObj.outlet) {
-              welcomeEl.appendChild(document.createTextNode(' dari '));
+              welcomeEl.appendChild(document.createTextNode(' from '));
               var emOutlet = document.createElement('em');
               emOutlet.textContent = _sourceObj.outlet;
               welcomeEl.appendChild(emOutlet);
@@ -192,18 +192,18 @@
         }
       } else if (st === 'outlet') {
         if (welcomeEl) {
-          var baseMsg = app.welcome_msg_outlet || 'Selamat menikmati pengalaman kuliner di {outlet_name}.';
+          var baseMsg = app.welcome_msg_outlet || 'Enjoy an exclusive culinary experience at {outlet_name}.';
           welcomeEl.textContent = baseMsg.replace('{outlet_name}', _sourceObj.name || '');
         }
         hide(staffBadgeEl);
       } else if (st === 'nfc') {
         if (welcomeEl) {
           welcomeEl.textContent = '';
-          welcomeEl.appendChild(document.createTextNode('Selamat datang di '));
+          welcomeEl.appendChild(document.createTextNode('Welcome to '));
           var strongOutlet = document.createElement('strong');
           strongOutlet.textContent = _sourceObj.outlet || _sourceObj.name || gen.hotel_name || 'Bumi Surabaya City Resort';
           welcomeEl.appendChild(strongOutlet);
-          welcomeEl.appendChild(document.createTextNode('! Nikmati pengalaman tak terlupakan bersama kami.'));
+          welcomeEl.appendChild(document.createTextNode('! Enjoy an unforgettable experience with us.'));
         }
         hide(staffBadgeEl);
       }
@@ -252,14 +252,14 @@
     // waiter/staf/meja jatuh ke nomor umum agar nomor pribadinya tidak diketahui tamu.
     if (_sourceObj && _sourceObj.type === 'sales' && _sourceObj.whatsapp && cleanPhone(_sourceObj.whatsapp)) {
       waNum = cleanPhone(_sourceObj.whatsapp);
-      waMsg = 'Halo, saya tamu Bumi Surabaya. Saya dilayani oleh ' + (_sourceObj.name || 'staf') + '.';
+      waMsg = 'Hello, I am a Bumi Surabaya guest. I am being served by ' + (_sourceObj.name || 'staff') + '.';
     } else {
       waNum = cleanPhone((ws && ws.number) || gen.whatsapp || '628113388523');
       if (_sourceObj && (_sourceObj.type === 'staff' || _sourceObj.type === 'sales')) {
-        waMsg = ((ws && ws.template_staff) || 'Halo, saya tamu Bumi Surabaya. Saya dilayani oleh {staff_name}.')
+        waMsg = ((ws && ws.template_staff) || 'Hello, I am a Bumi Surabaya guest. I was just served by {staff_name} and would like to make a reservation.')
                 .replace('{staff_name}', _sourceObj.name || 'tim kami');
       } else {
-        waMsg = (ws && ws.template_general) || 'Halo Bumi Surabaya, saya ingin informasi mengenai reservasi dan layanan hotel.';
+        waMsg = (ws && ws.template_general) || 'Hello Bumi Surabaya, I would like information about hotel reservations and services.';
       }
     }
 
@@ -348,7 +348,7 @@
       if (p.cta_url && sanitizeUrl(p.cta_url) !== '#') {
         targetUrl = sanitizeUrl(p.cta_url);
       } else {
-        var promoMsg = 'Halo Bumi Surabaya, saya tertarik dengan penawaran promosi: ' + (p.name || 'Penawaran Spesial') + ' di ' + (p.outlet || 'Bumi Surabaya') + '. Mohon informasi reservasi.';
+        var promoMsg = 'Hello Bumi Surabaya, I am interested in the promotion: ' + (p.name || 'Special Offer') + ' at ' + (p.outlet || 'Bumi Surabaya') + '. Please share reservation details.';
         targetUrl = 'https://wa.me/' + defaultWaNum + '?text=' + encodeURIComponent(promoMsg);
       }
       var ctaLabel = escapeHtml(p.cta_label || 'Discover More →');
@@ -428,7 +428,7 @@
         targetUrl = sanitizeUrl(o.url);
       } else {
         var outletWa = cleanPhone(o.whatsapp) || defaultWaNum;
-        var outletMsg = 'Halo Bumi Surabaya, saya ingin informasi menu dan reservasi meja di ' + (o.name || 'restoran') + '.';
+        var outletMsg = 'Hello Bumi Surabaya, I would like the menu and table reservation info at ' + (o.name || 'the restaurant') + '.';
         targetUrl = 'https://wa.me/' + outletWa + '?text=' + encodeURIComponent(outletMsg);
       }
 
