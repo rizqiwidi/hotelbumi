@@ -557,7 +557,7 @@ function _handleGetConfig() {
       show_review: true, show_wa: true, show_promotions: true, show_outlets: true, show_social: true, show_final_cta: true
     },
     review_settings: rawConfig.review_settings || {
-      review_url: 'https://g.page/r/CbSXVEVxrNXhEB0/review', button_text: 'Berikan Ulasan di Google ⭐', review_prompt: ''
+      review_url: 'https://search.google.com/local/writereview?placeid=ChIJl9S7eN771y0Rpp7V9x6GXoU', button_text: 'Berikan Ulasan di Google ⭐', review_prompt: ''
     },
     whatsapp_settings: rawConfig.whatsapp_settings || {
       number: '628113388523', template_staff: '', template_general: ''

@@ -104,7 +104,10 @@
   }
 
   // REV-01: URL review mengikuti outlet pada halaman tamu.
-  // Urutan: review_url outlet sumber > review_settings.review_url > general.google_review_url > '#'
+  // REV-03: link g.page lama mati (redirect ke google.com) — default diganti
+  // URL Google Review Arumanis yang terverifikasi aktif.
+  // Urutan: review_url outlet sumber > review_settings.review_url > general.google_review_url > default Arumanis
+  var ARUMANIS_REVIEW_URL = 'https://search.google.com/local/writereview?placeid=ChIJl9S7eN771y0Rpp7V9x6GXoU';
   function resolveReviewUrl() {
     var gen = (_config && _config.general)         || BSConfig.DEFAULTS.general;
     var rev = (_config && _config.review_settings) || BSConfig.DEFAULTS.review_settings;
@@ -122,7 +125,7 @@
         }
       }
     }
-    return sanitizeUrl(outletUrl || (rev && rev.review_url) || gen.google_review_url || '#');
+    return sanitizeUrl(outletUrl || (rev && rev.review_url) || gen.google_review_url || ARUMANIS_REVIEW_URL);
   }
 
   // ── Render hero & sapaan ──────────────────────────────────
@@ -263,16 +266,22 @@
       }
     }
 
+    // REV-04: tombol WA utama TIDAK lagi langsung ke satu nomor — klik membuka
+    // pemilih sales ala Linktree (openWaPicker). href tetap diisi sebagai fallback.
     var waUrl = sanitizeUrl('https://wa.me/' + waNum + '?text=' + encodeURIComponent(waMsg));
 
     var waBtn  = $('#bs-btn-wa');
     var waLink = $('#bs-wa-link');
     var mobWa  = $('.bs-mob-wa');
     var finalWa = $('#bs-final-wa');
-    if (waBtn)  waBtn.href  = waUrl;
-    if (waLink) waLink.href = waUrl;
-    if (mobWa)  mobWa.href  = waUrl;
-    if (finalWa) finalWa.href = waUrl;
+    [waBtn, waLink, mobWa, finalWa].forEach(function(btn) {
+      if (!btn) return;
+      btn.href = waUrl;
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        openWaPicker();
+      });
+    });
   }
 
   // ── Render seksi Google Review ────────────────────────────
@@ -685,6 +694,149 @@
     });
   }
 
+  // ── Pemilih Sales WhatsApp ala Linktree (REV-04) ────────────────────
+  // SLS-01: hanya sumber bertipe 'sales' yang nomornya boleh tampil ke tamu.
+  function getSalesList() {
+    var out = [];
+    for (var i = 0; i < _sources.length; i++) {
+      var s = _sources[i];
+      if (!s || s.active === false) continue;
+      if ((s.type || '') !== 'sales') continue;
+      var phone = cleanPhone(s.whatsapp || '');
+      if (!phone) continue;
+      out.push({ code: s.code || '', name: s.name || 'Sales', phone: phone });
+    }
+    return out;
+  }
+
+  function waPickerDefault() {
+    var gen = (_config && _config.general) || BSConfig.DEFAULTS.general;
+    var ws  = (_config && _config.whatsapp_settings) || BSConfig.DEFAULTS.whatsapp_settings;
+    var num = cleanPhone((ws && ws.number) || (gen && gen.whatsapp) || '628113388523');
+    var msg = (ws && ws.template_general) || 'Hello Bumi Surabaya, I would like information about hotel reservations and services.';
+    return { num: num, msg: msg };
+  }
+
+  function buildWaPickerList() {
+    var listEl = $('#bs-wa-picker-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    var sales = getSalesList();
+    var gen = (_config && _config.general) || BSConfig.DEFAULTS.general;
+    var ws  = (_config && _config.whatsapp_settings) || BSConfig.DEFAULTS.whatsapp_settings;
+    var tplGeneral = (ws && ws.template_general) || 'Hello Bumi Surabaya, I would like information about hotel reservations and services.';
+
+    function salesRow(name, code, phone, msg) {
+      var a = document.createElement('a');
+      a.className = 'bs-wa-sales-row';
+      a.href = sanitizeUrl('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg));
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      var info = document.createElement('span');
+      info.className = 'bs-wa-sales-info';
+      var avatar = document.createElement('span');
+      avatar.className = 'bs-wa-sales-avatar';
+      avatar.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i>';
+      var txt = document.createElement('span');
+      var nm = document.createElement('span');
+      nm.className = 'bs-wa-sales-name';
+      nm.textContent = name;
+      var rl = document.createElement('span');
+      rl.className = 'bs-wa-sales-role';
+      rl.textContent = 'Sales';
+      txt.appendChild(nm);
+      txt.appendChild(document.createElement('br'));
+      txt.appendChild(rl);
+      info.appendChild(avatar);
+      info.appendChild(txt);
+      var cta = document.createElement('span');
+      cta.className = 'bs-wa-sales-cta';
+      cta.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i> Chat';
+      a.appendChild(info);
+      a.appendChild(cta);
+      a.addEventListener('click', function() {
+        if (window.BSTracker) BSTracker.track('whatsapp_click', { sales_code: code || 'default' });
+      });
+      return a;
+    }
+
+    if (sales.length) {
+      sales.forEach(function(s) {
+        listEl.appendChild(salesRow(s.name, s.code, s.phone, tplGeneral));
+      });
+    } else {
+      // Fallback ramah bila belum ada sales terdaftar (PRD 17.2 poin 5)
+      var wrap = document.createElement('div');
+      wrap.className = 'bs-wa-picker-empty';
+      var p = document.createElement('p');
+      p.textContent = 'Our sales team contacts are being updated. Meanwhile, you can reach our main reservation line below:';
+      var def = waPickerDefault();
+      var fb = document.createElement('a');
+      fb.className = 'bs-btn bs-btn-gold';
+      fb.href = sanitizeUrl('https://wa.me/' + def.num + '?text=' + encodeURIComponent(def.msg));
+      fb.target = '_blank';
+      fb.rel = 'noopener noreferrer';
+      fb.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i> Chat Reservation';
+      fb.addEventListener('click', function() {
+        if (window.BSTracker) BSTracker.track('whatsapp_click', { sales_code: 'default' });
+      });
+      wrap.appendChild(p);
+      wrap.appendChild(fb);
+      listEl.appendChild(wrap);
+    }
+  }
+
+  function openWaPicker() {
+    var overlay = $('#bs-wa-picker');
+    if (!overlay) return;
+    buildWaPickerList();
+    _waPickerPreviousActive = document.activeElement;
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+    var closeBtn = $('#bs-wa-picker-close');
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeWaPicker() {
+    var overlay = $('#bs-wa-picker');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    overlay.setAttribute('aria-hidden', 'true');
+    if (_waPickerPreviousActive && typeof _waPickerPreviousActive.focus === 'function') {
+      _waPickerPreviousActive.focus();
+    }
+  }
+
+  var _waPickerPreviousActive = null;
+
+  function initWaPicker() {
+    var overlay = $('#bs-wa-picker');
+    var closeBtn = $('#bs-wa-picker-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeWaPicker);
+    if (overlay) overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) closeWaPicker();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (!overlay || !overlay.classList.contains('active')) return;
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        e.preventDefault();
+        closeWaPicker();
+        return;
+      }
+      if (e.key === 'Tab') {
+        var focusables = overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusables || !focusables.length) return;
+        var first = focusables[0];
+        var last = focusables[focusables.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      }
+    });
+  }
+
   // ── Binding CTA event tracking ────────────────────────────
   function bindCtaTracking() {
     var reviewBtn = $('#bs-btn-review');
@@ -699,17 +851,9 @@
       }
     });
 
-    var waBtn  = $('#bs-btn-wa');
-    var waBtn2 = $('#bs-wa-link');
-    var mobWa  = $('.bs-mob-wa');
-    var finalWa = $('#bs-final-wa');
-    [waBtn, waBtn2, mobWa, finalWa].forEach(function(btn) {
-      if (btn) {
-        btn.addEventListener('click', function() {
-          if (window.BSTracker) BSTracker.track('whatsapp_click', {});
-        });
-      }
-    });
+    // REV-04: tombol WA utama kini membuka pemilih sales (bukan langsung ke wa.me),
+    // sehingga event whatsapp_click dicatat saat tamu memilih salah satu sales
+    // di dalam picker (lihat openWaPicker), bukan saat tombol diklik.
   }
 
   // ── Render semua ─────────────────────────────────────────
@@ -723,6 +867,7 @@
     renderFooter();
     bindCtaTracking();
     initPrivacyModal();
+    initWaPicker();
     initDirectFeedback();
   }
 

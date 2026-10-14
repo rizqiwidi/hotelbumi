@@ -35,7 +35,7 @@
       address:     'Jl. Jenderal Basuki Rachmat No.106-128, Surabaya 60271',
       phone:       '+62313545888',
       whatsapp:    '628113388523',
-      google_review_url: 'https://g.page/r/CbSXVEVxrNXhEB0/review',
+      google_review_url: 'https://search.google.com/local/writereview?placeid=ChIJl9S7eN771y0Rpp7V9x6GXoU',
       instagram:   'https://www.instagram.com/bumisurabaya/',
       facebook:    'https://www.facebook.com/bumisurabaya/',
       tiktok:      ''
@@ -57,7 +57,7 @@
       show_final_cta: true
     },
     review_settings: {
-      review_url:    'https://g.page/r/CbSXVEVxrNXhEB0/review',
+      review_url:    'https://search.google.com/local/writereview?placeid=ChIJl9S7eN771y0Rpp7V9x6GXoU',
       button_text:   'Share Your Experience',
       review_prompt: 'Your experience means a lot to us. Share your impression and help other guests discover the beauty of Bumi Surabaya.'
     },

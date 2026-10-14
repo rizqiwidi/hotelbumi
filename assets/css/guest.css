@@ -592,6 +592,35 @@ body {
 .bs-modal-footer { margin-top: 20px; }
 .bs-modal-footer .bs-btn { margin-bottom: 0; }
 
+/* ── WA sales picker (REV-04, Linktree-style) ─────────────────────────── */
+.bs-wa-picker-sub { margin-bottom: 16px; }
+.bs-wa-sales-list { display: flex; flex-direction: column; gap: 10px; }
+.bs-wa-sales-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--ivory); border-radius: var(--radius-sm);
+  padding: 14px 16px; text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.bs-wa-sales-row:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+.bs-wa-sales-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.bs-wa-sales-avatar {
+  flex: none; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--deep-green); color: var(--champagne-gold);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+}
+.bs-wa-sales-name { font-weight: 700; color: var(--deep-green); font-size: 0.95rem; }
+.bs-wa-sales-role { font-size: 0.75rem; color: var(--charcoal-light); letter-spacing: 0.4px; text-transform: uppercase; }
+.bs-wa-sales-cta {
+  flex: none; display: inline-flex; align-items: center; gap: 8px;
+  background: var(--deep-green); color: var(--white);
+  font-weight: 700; font-size: 0.85rem;
+  padding: 10px 18px; border-radius: 999px; text-decoration: none;
+}
+.bs-wa-sales-cta i { color: var(--champagne-gold); }
+.bs-wa-picker-empty { text-align: center; padding: 8px 4px; }
+.bs-wa-picker-empty p { margin-bottom: 16px; }
+
 /* ── Draft preview banner (injected by app.js) ───────────── */
 #bs-draft-preview-banner {
   position: sticky; top: 0; z-index: 150;
