@@ -1,9 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.2 (FASE 2)
- * admin-nfc-ops.js — Programmer Kartu NFC & Preview QR Tunggal (QRN-03, QRN-04)
- *
- * Mengelola interaksi Web NFC API (Android Chrome), status penulisan kartu 4-tahap,
- * pembuatan preview QR individual, dan pencatatan status fisik kartu.
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * admin-nfc-ops.js — Programmer Kartu NFC & Preview/Cetak QR Tunggal (FR-P1-05, FR-ADM-01)
  */
 
 (function (window) {
@@ -12,10 +9,8 @@
   var BSAdmin = window.BSAdmin || {};
   var state = BSAdmin.state;
   var $id = BSAdmin.$id || function (id) { return document.getElementById(id); };
+  var esc = BSAdmin.esc || function (s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
 
-  /* ─────────────────────────────────────────────────────────────
-   * 1. Deteksi Dukungan Browser untuk Web NFC (QRN-03)
-   * ───────────────────────────────────────────────────────────── */
   function checkNfcSupport() {
     var banner   = $id('adm-nfc-compat-banner');
     var writeBtn = $id('adm-nfc-write-btn');
@@ -24,11 +19,11 @@
     if (!supported) {
       if (banner) {
         banner.style.display = '';
-        banner.innerHTML = '⚠️ <strong>Web NFC tidak didukung di browser ini.</strong> Web NFC membutuhkan Google Chrome di perangkat Android dengan sensor NFC aktif. Browser iOS (Safari) dan Desktop tidak menyediakan Web NFC API. Silakan salin URL lalu ikuti <em>Panduan Alternatif NFC Tools</em> di bawah.';
+        banner.innerHTML = '<strong>Web NFC tidak didukung di peramban ini.</strong> Web NFC membutuhkan Google Chrome di perangkat Android dengan sensor NFC aktif. Silakan salin URL di bawah lalu gunakan panduan aplikasi <em>NFC Tools</em>.';
       }
       if (writeBtn) {
         writeBtn.disabled = true;
-        writeBtn.title = 'Web NFC tidak didukung di browser ini';
+        writeBtn.title = 'Web NFC tidak didukung di peramban ini';
       }
     } else {
       if (banner) banner.style.display = 'none';
@@ -38,9 +33,6 @@
     }
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 2. Pilihan Sumber & Preview QR Tunggal
-   * ───────────────────────────────────────────────────────────── */
   function populateNfcSelect() {
     var sel = $id('adm-nfc-source-select');
     if (!sel) return;
@@ -77,9 +69,13 @@
       if (writeBtn) writeBtn.disabled = true;
       if (markBtn)  markBtn.disabled  = true;
       if (printBtn) printBtn.disabled = true;
-      if (qrWrap)   qrWrap.innerHTML = '<p class="bs-empty" style="font-size:0.82rem;">Pilih sumber untuk menampilkan QR.</p>';
+      if (qrWrap)   qrWrap.innerHTML = '<p class="bs-empty" style="font-size:0.82rem;">Pilih sumber untuk menampilkan QR Code.</p>';
       return;
     }
+
+    var sources = (window.BSStaffManager && typeof BSStaffManager.getSources === 'function')
+      ? BSStaffManager.getSources() : [];
+    var srcObj = sources.find(function (s) { return s.code === code; }) || { code: code, name: code, type: 'staff', outlet: '', role: '' };
 
     var appRoot = (window.BSConfig && BSConfig.appRoot) ? BSConfig.appRoot() : '/';
     var baseUrl = (window.location.origin + appRoot).replace(/\/+$/, '') + '/';
@@ -92,18 +88,32 @@
     if (printBtn) printBtn.disabled = false;
 
     if (qrWrap) {
-      qrWrap.innerHTML = '';
-      if (typeof window.QRCode !== 'undefined') {
-        new QRCode(qrWrap, { text: fullUrl, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
-      } else {
-        qrWrap.innerHTML = '<p class="bs-empty">Library QRCode tidak dimuat.</p>';
+      var subText = (srcObj.type === 'staff' || srcObj.type === 'sales')
+        ? ((srcObj.role || 'Staf Hotel') + (srcObj.outlet ? ' · ' + srcObj.outlet : ''))
+        : (srcObj.outlet || srcObj.role || 'Titik Layanan Tamu');
+      var instText = (srcObj.type === 'staff' || srcObj.type === 'sales')
+        ? 'ID Badge Resmi Staf Bumi Surabaya City Resort'
+        : 'Tap kartu NFC atau pindai QR Code untuk layanan tamu';
+
+      // Bungkus QR Code individual di dalam kartu siap-cetak (FR-P1-05)
+      qrWrap.innerHTML =
+        '<div class="adm-print-card-sample print-card" id="adm-single-print-card">' +
+          '<div class="adm-pc-logo"><img src="../assets/images/logo-hotel.png" alt="Logo" width="110"></div>' +
+          '<div class="adm-pc-qr" id="adm-single-qr-target" style="width:140px;height:140px;"></div>' +
+          '<div class="adm-pc-title">' + esc(srcObj.name) + '</div>' +
+          '<div class="adm-pc-sub">' + esc(subText) + '</div>' +
+          '<div class="adm-pc-inst">' + esc(instText) + '</div>' +
+        '</div>';
+
+      var targetEl = $id('adm-single-qr-target');
+      if (targetEl && typeof window.QRCode !== 'undefined') {
+        new QRCode(targetEl, { text: fullUrl, width: 128, height: 128, correctLevel: QRCode.CorrectLevel.M });
+      } else if (targetEl) {
+        targetEl.innerHTML = '<p class="bs-empty">Pustaka QRCode tidak tersedia.</p>';
       }
     }
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 3. Penulisan Web NFC & Tandai Status Kartu
-   * ───────────────────────────────────────────────────────────── */
   function markCardProgrammed(code) {
     if (!code) return;
     try {
@@ -125,47 +135,42 @@
     }
 
     if (typeof window.BSNfc === 'undefined' || !window.BSNfc.isSupported()) {
-      BSAdmin.showToast('Web NFC tidak didukung di perangkat / browser ini.', 'error');
+      BSAdmin.showToast('Web NFC tidak didukung di perangkat atau peramban ini.', 'error');
       checkNfcSupport();
       return;
     }
 
     var bar = $id('adm-nfc-status-bar');
     if (bar) {
-      bar.textContent = '🔒 Meminta izin akses NFC dari browser…';
+      bar.textContent = 'Meminta izin akses NFC dari peramban…';
       bar.className   = 'adm-nfc-status adm-nfc-waiting';
     }
 
     window.BSNfc.writeCard(url, function (ev) {
       if (!bar) return;
       if (ev.status === 'permission') {
-        bar.textContent = '🔒 Meminta izin akses NFC dari browser… Harap izinkan dialog.';
+        bar.textContent = 'Meminta izin akses NFC dari peramban… Harap izinkan dialog.';
         bar.className   = 'adm-nfc-status adm-nfc-waiting';
       } else if (ev.status === 'waiting') {
-        bar.textContent = '⏳ Izin aktif. Menunggu kartu NFC… Tempelkan kartu fisik ke belakang ponsel.';
+        bar.textContent = 'Izin aktif. Menunggu kartu NFC… Tempelkan kartu fisik ke belakang ponsel.';
         bar.className   = 'adm-nfc-status adm-nfc-waiting';
       } else if (ev.status === 'writing') {
-        bar.textContent = '📡 Kartu terdeteksi — sedang memprogram URL ke tag NFC…';
+        bar.textContent = 'Kartu terdeteksi — sedang memprogram URL ke tag NFC…';
         bar.className   = 'adm-nfc-status adm-nfc-waiting';
       } else if (ev.status === 'success') {
-        bar.textContent = '✅ ' + ev.message;
+        bar.textContent = ev.message;
         bar.className   = 'adm-nfc-status adm-nfc-ok';
         var curCode = $id('adm-nfc-source-select') ? $id('adm-nfc-source-select').value : '';
         markCardProgrammed(curCode);
-        BSAdmin.showToast('Kartu NFC berhasil diprogram!', 'success');
+        BSAdmin.showToast('Kartu NFC berhasil diprogram.', 'success');
       } else if (ev.status === 'error') {
-        bar.textContent = '❌ Gagal: ' + (ev.message || 'error tidak dikenal');
+        bar.textContent = 'Gagal: ' + (ev.message || 'kesalahan tidak dikenal');
         bar.className   = 'adm-nfc-status adm-nfc-err';
         BSAdmin.showToast('Gagal memprogram kartu: ' + (ev.message || 'error'), 'error');
       }
-    }).catch(function () {
-      // error telah ditangani dalam callback di atas
-    });
+    }).catch(function () {});
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 4. Binding Event Listener Modul NFC
-   * ───────────────────────────────────────────────────────────── */
   function init() {
     var sourceSelect = $id('adm-nfc-source-select');
     if (sourceSelect) {
@@ -179,7 +184,7 @@
         if (!url) { BSAdmin.showToast('Pilih sumber terlebih dahulu.', 'error'); return; }
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(url).then(function () {
-            BSAdmin.showToast('URL berhasil disalin ke clipboard!', 'success');
+            BSAdmin.showToast('URL berhasil disalin ke clipboard.', 'success');
           }).catch(function () {
             BSAdmin.showToast('Salin manual: ' + url, 'info');
           });
@@ -207,12 +212,16 @@
     var printBtn = $id('adm-print-qr-btn');
     if (printBtn) {
       printBtn.addEventListener('click', function () {
+        // Isolasi cetak hanya untuk kartu tunggal di #tab-nfc (FR-P1-05)
+        document.body.classList.add('print-single-qr');
         window.print();
+        setTimeout(function () {
+          document.body.classList.remove('print-single-qr');
+        }, 500);
       });
     }
   }
 
-  // Ekspor API modul
   BSAdmin.nfc = {
     checkSupport:   checkNfcSupport,
     populateSelect: populateNfcSelect,

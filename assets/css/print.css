@@ -1,6 +1,6 @@
 /* ============================================================
-   BUMI SURABAYA — PRINT CSS v6.0
-   Styling cetak stiker meja, QR tent card, dan print massal
+   BUMI SURABAYA — PRINT CSS v6.3
+   Styling cetak stiker meja, QR tent card, kartu individual, dan print massal
    ============================================================ */
 
 @media print {
@@ -13,9 +13,23 @@
   .no-print, 
   .bs-top-bar, .bs-hero, .bs-review-section, .bs-promos-section,
   .bs-wa-section, .bs-social-section, .bs-footer, .bs-mobile-action-bar,
-  .adm-sidebar, .adm-topbar, .adm-card-header, .adm-login-screen,
+  .adm-sidebar, .adm-topbar, .adm-health-bar, .adm-card-header, .adm-login-screen,
   .adm-toast, .adm-modal-overlay, nav, header, aside {
     display: none !important;
+  }
+
+  /* Mode Cetak Kartu Tunggal dari Tab NFC (FR-P1-05) */
+  body.print-single-qr #tab-nfc .adm-form-group:not(#adm-single-qr-print-group),
+  body.print-single-qr #tab-nfc .adm-alert,
+  body.print-single-qr #tab-nfc .adm-nfc-status,
+  body.print-single-qr #tab-nfc #adm-print-qr-btn,
+  body.print-single-qr #tab-nfc label {
+    display: none !important;
+  }
+  body.print-single-qr #adm-qr-preview {
+    border: none !important;
+    background: #fff !important;
+    padding: 0 !important;
   }
 
   .adm-main {
@@ -66,15 +80,16 @@
   }
 
   .print-card-qr, .adm-pc-qr {
-    width: 24mm;
-    height: 24mm;
+    width: 24mm !important;
+    height: 24mm !important;
     margin-bottom: 2mm;
     border: none !important;
     padding: 0 !important;
   }
   .print-card-qr img,
   .print-card-qr canvas,
-  .adm-pc-qr img {
+  .adm-pc-qr img,
+  .adm-pc-qr canvas {
     width: 100% !important;
     height: 100% !important;
     object-fit: contain;
@@ -95,7 +110,7 @@
   }
 
   /* ── GRID MULTI-KARTU PER HALAMAN ── */
-  .print-cards-grid, .adm-bulk-preview-grid {
+  .print-cards-grid, .adm-bulk-preview-grid, .adm-bulk-cards-grid {
     display: grid !important;
     grid-template-columns: repeat(2, 85mm) !important;
     gap: 6mm !important;
@@ -139,12 +154,16 @@
   }
 
   /* ── STIKER MEJA COMPACT (50 x 50 mm) (QRN-06) ── */
+  .print-layout-sticker {
+    grid-template-columns: repeat(3, 50mm) !important;
+    gap: 4mm !important;
+  }
   .print-sticker, .adm-print-sticker {
     page-break-inside: avoid;
     break-inside: avoid;
     width: 50mm;
     height: 50mm;
-    margin: 3mm auto;
+    margin: 2mm auto;
     border: 1px solid #c9a96e !important;
     border-radius: 3mm;
     padding: 3mm;
@@ -157,8 +176,8 @@
     color: #1a3c2a !important;
   }
   .print-sticker .adm-pc-qr {
-    width: 25mm;
-    height: 25mm;
+    width: 25mm !important;
+    height: 25mm !important;
     margin-bottom: 1.5mm;
   }
 
@@ -187,4 +206,3 @@
     color: #1a3c2a !important;
   }
 }
-

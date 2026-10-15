@@ -1,9 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.2 (FASE 2)
- * admin-reports.js — Analitik, Filter Favorit (ANA-10), Ekspor CSV & Cetak QR Massal (QRN-06)
- *
- * Mengelola tab dashboard (filter periode, tren, preset favorit),
- * ekspor CSV laporan, dan generator cetak QR batch dengan aneka tata letak.
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * admin-reports.js — Analitik, Filter Favorit, Ekspor CSV & Cetak QR Massal (FR-P1-05, FR-ADM-01, FR-ADM-02)
  */
 
 (function (window) {
@@ -14,9 +11,6 @@
   var $id = BSAdmin.$id || function (id) { return document.getElementById(id); };
   var esc = BSAdmin.esc || function (s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
 
-  /* ─────────────────────────────────────────────────────────────
-   * 1. Navigasi & Filter Dashboard (Periode & Kategori)
-   * ───────────────────────────────────────────────────────────── */
   function setPeriod(period) {
     state.currentPeriod = period;
     var btn7d  = $id('adm-trend-7d');
@@ -44,24 +38,21 @@
     }
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 2. Filter Favorit & Preset Analitik Cepat (ANA-10)
-   * ───────────────────────────────────────────────────────────── */
   var FAVORITE_STORAGE_KEY = 'bs_admin_favorite_filter';
 
   function applyPreset(presetKey) {
     if (presetKey === 'staff_7d') {
       setPeriod('7d');
       setFilter('staff');
-      BSAdmin.showToast('Filter diterapkan: Staf (7 Hari Terakhir)', 'info');
+      BSAdmin.showToast('Filter diterapkan: Staf (7 Hari Terakhir).', 'info');
     } else if (presetKey === 'outlets_30d') {
       setPeriod('30d');
       setFilter('outlet');
-      BSAdmin.showToast('Filter diterapkan: Gerai F&B (30 Hari Terakhir)', 'info');
+      BSAdmin.showToast('Filter diterapkan: Gerai F&B (30 Hari Terakhir).', 'info');
     } else if (presetKey === 'all_30d') {
       setPeriod('30d');
       setFilter('');
-      BSAdmin.showToast('Filter diterapkan: Semua Sumber (30 Hari)', 'info');
+      BSAdmin.showToast('Filter diterapkan: Semua Sumber (30 Hari).', 'info');
     } else if (presetKey === 'custom_saved') {
       loadSavedFavorite();
     }
@@ -77,7 +68,7 @@
       if (window.localStorage) {
         localStorage.setItem(FAVORITE_STORAGE_KEY, JSON.stringify(fav));
       }
-      BSAdmin.showToast('⭐ Filter saat ini (' + fav.period + ' / ' + (fav.filter || 'Semua') + ') disimpan sebagai favorit!', 'success');
+      BSAdmin.showToast('Filter saat ini (' + fav.period + ' / ' + (fav.filter || 'Semua') + ') disimpan sebagai favorit.', 'success');
       updateFavoriteBtnState();
     } catch (_) {
       BSAdmin.showToast('Gagal menyimpan filter favorit ke peramban.', 'error');
@@ -88,13 +79,13 @@
     try {
       var raw = window.localStorage && localStorage.getItem(FAVORITE_STORAGE_KEY);
       if (!raw) {
-        BSAdmin.showToast('Belum ada filter favorit yang disimpan. Gunakan tombol "⭐ Simpan Favorit".', 'info');
+        BSAdmin.showToast('Belum ada filter favorit yang disimpan.', 'info');
         return;
       }
       var fav = JSON.parse(raw);
       if (fav.period) setPeriod(fav.period);
       if (typeof fav.filter !== 'undefined') setFilter(fav.filter);
-      BSAdmin.showToast('⭐ Filter favorit dimuat: ' + fav.period + ' / ' + (fav.filter || 'Semua'), 'success');
+      BSAdmin.showToast('Filter favorit dimuat: ' + fav.period + ' / ' + (fav.filter || 'Semua') + '.', 'success');
     } catch (_) {
       BSAdmin.showToast('Gagal memuat filter favorit.', 'error');
     }
@@ -108,7 +99,7 @@
       try {
         var fav = JSON.parse(raw);
         loadBtn.title = 'Muat favorit tersimpan: ' + fav.period + ' | ' + (fav.filter || 'Semua');
-        loadBtn.style.display = 'inline-block';
+        loadBtn.style.display = 'inline-flex';
       } catch (_) {
         loadBtn.style.display = 'none';
       }
@@ -117,9 +108,6 @@
     }
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 3. Pemilihan Bulan Arsip
-   * ───────────────────────────────────────────────────────────── */
   function populateMonthSelect(tabs) {
     var monthSelect = $id('adm-month-select');
     if (!monthSelect) return;
@@ -134,9 +122,6 @@
     else if (tabs && tabs.length > 0) monthSelect.value = tabs[tabs.length - 1];
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 4. Ekspor CSV dengan Perlindungan Formula Injection (ANA-10)
-   * ───────────────────────────────────────────────────────────── */
   function exportEventsCsv() {
     if (!state.events || state.events.length === 0) {
       BSAdmin.showToast('Tidak ada data event untuk diekspor.', 'error');
@@ -144,29 +129,23 @@
     }
     if (window.BSDashboard && typeof BSDashboard.exportCsv === 'function') {
       BSDashboard.exportCsv(state.events, 'bumi-surabaya-events-' + (state.currentPeriod || 'all'));
-      BSAdmin.showToast('File CSV berhasil diunduh.', 'success');
+      BSAdmin.showToast('Berkas CSV berhasil diunduh.', 'success');
     }
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 5. Cetak QR Massal & Pilihan Tata Letak (QRN-06)
-   *    Layouts:
-   *    - card: Kartu Nama Staf (85x55mm)
-   *    - tent: Tent Card Lipat Dua Meja Tamu (A6 Lipat)
-   *    - sticker: Stiker Meja Compact (50x50mm)
-   *    - a4grid: Lembar A4 Grid (8 kartu per halaman)
-   * ───────────────────────────────────────────────────────────── */
+  /**
+   * Cetak QR Massal & Pilihan Tata Letak (FR-P1-05)
+   */
   function renderBulkQr() {
     var container = $id('adm-bulk-cards-container');
     if (!container) return;
 
-    var filterType = ($id('adm-bulk-filter-select') ? $id('adm-bulk-filter-select').value : 'all') || 'all';
-    var format = ($id('adm-print-format-select') ? $id('adm-print-format-select').value : 'card') || 'card';
-    var searchQuery = ($id('adm-bulk-search') ? $id('adm-bulk-search').value : '').trim().toLowerCase();
-    var onlyReprint = ($id('adm-bulk-reprint-only') ? $id('adm-bulk-reprint-only').checked : false);
+    var filterType      = ($id('adm-bulk-filter-select') ? $id('adm-bulk-filter-select').value : 'all') || 'all';
+    var format          = ($id('adm-print-format-select') ? $id('adm-print-format-select').value : 'card') || 'card';
+    var searchQuery     = ($id('adm-bulk-search') ? $id('adm-bulk-search').value : '').trim().toLowerCase();
+    var onlyReprint     = ($id('adm-bulk-reprint-only') ? $id('adm-bulk-reprint-only').checked : false);
     var includeArchived = ($id('adm-bulk-include-archived') ? $id('adm-bulk-include-archived').checked : false);
 
-    // Ambil sumber data
     var allSources = [];
     if (window.BSStaffManager && typeof BSStaffManager.getSources === 'function') {
       allSources = BSStaffManager.getSources();
@@ -177,20 +156,22 @@
       if (onlyReprint && !s.needs_reprint) return false;
       if (filterType !== 'all' && s.type !== filterType) return false;
       if (searchQuery) {
-        var matchName = (s.name || '').toLowerCase().indexOf(searchQuery) !== -1;
-        var matchCode = (s.code || '').toLowerCase().indexOf(searchQuery) !== -1;
-        var matchRole = (s.role || '').toLowerCase().indexOf(searchQuery) !== -1;
+        var matchName   = (s.name || '').toLowerCase().indexOf(searchQuery) !== -1;
+        var matchCode   = (s.code || '').toLowerCase().indexOf(searchQuery) !== -1;
+        var matchRole   = (s.role || '').toLowerCase().indexOf(searchQuery) !== -1;
         var matchOutlet = (s.outlet || '').toLowerCase().indexOf(searchQuery) !== -1;
         if (!matchName && !matchCode && !matchRole && !matchOutlet) return false;
       }
       return true;
     });
 
-    // Update info hitungan sumber
     var countEl = $id('adm-bulk-count-info');
     if (countEl) {
       countEl.textContent = 'Menampilkan ' + sources.length + ' dari ' + allSources.length + ' sumber.';
     }
+
+    // Pertahankan class adm-bulk-preview-grid agar grid CSS dan print.css aktif (FR-P1-05)
+    container.className = 'adm-bulk-preview-grid adm-bulk-cards-grid print-layout-' + format;
 
     if (sources.length === 0) {
       container.innerHTML = '<p class="bs-empty" style="grid-column:1/-1;">Tidak ada sumber yang cocok dengan kriteria filter.</p>';
@@ -201,9 +182,6 @@
     var appRoot = (window.BSConfig && BSConfig.appRoot) ? BSConfig.appRoot() : '/';
     var origin = (window.location.origin + appRoot).replace(/\/+$/, '') + '/';
 
-    // Set class container sesuai tata letak cetak
-    container.className = 'adm-bulk-cards-grid print-layout-' + format;
-
     sources.forEach(function (s, index) {
       var fullUrl = origin + '?source=' + encodeURIComponent(s.code);
       var subText = (s.type === 'staff')
@@ -213,18 +191,17 @@
             : (s.outlet || s.role || 'Meja Tamu'));
       var instText = (s.type === 'staff')
         ? 'ID Badge Resmi Staf Bumi Surabaya City Resort'
-        : 'Tap kartu NFC atau scan QR code untuk pelayanan';
+        : 'Tap kartu NFC atau pindai QR code untuk pelayanan';
       var reprintBadge = s.needs_reprint
-        ? '<div style="margin-top:4px;"><span class="adm-badge-err" style="font-size:0.68rem;padding:2px 6px;">⚠️ Perlu Dicetak Ulang</span></div>'
+        ? '<div class="no-print" style="margin-top:4px;"><span class="adm-badge-err" style="font-size:0.68rem;padding:2px 6px;">Perlu Cetak Ulang</span></div>'
         : '';
       var inactiveBadge = !s.active
-        ? '<div style="margin-top:4px;"><span class="adm-badge-warn" style="font-size:0.68rem;padding:2px 6px;">🚫 Sumber Nonaktif</span></div>'
+        ? '<div class="no-print" style="margin-top:4px;"><span class="adm-badge-warn" style="font-size:0.68rem;padding:2px 6px;">Sumber Nonaktif</span></div>'
         : '';
 
       var cardEl = document.createElement('div');
 
       if (format === 'tent') {
-        // A6 Tent Card Lipat Dua
         cardEl.className = 'print-tent-card';
         cardEl.innerHTML =
           '<div class="print-tent-half flip">' +
@@ -249,7 +226,6 @@
           if (botEl) new QRCode(botEl, { text: fullUrl, width: 80, height: 80, correctLevel: QRCode.CorrectLevel.M });
         }
       } else if (format === 'sticker') {
-        // Stiker Meja 50x50mm Compact
         cardEl.className = 'adm-print-sticker print-sticker';
         cardEl.innerHTML =
           '<div class="adm-pc-qr" id="bulk-qr-' + index + '"></div>' +
@@ -263,7 +239,6 @@
           if (qrElSticker) new QRCode(qrElSticker, { text: fullUrl, width: 85, height: 85, correctLevel: QRCode.CorrectLevel.M });
         }
       } else if (format === 'a4grid') {
-        // A4 Grid 8 Kartu
         cardEl.className = 'adm-print-a4-cell print-card-grid';
         cardEl.innerHTML =
           '<div class="adm-pc-logo"><img src="../assets/images/logo-hotel.png" alt="Logo" width="90"></div>' +
@@ -279,7 +254,6 @@
           if (qrElGrid) new QRCode(qrElGrid, { text: fullUrl, width: 90, height: 90, correctLevel: QRCode.CorrectLevel.M });
         }
       } else {
-        // Default Kartu Nama 85x55mm
         cardEl.className = 'adm-print-card-sample print-card';
         cardEl.innerHTML =
           '<div class="adm-pc-logo"><img src="../assets/images/logo-hotel.png" alt="Logo" width="110"></div>' +
@@ -298,36 +272,23 @@
     });
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 6. Binding Event Listener Modul Reports
-   * ───────────────────────────────────────────────────────────── */
   function init() {
-    // Tombol tren periode
     var btn7d = $id('adm-trend-7d');
-    if (btn7d) {
-      btn7d.addEventListener('click', function () { setPeriod('7d'); });
-    }
+    if (btn7d) btn7d.addEventListener('click', function () { setPeriod('7d'); });
     var btn30d = $id('adm-trend-30d');
-    if (btn30d) {
-      btn30d.addEventListener('click', function () { setPeriod('30d'); });
-    }
+    if (btn30d) btn30d.addEventListener('click', function () { setPeriod('30d'); });
 
-    // Tombol filter kategori
     document.querySelectorAll('[data-filter]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         setFilter(btn.dataset.filter);
       });
     });
 
-    // Preset filter favorit (ANA-10)
     var btnSaveFav = $id('adm-save-fav-btn');
-    if (btnSaveFav) {
-      btnSaveFav.addEventListener('click', saveCurrentAsFavorite);
-    }
+    if (btnSaveFav) btnSaveFav.addEventListener('click', saveCurrentAsFavorite);
     var btnLoadFav = $id('adm-load-fav-btn');
-    if (btnLoadFav) {
-      btnLoadFav.addEventListener('click', loadSavedFavorite);
-    }
+    if (btnLoadFav) btnLoadFav.addEventListener('click', loadSavedFavorite);
+
     document.querySelectorAll('[data-preset]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         applyPreset(btn.dataset.preset);
@@ -335,7 +296,6 @@
     });
     updateFavoriteBtnState();
 
-    // Dropdown bulan
     var monthSelect = $id('adm-month-select');
     if (monthSelect) {
       monthSelect.addEventListener('change', function () {
@@ -343,17 +303,11 @@
       });
     }
 
-    // Ekspor CSV
     var exportBtn = $id('adm-export-csv-btn') || $id('adm-export-btn');
-    if (exportBtn) {
-      exportBtn.addEventListener('click', exportEventsCsv);
-    }
+    if (exportBtn) exportBtn.addEventListener('click', exportEventsCsv);
     var exportBtnAlt = $id('adm-export-btn');
-    if (exportBtnAlt && exportBtnAlt !== exportBtn) {
-      exportBtnAlt.addEventListener('click', exportEventsCsv);
-    }
+    if (exportBtnAlt && exportBtnAlt !== exportBtn) exportBtnAlt.addEventListener('click', exportEventsCsv);
 
-    // Bulk QR controls (QRN-06)
     var filterSel = $id('adm-bulk-filter-select');
     if (filterSel) filterSel.addEventListener('change', renderBulkQr);
 
@@ -372,12 +326,12 @@
     var printBtn = $id('adm-bulk-print-btn');
     if (printBtn) {
       printBtn.addEventListener('click', function () {
+        document.body.classList.remove('print-single-qr');
         window.print();
       });
     }
   }
 
-  // Ekspor API modul
   BSAdmin.reports = {
     setPeriod:           setPeriod,
     setFilter:           setFilter,

@@ -1,13 +1,13 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v5.0
- * config.js — Konstanta dasar & fallback defaults
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * config.js — Konstanta dasar, fallback defaults & skema penuh Guest CMS (FR-CMS-01 s/d FR-CMS-07)
  * Hanya berisi nilai publik yang aman; TIDAK ada token/rahasia.
  */
 
 (function(window) {
   'use strict';
 
-  /** URL backend Google Apps Script produksi v6.0 */
+  /** URL backend Google Apps Script produksi v6.3 */
   var GAS_URL = 'https://script.google.com/macros/s/AKfycbwrx5XUk37A3uhIpqNjKR9u87Z5hfg6LcBBVkUKFfgKi16YZPrde37ks7r4IsHu__cL/exec';
 
   /** Key localStorage untuk override URL backend (opsional) */
@@ -30,41 +30,146 @@
   /** Default konfigurasi hotel (dipakai saat backend belum terhubung) */
   var DEFAULTS = {
     general: {
-      hotel_name:  'Bumi Surabaya City Resort',
-      description: 'Hotel bintang lima di jantung Kota Surabaya',
-      address:     'Jl. Jenderal Basuki Rachmat No.106-128, Surabaya 60271',
-      phone:       '+62313545888',
-      whatsapp:    '628113388523',
+      hotel_name:        'Bumi Surabaya City Resort',
+      description:       'Welcome to Bumi Surabaya City Resort — a five-star city resort in the heart of Surabaya with lush tropical gardens and legendary culinary destinations.',
+      address:           'Jl. Jenderal Basuki Rachmat No.106-128, Surabaya 60271, East Java, Indonesia',
+      phone:             '+62313545888',
+      whatsapp:          '628113388523',
       google_review_url: 'https://search.google.com/local/writereview?placeid=ChIJl9S7eN771y0Rpp7V9x6GXoU',
-      instagram:   'https://www.instagram.com/bumisurabaya/',
-      facebook:    'https://www.facebook.com/bumisurabaya/',
-      tiktok:      ''
+      instagram:         'https://www.instagram.com/bumisurabaya/',
+      facebook:          'https://www.facebook.com/bumisurabaya/',
+      tiktok:            '',
+      youtube:           '',
+      website:           '',
+      logo_url:          'assets/images/logo-hotel.png'
     },
     appearance: {
-      accent_color:    '#c9a96e',
-      hero_text:       'Welcome to Bumi Surabaya',
-      hero_subtitle:   'Five-Star City Resort in the Heart of Surabaya',
-      welcome_msg_staff:  'You are currently being served wholeheartedly by our team.',
-      welcome_msg_outlet: 'Enjoy an exclusive culinary experience at {outlet_name}.',
-      welcome_msg_general:'We are delighted to welcome you to Bumi Surabaya City Resort.'
+      accent_color:        '#c9a96e',
+      hero_text:           'Bumi Surabaya City Resort',
+      hero_subtitle:       'Five-Star City Resort in the Heart of Surabaya',
+      hero_bg_url:         '',
+      welcome_msg_general: 'We are delighted to welcome you to Bumi Surabaya City Resort.',
+      welcome_msg_staff:   'Hello! You are currently being served wholeheartedly by {staff_name} ({role}) from {outlet}.',
+      welcome_msg_sales:   'Hello! You are currently being assisted by {staff_name} ({role}) from {outlet}.',
+      welcome_msg_outlet:  'Enjoy an exclusive culinary experience at {outlet_name}.',
+      welcome_msg_nfc:     'Welcome to {outlet_name}! Enjoy an unforgettable experience with us.'
     },
     guest_sections: {
-      show_review:    true,
-      show_wa:        true,
-      show_promotions:true,
-      show_outlets:   true,
-      show_social:    true,
-      show_final_cta: true
+      show_review:          true,
+      show_direct_feedback: true,
+      show_wa:              true,
+      show_promotions:      true,
+      show_outlets:         true,
+      show_social:          true,
+      show_final_cta:       true,
+      show_mobile_bar:      true
     },
     review_settings: {
       review_url:    'https://search.google.com/local/writereview?placeid=ChIJl9S7eN771y0Rpp7V9x6GXoU',
       button_text:   'Share Your Experience',
-      review_prompt: 'Your experience means a lot to us. Share your impression and help other guests discover the beauty of Bumi Surabaya.'
+      review_prompt: 'Had a memorable moment with us? Your review helps other guests discover the Bumi Surabaya experience.'
     },
     whatsapp_settings: {
-      number: '628113388523',
+      number:           '628113388523',
       template_staff:   'Halo, saya tamu Bumi Surabaya. Saya baru saja dilayani oleh {staff_name} dan ingin melakukan reservasi.',
       template_general: 'Halo Bumi Surabaya, saya ingin informasi mengenai reservasi dan layanan hotel.'
+    },
+    /**
+     * Skema CMS penuh untuk mengelola 100% isi tampilan halaman tamu (FR-CMS-01 s/d FR-CMS-07)
+     * Tanpa mengubah tone warna ataupun layout guest.css
+     */
+    guest_content: {
+      // Zona 1 & 2: Loading Screen & Hero
+      loading_title:            'Bumi Surabaya City Resort',
+      loading_subtitle:         'Preparing your experience…',
+      hero_review_btn_label:    'Share Your Experience',
+      hero_wa_btn_label:        'Chat with Us',
+      hero_scroll_hint:         'Scroll to explore',
+      staff_badge_prefix:       'Served by ',
+
+      // Zona 3: Seksi Google Review & Direct Feedback
+      review_section_title:     "We'd Love to Hear From You",
+      review_section_subtitle:  'Your feedback helps our team keep improving every day.',
+      review_card_title:        'Share Your Experience',
+      review_card_prompt:       'Had a memorable moment with us? Your review helps other guests discover the Bumi Surabaya experience.',
+      review_card_btn_label:    'Review Us on Google',
+      feedback_toggle_label:    'Direct Feedback',
+      feedback_rating_label:    'How would you rate your experience?',
+      feedback_msg_placeholder: 'Tell us about your experience...',
+      feedback_name_placeholder:'Your name (optional)',
+      feedback_wa_placeholder:  'WhatsApp number (optional)',
+      feedback_submit_label:    'Send Feedback',
+      feedback_thanks_text:     'Thank you! Your feedback means a lot to us.',
+
+      // Zona 4: Seksi Gerai F&B (Outlets) & Promosi
+      outlets_section_title:    'Discover Dining',
+      outlets_section_subtitle: 'Explore our iconic F&B outlets, each with its own culinary story.',
+      outlets_card_cta_label:   'Explore & Reserve →',
+      outlets_wa_template:      'Hello Bumi Surabaya, I would like the menu and table reservation info at {outlet_name}.',
+      promos_section_title:     'Exclusive Offers',
+      promos_section_subtitle:  'Handpicked culinary experiences and special moments, just for you.',
+      promos_card_cta_label:    'Discover More →',
+      promos_wa_template:       'Hello Bumi Surabaya, I am interested in the promotion: {promo_name} at {outlet_name}. Please share reservation details.',
+
+      // Zona 5: Seksi WhatsApp Concierge & Modal WA Sales Picker
+      wa_status_pill:           'Concierge Online',
+      wa_section_title:         'Reservations & Inquiries',
+      wa_section_subtitle:      'Our team is one message away — table reservations, private events, and special requests.',
+      wa_btn_label:             'Chat on WhatsApp',
+      wa_picker_badge:          'CHAT WITH US',
+      wa_picker_title:          'Choose who to chat with',
+      wa_picker_subtitle:       'Our sales team is ready to help you on WhatsApp. Pick a contact below:',
+      wa_picker_row_cta:        'Chat',
+      wa_picker_empty_text:     'Our sales team contacts are being updated. Meanwhile, you can reach our main reservation line below:',
+      wa_picker_fallback_btn:   'Chat Reservation',
+
+      // Zona 6: Media Sosial, Final CTA, Floating Mobile Bar & Footer
+      social_section_title:     'Stay Connected',
+      social_section_subtitle:  'Follow us for the latest stories and exclusive offers.',
+      social_label_instagram:   '📸 Instagram',
+      social_label_facebook:    '👍 Facebook',
+      social_label_tiktok:      '🎵 TikTok',
+      social_label_youtube:     '▶️ YouTube',
+      social_label_website:     '🌐 Official Website',
+      final_cta_title:          'We Look Forward to Welcoming You Again',
+      final_cta_subtitle:       'Until your next memorable experience at Hotel Bumi Surabaya.',
+      final_review_btn_label:   'Share Your Experience',
+      final_wa_btn_label:       'Contact Us',
+      mobile_bar_review_label:  'Review',
+      mobile_bar_wa_label:      'WhatsApp',
+      footer_privacy_label:     'Privacy & Data Use Policy',
+      footer_admin_label:       'Management Portal',
+      footer_show_admin_link:   true,
+      footer_copyright:         '© 2026 Bumi Surabaya City Resort. All rights reserved.',
+      footer_version_tag:       'Digital Guest Experience v6.3',
+
+      // Zona 7: Modal Kebijakan Privasi (#bs-privacy-modal)
+      privacy_badge:            'WORLD-CLASS RESORT PRIVACY STANDARD',
+      privacy_title:            'Guest Privacy & Data Use Policy',
+      privacy_lead_bold:        'Bumi Surabaya City Resort is committed to transparent, secure, and ethical privacy.',
+      privacy_lead_sub:         'Your comfort and peace of mind are our absolute priority. We are fully transparent about the data processed when you use this digital service portal.',
+      privacy_block1_title:     'Personal data we NEVER collect:',
+      privacy_block1_items: [
+        'Guest full name or ID/passport identity',
+        'Guest personal phone number (unless you voluntarily contact our concierge via WhatsApp)',
+        'Personal email address',
+        'Credit card numbers, PINs, or banking details'
+      ],
+      privacy_block2_title:     'Pseudonymous & technical data we process:',
+      privacy_block2_items: [
+        'Pseudonymous identifiers: random per-session identifiers (session_id) and device identifiers (device_id) stored locally in your browser (localStorage/sessionStorage) for interaction integrity and anti-fraud protection.',
+        'Browser information: browser type (User-Agent), screen resolution, and server access time.',
+        'Interaction metrics: active page dwell time, scroll depth, and chosen action buttons (Google reviews, WhatsApp, outlet/promo cards).',
+        'Service access point: table, F&B outlet, room, or staff service point codes for attribution and internal evaluation.'
+      ],
+      privacy_block3_title:     'Purpose & data retention:',
+      privacy_block3_items: [
+        'Purpose: evaluating staff and outlet service quality, preventing metric manipulation (anti-fraud), and improving guest comfort.',
+        'Retention: raw server event logs are kept for a maximum of 12 months for quality audits. Monthly performance summaries are kept for up to 24 months.',
+        'Confidentiality: evaluation data is never sold or shared with third parties for advertising.'
+      ],
+      privacy_subtext:          'By using this service, you help us build a finer, more transparent, and more trusted five-star hospitality standard together.',
+      privacy_btn_label:        'I Understand'
     },
     promotions: [
       {
@@ -121,7 +226,8 @@
         emoji: '🍽️',
         image_url: 'assets/images/outlets/arumanis.jpg',
         hours: '06.00 – 22.00 WIB',
-        highlight: 'Private Room 30 Pax'
+        highlight: 'Private Room 30 Pax',
+        active: true
       },
       {
         id: 'kizahashi',
@@ -131,7 +237,8 @@
         emoji: '🍣',
         image_url: 'assets/images/outlets/kizahashi.svg',
         hours: '11.30 – 14.30 & 18.00 – 22.00 WIB',
-        highlight: '2 Ruang Tatami @10 Pax'
+        highlight: '2 Ruang Tatami @10 Pax',
+        active: true
       },
       {
         id: 'lobby-lounge',
@@ -141,7 +248,8 @@
         emoji: '🍸',
         image_url: 'assets/images/outlets/lobby-lounge.jpg',
         hours: '08.00 – 23.00 WIB',
-        highlight: 'Live Music & High Tea'
+        highlight: 'Live Music & High Tea',
+        active: true
       },
       {
         id: 'delikopi',
@@ -151,21 +259,22 @@
         emoji: '☕',
         image_url: 'assets/images/outlets/delikopi.svg',
         hours: '07.00 – 21.00 WIB',
-        highlight: 'Fresh Bakery Daily'
+        highlight: 'Fresh Bakery Daily',
+        active: true
       }
     ],
     fraud_thresholds: {
       velocity_limit:    3,    // max kunjungan per perangkat ke 1 sumber / 24 jam
       velocity_window_h: 24,
-      burst_count:       5,    // kunjungan dalam jendela burst
+      burst_count:       5,    // kunjungan per sumber dalam jendela burst 10 menit
       burst_window_min:  10,
-      low_dwell_ms:      5000, // < 5 detik = low quality
+      low_dwell_ms:      5000, // < 5 detik tanpa interaksi = low quality
       hopping_sources:   4,    // 4+ sumber berbeda = hopping
       hopping_window_h:  1,
       shared_ip_devices: 5,    // 5+ device dari 1 IP ke 1 sumber / 10 mnt
       shared_ip_min:     10,
-      odd_hour_start:    0,    // WIB
-      odd_hour_end:      5    // WIB (05:30)
+      odd_hour_start:    6,    // Jam operasional mulai WIB (06:00) (FR-P0-06)
+      odd_hour_end:      23    // Jam operasional selesai WIB (23:00) (FR-P0-06)
     }
   };
 
@@ -223,7 +332,14 @@
   /** Ambil nilai konfigurasi yang aktif (merging dengan defaults) */
   function get(section) {
     if (!_activeConfig) return DEFAULTS[section];
-    return _activeConfig[section] || DEFAULTS[section];
+    var def = DEFAULTS[section];
+    var act = _activeConfig[section];
+    if (!act) return def;
+    if (Array.isArray(def) || Array.isArray(act)) return act;
+    if (typeof def === 'object' && def !== null && typeof act === 'object' && act !== null) {
+      return Object.assign({}, def, act);
+    }
+    return act;
   }
 
   /** Hapus cache config (dipanggil setelah admin simpan data) */

@@ -183,8 +183,8 @@ function _getFraudThresholds() {
     hopping_window_ms:     Number(thresholds.hopping_window_ms || 3600000), // 1 jam
     bot_min_dwell_ms:      Number(thresholds.bot_min_dwell_ms || 500),
     shared_ip_max_devices: Number(thresholds.shared_ip_max_devices || 10),
-    odd_hour_start:        Number(thresholds.odd_hour_start  || 6),
-    odd_hour_end:          Number(thresholds.odd_hour_end    || 23)
+    odd_hour_start:        (thresholds.odd_hour_start !== undefined && !(Number(thresholds.odd_hour_start) === 0 && Number(thresholds.odd_hour_end) <= 6)) ? Number(thresholds.odd_hour_start) : 6,
+    odd_hour_end:          (thresholds.odd_hour_end   !== undefined && !(Number(thresholds.odd_hour_start) === 0 && Number(thresholds.odd_hour_end) <= 6)) ? Number(thresholds.odd_hour_end)   : 23
   };
 }
 
@@ -252,10 +252,10 @@ function _summarizeEvents(events) {
       byIp[ip].events.push(ev);
     }
 
-    if (ms) {
-      var buck = Math.floor(ms / t.burst_window_ms);
-      if (!burstBuckets[buck]) burstBuckets[buck] = 0;
-      burstBuckets[buck]++;
+    if (ms && ev.event === 'visit') {
+      var srcBuck = String(ev.source || 'general') + '|' + Math.floor(ms / t.burst_window_ms);
+      if (!burstBuckets[srcBuck]) burstBuckets[srcBuck] = 0;
+      burstBuckets[srcBuck]++;
     }
   });
 
@@ -276,22 +276,31 @@ function _summarizeEvents(events) {
     }
   }
 
-  // Evaluasi AF-01 (Velocity), AF-05 (Hopping), AF-06 (Bot timing) per device
+  // Evaluasi AF-01 (Velocity per device+source+type), AF-05 (Hopping), AF-06 (Bot timing) per device
   Object.keys(byDevice).forEach(function (did) {
     var devList = byDevice[did].slice().sort(function (a, b) { return a._ms - b._ms; });
 
-    // AF-01: Velocity (sliding window)
-    var start = 0;
-    for (var i = 0; i < devList.length; i++) {
-      var tNow = devList[i]._ms;
-      if (!tNow) continue;
-      while (start < i && devList[start]._ms < tNow - t.velocity_window_ms) {
-        start++;
+    // AF-01: Velocity per (source + event) dalam rolling window 24 jam (FR-P1-01)
+    var bySrcType = {};
+    devList.forEach(function (ev) {
+      var key = String(ev.source || 'general') + '|' + String(ev.event || 'visit');
+      if (!bySrcType[key]) bySrcType[key] = [];
+      bySrcType[key].push(ev);
+    });
+    Object.keys(bySrcType).forEach(function (key) {
+      var subList = bySrcType[key];
+      var start = 0;
+      for (var i = 0; i < subList.length; i++) {
+        var tNow = subList[i]._ms;
+        if (!tNow) continue;
+        while (start < i && subList[start]._ms < tNow - t.velocity_window_ms) {
+          start++;
+        }
+        if ((i - start + 1) > t.velocity_max_events) {
+          addFlag(subList[i].event_id, 'AF-01', 'reduce_score');
+        }
       }
-      if ((i - start + 1) > t.velocity_max_events) {
-        addFlag(devList[i].event_id, 'AF-01', 'reduce_score');
-      }
-    }
+    });
 
     // AF-05: Source hopping
     var hStart = 0;
@@ -311,12 +320,14 @@ function _summarizeEvents(events) {
       }
     }
 
-    // AF-06: Bot timing (dwell < 500ms antara event berturutan)
+    // AF-06: Bot timing (spam event bertipe SAMA < 500ms berturut-turut — FR-P0-06)
     for (var m = 1; m < devList.length; m++) {
-      var delta = devList[m]._ms - devList[m - 1]._ms;
-      if (delta >= 0 && delta < t.bot_min_dwell_ms) {
-        addFlag(devList[m].event_id, 'AF-06', 'reject_event');
-        addFlag(devList[m - 1].event_id, 'AF-06', 'reject_event');
+      if (String(devList[m].event || '') === String(devList[m - 1].event || '')) {
+        var delta = devList[m]._ms - devList[m - 1]._ms;
+        if (delta >= 0 && delta < t.bot_min_dwell_ms) {
+          addFlag(devList[m].event_id, 'AF-06', 'reject_event');
+          addFlag(devList[m - 1].event_id, 'AF-06', 'reject_event');
+        }
       }
     }
   });
@@ -363,18 +374,20 @@ function _summarizeEvents(events) {
       addFlag(eid, 'AF-06', 'reject_event');
     }
 
-    // AF-02: Burst check
-    if (ev._ms) {
-      var buck = Math.floor(ev._ms / t.burst_window_ms);
-      if (burstBuckets[buck] > t.burst_max_events) {
+    // AF-02: Burst check per source (khusus visit — FR-P1-01)
+    if (ev._ms && ev.event === 'visit') {
+      var srcBuck = source + '|' + Math.floor(ev._ms / t.burst_window_ms);
+      if (burstBuckets[srcBuck] > t.burst_max_events) {
         addFlag(eid, 'AF-02', 'reduce_score');
       }
     }
 
-    // AF-04: Low quality dwell check
+    // AF-04 & AF-06 dwell check
     var dwell = Number(ev.dwell_ms) || 0;
     var inter = Number(ev.interactions) || 0;
-    if (ev.event === 'visit' && dwell > 0 && dwell < t.low_dwell_ms && inter === 0) {
+    if (ev.event === 'visit' && dwell > 0 && dwell < 1000 && inter === 0) {
+      addFlag(eid, 'AF-06', 'reject_event');
+    } else if (ev.event === 'visit' && dwell > 0 && dwell < t.low_dwell_ms && inter === 0) {
       addFlag(eid, 'AF-04', 'reduce_score');
     }
 
@@ -416,12 +429,14 @@ function _summarizeEvents(events) {
     } else if (ev.event === 'promotion_click' || ev.event === 'outlet_click') {
       s.promos++;
       s.score += (2 * scoreWeight);
+    } else if (ev.event === 'direct_feedback_submit') {
+      s.score += (3 * scoreWeight);
     }
   });
 
-  // Top 5 staf berdasarkan skor valid
+  // Top 5 staf & sales berdasarkan skor valid (FR-P1-01)
   var top5Staff = Object.keys(bySource)
-    .filter(function (k) { return (bySource[k].type || '') === 'staff'; })
+    .filter(function (k) { var tp = (bySource[k].type || ''); return tp === 'staff' || tp === 'sales'; })
     .map(function (k) { return { code: k, name: bySource[k].name, score: bySource[k].score, reviews: bySource[k].reviews }; })
     .sort(function (a, b) { return b.score - a.score; })
     .slice(0, 5);

@@ -1,5 +1,5 @@
 /* ============================================================
-   BUMI SURABAYA — ADMIN PORTAL CSS v6.0
+   BUMI SURABAYA — ADMIN PORTAL CSS v6.3 (Anti-Slop Enterprise UI)
    Luxury Hospitality Management System & Analytics Platform
    Deep Emerald (#1a3c2a), Champagne Gold (#c9a96e), Warm Ivory (#f6f5f0)
    ============================================================ */
@@ -13,6 +13,7 @@
   --champagne-gold-light: #dfc38d;
   --champagne-gold-dark: #b08f51;
   --champagne-gold-glow: rgba(201, 169, 110, 0.25);
+  --gold: #c9a96e;
   --ivory-bg: #f6f5f0;
   --ivory-surface: #ffffff;
   --ivory-card: #fdfdfc;
@@ -20,22 +21,22 @@
   --charcoal-light: #47544d;
   --charcoal-muted: #728078;
   --white: #ffffff;
-  --border-light: rgba(0, 0, 0, 0.07);
+  --border-light: rgba(20, 51, 35, 0.08);
   --border-gold: rgba(201, 169, 110, 0.35);
 
-  --sidebar-w: 270px;
-  --topbar-h: 70px;
+  --sidebar-w: 264px;
+  --topbar-h: 66px;
 
   --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
   --radius-full: 9999px;
 
-  --shadow-sm: 0 2px 8px rgba(16, 38, 27, 0.04);
-  --shadow-md: 0 4px 18px rgba(16, 38, 27, 0.07);
-  --shadow-lg: 0 10px 32px rgba(16, 38, 27, 0.12);
-  --shadow-gold: 0 4px 20px rgba(201, 169, 110, 0.3);
+  --shadow-sm: 0 1px 3px rgba(16, 38, 27, 0.05);
+  --shadow-md: 0 4px 14px rgba(16, 38, 27, 0.07);
+  --shadow-lg: 0 10px 28px rgba(16, 38, 27, 0.12);
+  --shadow-gold: 0 2px 12px rgba(201, 169, 110, 0.28);
 
   --font-heading: 'Playfair Display', Georgia, serif;
   --font-eyebrow: 'Cinzel', 'Playfair Display', Georgia, serif;
@@ -43,12 +44,12 @@
 
   --danger: #dc2626;
   --danger-bg: #fef2f2;
-  --success: #16a34a;
+  --success: #15803d;
   --success-bg: #f0fdf4;
-  --warning: #d97706;
+  --warning: #b45309;
   --warning-bg: #fffbeb;
-  --info: #2563eb;
-  --info-bg: #eff6ff;
+  --info: #1e4531;
+  --info-bg: #f2f7f4;
 }
 
 *, *::before, *::after {
@@ -71,54 +72,52 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── LOGIN SCREEN ─────────────────────────────────────────── */
+/* ── SVG ICON SYSTEM (FR-ADM-01) ──────────────────────────── */
+.adm-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* ── LOGIN SCREEN (Clean Architectural Gradient — No Polka Dots, FR-ADM-04) ── */
 .adm-login-screen {
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 20%, #1e4531 0%, #143323 55%, #0d2217 100%);
+  background: linear-gradient(145deg, #0d2217 0%, #143323 52%, #1a3c2a 100%);
   padding: 24px;
   position: relative;
   overflow: hidden;
-}
-.adm-login-screen::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(201, 169, 110, 0.15) 1px, transparent 1px);
-  background-size: 30px 30px;
-  pointer-events: none;
 }
 
 .adm-login-card {
   background: var(--white);
   border-radius: var(--radius-lg);
-  padding: 44px 38px;
-  max-width: 440px;
+  padding: 40px 36px;
+  max-width: 430px;
   width: 100%;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 169, 110, 0.35);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(201, 169, 110, 0.32);
   position: relative;
   z-index: 2;
-  animation: adm-scale-in 0.35s ease-out;
+  animation: adm-fade-in 0.2s ease-out;
 }
 
 .adm-login-logo {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 26px;
 }
 .adm-logo-wrap {
   display: inline-flex;
   background: var(--white);
   padding: 8px 18px;
-  border-radius: var(--radius-full);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(201, 169, 110, 0.4);
-  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(201, 169, 110, 0.35);
+  margin-bottom: 14px;
 }
 .adm-hotel-logo {
-  max-width: 190px;
+  max-width: 185px;
   height: auto;
   object-fit: contain;
 }
@@ -126,7 +125,7 @@ body {
 .adm-login-badge {
   display: inline-block;
   font-family: var(--font-eyebrow);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--champagne-gold-dark);
@@ -134,7 +133,7 @@ body {
 }
 .adm-login-logo h1 {
   font-family: var(--font-heading);
-  font-size: 1.7rem;
+  font-size: 1.65rem;
   color: var(--deep-green);
   font-weight: 700;
   margin-bottom: 4px;
@@ -145,21 +144,23 @@ body {
 }
 
 .adm-login-footer {
-  margin-top: 26px;
+  margin-top: 24px;
   text-align: center;
-  padding-top: 20px;
+  padding-top: 18px;
   border-top: 1px solid var(--border-light);
 }
 .adm-security-badge {
-  display: inline-block;
-  font-size: 0.76rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--deep-green);
-  background: #f0fdf4;
+  background: #f2f7f4;
   padding: 4px 12px;
   border-radius: var(--radius-full);
   margin-bottom: 6px;
-  border: 1px solid #bbf7d0;
+  border: 1px solid rgba(20, 51, 35, 0.14);
 }
 .adm-login-footer p {
   font-size: 0.74rem;
@@ -168,15 +169,15 @@ body {
 
 /* ── FORM ELEMENTS ────────────────────────────────────────── */
 .adm-form-group {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 .adm-form-group label {
   display: block;
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--deep-green);
   margin-bottom: 6px;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 }
 .adm-required {
   color: var(--danger);
@@ -190,8 +191,9 @@ body {
 .adm-input-icon {
   position: absolute;
   left: 12px;
-  font-size: 1rem;
-  opacity: 0.6;
+  color: var(--charcoal-muted);
+  display: inline-flex;
+  align-items: center;
   pointer-events: none;
 }
 .adm-input-icon-wrap .adm-input {
@@ -200,19 +202,19 @@ body {
 
 .adm-input, .adm-select {
   width: 100%;
-  padding: 11px 14px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 10px 13px;
+  border: 1px solid rgba(20, 51, 35, 0.15);
   border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-family: inherit;
   color: var(--charcoal);
   background: var(--white);
-  transition: all 0.2s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   outline: none;
 }
 .adm-input:focus, .adm-select:focus {
-  border-color: var(--champagne-gold);
-  box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.25);
+  border-color: var(--champagne-gold-dark);
+  box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
 }
 .adm-field-hint {
   display: block;
@@ -223,86 +225,87 @@ body {
 
 .adm-pw-toggle {
   position: absolute;
-  right: 12px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1rem;
-  opacity: 0.6;
+  color: var(--charcoal-muted);
+  display: inline-flex;
+  align-items: center;
   padding: 4px;
 }
 .adm-pw-toggle:hover {
-  opacity: 1;
+  color: var(--deep-green);
 }
 
-/* ── BUTTONS ──────────────────────────────────────────────── */
+/* ── BUTTONS (150ms Crisp Transitions — FR-ADM-04) ────────── */
 .adm-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 9px 18px;
+  gap: 6px;
+  padding: 8px 15px;
   border-radius: var(--radius-sm);
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
-  border: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  transition: background 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out;
   font-family: inherit;
   white-space: nowrap;
   text-decoration: none;
 }
 .adm-btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .adm-btn-primary {
   background: var(--deep-green);
   color: var(--white);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-color: var(--deep-green);
 }
 .adm-btn-primary:hover:not(:disabled) {
   background: var(--deep-green-light);
-  transform: translateY(-1px);
 }
 
 .adm-btn-gold {
   background: linear-gradient(135deg, #dfc38d, #c9a96e);
   color: var(--deep-green-dark);
   font-weight: 700;
-  box-shadow: 0 2px 10px rgba(201, 169, 110, 0.35);
+  border-color: rgba(176, 143, 81, 0.4);
 }
 .adm-btn-gold:hover:not(:disabled) {
-  background: linear-gradient(135deg, #ecd6a6, #d8ba7f);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(201, 169, 110, 0.5);
+  background: linear-gradient(135deg, #e7cfa0, #d1b278);
 }
 
 .adm-btn-secondary {
   background: var(--white);
   color: var(--charcoal);
-  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-color: rgba(20, 51, 35, 0.16);
 }
 .adm-btn-secondary:hover:not(:disabled) {
   background: #f5f4ef;
-  border-color: rgba(0, 0, 0, 0.22);
+  border-color: rgba(20, 51, 35, 0.28);
 }
 
 .adm-btn-danger {
-  background: var(--danger);
-  color: var(--white);
+  background: #fef2f2;
+  color: var(--danger);
+  border-color: #fecaca;
 }
 .adm-btn-danger:hover:not(:disabled) {
-  background: #b91c1c;
+  background: var(--danger);
+  color: var(--white);
+  border-color: var(--danger);
 }
 
 .adm-btn-ghost {
   background: transparent;
-  color: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.78);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 .adm-btn-ghost:hover {
   background: rgba(255, 255, 255, 0.08);
@@ -315,8 +318,8 @@ body {
   border-radius: var(--radius-xs);
 }
 .adm-btn-lg {
-  padding: 13px 22px;
-  font-size: 0.95rem;
+  padding: 12px 20px;
+  font-size: 0.92rem;
 }
 .adm-btn-full {
   width: 100%;
@@ -327,7 +330,7 @@ body {
   padding: 12px 16px;
   border-radius: var(--radius-sm);
   font-size: 0.84rem;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -337,18 +340,23 @@ body {
   border: 1px solid #fecaca;
   color: var(--danger);
 }
+.adm-alert-warn {
+  background: var(--warning-bg);
+  border: 1px solid #fde68a;
+  color: var(--warning);
+}
 
 .adm-toast {
   position: fixed;
   bottom: 24px;
   right: 24px;
   z-index: 9999;
-  padding: 14px 22px;
-  border-radius: var(--radius-md);
-  font-size: 0.88rem;
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
   font-weight: 600;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  animation: adm-slide-up 0.3s ease-out;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  animation: adm-slide-up 0.2s ease-out;
 }
 .adm-toast-success {
   background: var(--deep-green);
@@ -359,8 +367,12 @@ body {
   background: #991b1b;
   color: var(--white);
 }
+.adm-toast-warning {
+  background: #92400e;
+  color: var(--white);
+}
 .adm-toast-info {
-  background: #1e293b;
+  background: #1c2420;
   color: var(--white);
 }
 
@@ -371,7 +383,7 @@ body {
   min-height: 100dvh;
 }
 
-/* ── SIDEBAR ──────────────────────────────────────────────── */
+/* ── SIDEBAR (Anti-Slop Clean Navigation — FR-ADM-01, FR-ADM-04) ── */
 .adm-sidebar {
   width: var(--sidebar-w);
   background: var(--deep-green-surface);
@@ -384,13 +396,12 @@ body {
   bottom: 0;
   z-index: 1000;
   overflow-y: auto;
-  border-right: 1px solid rgba(201, 169, 110, 0.15);
-  box-shadow: var(--shadow-lg);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-right: 1px solid rgba(201, 169, 110, 0.16);
+  transition: transform 0.2s ease-out;
 }
 
 .adm-sidebar-header {
-  padding: 20px 20px 16px;
+  padding: 18px 18px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -403,52 +414,52 @@ body {
 }
 .adm-sidebar-brand-img {
   background: var(--white);
-  padding: 6px 14px;
-  border-radius: var(--radius-full);
+  padding: 5px 12px;
+  border-radius: var(--radius-xs);
   height: auto;
 }
 .adm-sidebar-ver {
   font-family: var(--font-eyebrow);
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   color: var(--champagne-gold);
-  border: 1px solid rgba(201, 169, 110, 0.3);
+  border: 1px solid rgba(201, 169, 110, 0.35);
   padding: 2px 6px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-xs);
 }
 .adm-sidebar-close {
   display: none;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 1.15rem;
   cursor: pointer;
 }
 
 .adm-sidebar-user {
-  padding: 16px 20px;
+  padding: 14px 18px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.14);
 }
 .adm-user-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--champagne-gold);
-  color: var(--deep-green-dark);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-xs);
+  background: rgba(201, 169, 110, 0.18);
+  border: 1px solid rgba(201, 169, 110, 0.45);
+  color: var(--champagne-gold-light);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-heading);
   font-weight: 700;
-  font-size: 0.95rem;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+  font-size: 0.88rem;
 }
 .adm-user-name {
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   color: var(--white);
 }
 .adm-user-role {
@@ -467,16 +478,16 @@ body {
 }
 
 .adm-nav {
-  padding: 16px 12px;
+  padding: 14px 10px;
   flex: 1;
 }
 .adm-nav-group-title {
-  font-family: var(--font-eyebrow);
   font-size: 0.66rem;
-  letter-spacing: 2px;
-  color: rgba(201, 169, 110, 0.6);
-  padding: 12px 12px 6px;
-  margin-top: 8px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: rgba(201, 169, 110, 0.65);
+  padding: 12px 12px 5px;
+  margin-top: 6px;
   font-weight: 700;
 }
 .adm-nav-group-title:first-child {
@@ -486,40 +497,49 @@ body {
 .adm-nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  color: rgba(255, 255, 255, 0.75);
+  gap: 10px;
+  padding: 9px 12px;
+  color: rgba(255, 255, 255, 0.76);
   text-decoration: none;
-  font-size: 0.86rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  border-radius: var(--radius-sm);
-  transition: all 0.2s ease;
+  border-radius: var(--radius-xs);
+  border-left: 2px solid transparent;
+  transition: background 0.15s ease-out, color 0.15s ease-out;
   margin-bottom: 2px;
 }
 .adm-nav-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--white);
-  transform: translateX(3px);
 }
 .adm-nav-item.adm-nav-active {
-  background: rgba(201, 169, 110, 0.16);
+  background: rgba(201, 169, 110, 0.14);
   color: var(--champagne-gold-light);
-  font-weight: 700;
-  border-left: 3px solid var(--champagne-gold);
+  font-weight: 600;
+  border-left-color: var(--champagne-gold);
 }
 .adm-nav-icon {
-  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  opacity: 0.88;
 }
 .adm-nav-badge {
   margin-left: auto;
-  background: #b3261e; color: #fff;
-  font-size: 0.68rem; font-weight: 700;
-  border-radius: 999px; padding: 1px 8px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border-radius: 999px;
+  padding: 1px 7px;
   line-height: 1.5;
 }
 
 .adm-sidebar-footer {
-  padding: 16px;
+  padding: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -535,11 +555,11 @@ body {
 /* ── TOPBAR ───────────────────────────────────────────────── */
 .adm-topbar {
   height: var(--topbar-h);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border-light);
-  padding: 0 32px;
+  padding: 0 28px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -550,25 +570,26 @@ body {
 .adm-topbar-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 .adm-sidebar-toggle {
   display: none;
   background: none;
   border: none;
-  font-size: 1.4rem;
   color: var(--deep-green);
   cursor: pointer;
+  padding: 4px;
 }
 .adm-topbar-breadcrumb {
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   color: var(--charcoal-muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
+  font-weight: 600;
 }
 .adm-topbar-title {
   font-family: var(--font-heading);
-  font-size: 1.35rem;
+  font-size: 1.28rem;
   font-weight: 700;
   color: var(--deep-green);
   line-height: 1.2;
@@ -577,17 +598,17 @@ body {
 .adm-topbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 .adm-select-wrap .adm-select {
-  padding: 8px 12px;
-  font-size: 0.84rem;
-  border-color: rgba(201, 169, 110, 0.4);
+  padding: 7px 11px;
+  font-size: 0.82rem;
+  border-color: rgba(20, 51, 35, 0.16);
 }
 
 /* ── TAB PANES ────────────────────────────────────────────── */
 .adm-tab-pane {
-  padding: 32px;
+  padding: 26px 28px;
   flex: 1;
 }
 
@@ -595,85 +616,94 @@ body {
 .adm-card {
   background: var(--white);
   border-radius: var(--radius-md);
-  padding: 28px;
+  padding: 24px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-light);
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 .adm-card-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
   flex-wrap: wrap;
 }
 .adm-card-title {
   font-family: var(--font-heading);
-  font-size: 1.25rem;
+  font-size: 1.18rem;
   color: var(--deep-green);
   font-weight: 700;
 }
 .adm-card-subtitle {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--charcoal-muted);
-  margin-top: 3px;
+  margin-top: 2px;
 }
 .adm-subheading {
   font-family: var(--font-heading);
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   color: var(--deep-green);
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
-/* ── METRIC CARDS GRID ────────────────────────────────────── */
+/* ── METRIC CARDS GRID (Linear / Stripe-Style Clean Hierarchy — FR-ADM-03, FR-ADM-04) ── */
 .adm-metrics-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 18px;
-  margin-bottom: 24px;
+  gap: 14px;
+  margin-bottom: 20px;
 }
 .adm-metric-card {
   background: var(--white);
   border-radius: var(--radius-md);
-  padding: 20px;
+  padding: 18px 20px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-light);
+  border-top: 2px solid var(--deep-green);
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  transition: transform 0.25s, box-shadow 0.25s;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
 }
-.adm-metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+.adm-metric-card:nth-child(2),
+.adm-metric-card:nth-child(3) {
+  border-top-color: var(--champagne-gold-dark);
 }
-.adm-metric-icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
+.adm-metric-top {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.adm-metric-icon-wrap {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  background: rgba(20, 51, 35, 0.06);
+  color: var(--deep-green);
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
   flex-shrink: 0;
 }
 .adm-metric-label {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--charcoal-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
 }
 .adm-metric-value {
-  font-size: 1.6rem;
-  font-weight: 800;
+  font-size: 1.65rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--deep-green);
   line-height: 1.2;
-  margin: 4px 0 2px;
+  margin: 2px 0;
 }
 .adm-metric-sub {
-  font-size: 0.72rem;
+  font-size: 0.73rem;
   color: var(--charcoal-muted);
 }
 
@@ -682,12 +712,12 @@ body {
   display: inline-flex;
   background: var(--ivory-bg);
   padding: 3px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   gap: 4px;
 }
 .adm-chart-wrap {
   position: relative;
-  height: 280px;
+  height: 270px;
   width: 100%;
 }
 
@@ -695,11 +725,11 @@ body {
 .adm-two-col {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-  margin-bottom: 24px;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
-/* ── TABLES ───────────────────────────────────────────────── */
+/* ── TABLES (Tabular Numerals & Clean Action Groups — FR-ADM-04) ── */
 .adm-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border-light);
@@ -708,13 +738,14 @@ body {
 .adm-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   text-align: left;
+  font-variant-numeric: tabular-nums;
 }
 .adm-table th {
   background: #faf9f6;
-  padding: 12px 16px;
-  font-size: 0.74rem;
+  padding: 11px 14px;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--charcoal-muted);
   text-transform: uppercase;
@@ -722,7 +753,7 @@ body {
   border-bottom: 1px solid var(--border-light);
 }
 .adm-table td {
-  padding: 12px 16px;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--border-light);
   color: var(--charcoal);
   vertical-align: middle;
@@ -736,48 +767,63 @@ body {
 }
 .bs-empty {
   text-align: center;
-  padding: 30px !important;
+  padding: 28px !important;
   color: var(--charcoal-muted);
   font-style: italic;
 }
 .adm-actions {
   display: flex;
+  align-items: center;
   gap: 6px;
+  flex-wrap: nowrap;
 }
 
 .adm-badge-ok {
   background: #f0fdf4;
-  color: #16a34a;
+  color: #15803d;
   padding: 3px 8px;
   border-radius: var(--radius-full);
-  font-size: 0.72rem;
+  font-size: 0.71rem;
   font-weight: 700;
   border: 1px solid #bbf7d0;
+  display: inline-block;
 }
 .adm-badge-warn {
   background: #fffbeb;
-  color: #d97706;
+  color: #b45309;
   padding: 3px 8px;
   border-radius: var(--radius-full);
-  font-size: 0.72rem;
+  font-size: 0.71rem;
   font-weight: 700;
   border: 1px solid #fde68a;
+  display: inline-block;
 }
 .adm-badge-err {
   background: #fef2f2;
   color: #dc2626;
   padding: 3px 8px;
   border-radius: var(--radius-full);
-  font-size: 0.72rem;
+  font-size: 0.71rem;
   font-weight: 700;
   border: 1px solid #fecaca;
+  display: inline-block;
+}
+.adm-badge-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.71rem;
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
+  display: inline-block;
 }
 
 .adm-table-footer {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 20px;
+  gap: 14px;
+  margin-top: 18px;
   flex-wrap: wrap;
 }
 
@@ -785,7 +831,7 @@ body {
 .adm-outlets-admin-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 22px;
+  gap: 20px;
 }
 .adm-outlet-card-item {
   border: 1px solid var(--border-light);
@@ -798,7 +844,7 @@ body {
 }
 .adm-outlet-card-media {
   position: relative;
-  height: 180px;
+  height: 175px;
   background: var(--deep-green-dark);
 }
 .adm-outlet-card-media img {
@@ -812,38 +858,38 @@ body {
   left: 12px;
   background: rgba(16, 38, 27, 0.88);
   color: var(--champagne-gold-light);
-  font-size: 0.72rem;
+  font-size: 0.71rem;
   font-weight: 700;
   padding: 4px 10px;
   border-radius: var(--radius-full);
   border: 1px solid rgba(201, 169, 110, 0.5);
 }
 .adm-outlet-card-body {
-  padding: 20px;
+  padding: 18px;
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 .adm-outlet-card-title {
   font-family: var(--font-heading);
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--deep-green);
   margin-bottom: 2px;
 }
 .adm-outlet-card-type {
-  font-size: 0.75rem;
+  font-size: 0.73rem;
   font-weight: 700;
   color: var(--champagne-gold-dark);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .adm-outlet-card-desc {
-  font-size: 0.84rem;
+  font-size: 0.83rem;
   color: var(--charcoal-light);
   line-height: 1.55;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   flex: 1;
 }
 .adm-outlet-meta-row {
@@ -854,7 +900,7 @@ body {
   color: var(--charcoal-muted);
   border-top: 1px solid var(--border-light);
   padding: 10px 0;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 .adm-outlet-card-actions {
   display: flex;
@@ -865,14 +911,14 @@ body {
 .adm-bulk-preview-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+  gap: 16px;
   margin-top: 16px;
 }
 .adm-print-card-sample {
   background: var(--white);
   border: 1.5px solid var(--champagne-gold);
-  border-radius: 12px;
-  padding: 18px 14px;
+  border-radius: 10px;
+  padding: 16px 14px;
   text-align: center;
   box-shadow: var(--shadow-sm);
   display: flex;
@@ -880,37 +926,38 @@ body {
   align-items: center;
 }
 .adm-pc-logo {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .adm-pc-qr {
-  width: 90px;
-  height: 90px;
+  width: 96px;
+  height: 96px;
   background: #fdfdfc;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
-  padding: 6px;
-  margin-bottom: 10px;
+  border-radius: 6px;
+  padding: 4px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.adm-pc-qr-img {
-  width: 100%;
-  height: 100%;
+.adm-pc-qr img,
+.adm-pc-qr canvas {
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 .adm-pc-title {
   font-family: var(--font-heading);
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   font-weight: 700;
   color: var(--deep-green);
   line-height: 1.2;
 }
 .adm-pc-sub {
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   color: var(--champagne-gold-dark);
   font-weight: 600;
-  margin: 2px 0 8px;
+  margin: 2px 0 6px;
 }
 .adm-pc-inst {
   font-size: 0.68rem;
@@ -921,33 +968,33 @@ body {
 /* ── TOGGLE LIST (GUEST SECTIONS) ─────────────────────────── */
 .adm-toggles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
 }
 .adm-toggle-item {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
   background: #faf9f6;
   border: 1px solid var(--border-light);
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .adm-toggle-item input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   accent-color: var(--deep-green);
   cursor: pointer;
   margin-top: 2px;
 }
 .adm-toggle-label strong {
   display: block;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   color: var(--deep-green);
 }
 .adm-toggle-label span {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   color: var(--charcoal-muted);
 }
 
@@ -955,8 +1002,8 @@ body {
 .adm-nfc-status {
   padding: 12px 16px;
   border-radius: var(--radius-sm);
-  font-size: 0.86rem;
-  margin-bottom: 16px;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
   display: none;
 }
 .adm-nfc-waiting {
@@ -981,62 +1028,83 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 210px;
+  min-height: 220px;
   background: #faf9f6;
   border-radius: var(--radius-sm);
-  border: 1px dashed rgba(201, 169, 110, 0.4);
+  border: 1px solid var(--border-light);
   padding: 16px;
 }
 
-/* ── MODALS ───────────────────────────────────────────────── */
+/* ── MODALS (Clean 150ms Ease-Out — No Bouncy Spring, FR-ADM-04) ── */
 .adm-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(13, 34, 23, 0.65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(13, 34, 23, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  animation: adm-fade-in 0.25s ease-out;
+  animation: adm-fade-in 0.15s ease-out;
 }
 .adm-modal-box {
   background: var(--white);
   border-radius: var(--radius-md);
-  padding: 30px;
-  max-width: 520px;
+  padding: 26px;
+  max-width: 540px;
   width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
   box-shadow: var(--shadow-lg);
   border: 1px solid rgba(201, 169, 110, 0.35);
-  animation: adm-scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: adm-scale-in 0.15s ease-out;
 }
 .adm-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 .adm-modal-header h3 {
   font-family: var(--font-heading);
-  font-size: 1.3rem;
+  font-size: 1.22rem;
   color: var(--deep-green);
 }
 .adm-modal-close {
   background: none;
   border: none;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   cursor: pointer;
   color: var(--charcoal-muted);
 }
 
-/* ── TWO COL FORMS ────────────────────────────────────────── */
+/* ── TWO COL FORMS & CMS WORKSPACE (FR-CMS-08) ────────────── */
 .adm-two-col-form {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.adm-cms-toolbar {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--champagne-gold-dark);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.adm-cms-zone-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 /* ── ANIMATIONS ───────────────────────────────────────────── */
@@ -1045,11 +1113,11 @@ body {
   to { opacity: 1; }
 }
 @keyframes adm-scale-in {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
 }
 @keyframes adm-slide-up {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -1095,7 +1163,7 @@ body {
     padding: 0 16px;
   }
   .adm-tab-pane {
-    padding: 20px 16px;
+    padding: 18px 16px;
   }
   .adm-metrics-grid {
     grid-template-columns: 1fr;
@@ -1111,7 +1179,7 @@ body {
 @media (max-width: 480px) {
   .adm-topbar-actions {
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
   }
   .adm-table-wrap {
     overflow-x: auto;
@@ -1125,7 +1193,7 @@ body {
   }
 }
 
-/* ── ACCESSIBILITY & FOCUS (GUE-14, PRD 6.3) ──────────────── */
+/* ── ACCESSIBILITY & FOCUS ────────────────────────────────── */
 :focus-visible {
   outline: 2px solid var(--champagne-gold);
   outline-offset: 2px;
@@ -1140,28 +1208,27 @@ body {
   }
 }
 
-/* ── STATUS SINKRONISASI & SAVE (SRC-05, SRC-06, SEC-09) ──── */
+/* ── STATUS SINKRONISASI & SAVE ───────────────────────────── */
 .adm-sync-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.8rem;
+  gap: 7px;
+  font-size: 0.78rem;
   font-weight: 600;
-  padding: 6px 14px;
+  padding: 5px 12px;
   border-radius: var(--radius-full);
-  transition: all 0.2s ease;
   white-space: nowrap;
 }
 .adm-sync-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 .adm-sync-saved {
   background: var(--success-bg);
   color: var(--success);
-  border: 1px solid rgba(22, 163, 74, 0.25);
+  border: 1px solid rgba(21, 128, 61, 0.22);
 }
 .adm-sync-saved .adm-sync-dot {
   background: var(--success);
@@ -1169,35 +1236,29 @@ body {
 .adm-sync-unsaved {
   background: var(--warning-bg);
   color: var(--warning);
-  border: 1px solid rgba(217, 119, 6, 0.3);
+  border: 1px solid rgba(180, 83, 9, 0.28);
 }
 .adm-sync-unsaved .adm-sync-dot {
   background: var(--warning);
-  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
 }
 .adm-sync-saving {
   background: var(--info-bg);
   color: var(--info);
-  border: 1px solid rgba(37, 99, 235, 0.3);
+  border: 1px solid rgba(30, 69, 49, 0.25);
 }
 .adm-sync-saving .adm-sync-dot {
   background: var(--info);
-  animation: adm-pulse 1s infinite alternate;
 }
 .adm-sync-failed {
   background: var(--danger-bg);
   color: var(--danger);
-  border: 1px solid rgba(220, 38, 38, 0.3);
+  border: 1px solid rgba(220, 38, 38, 0.28);
 }
 .adm-sync-failed .adm-sync-dot {
   background: var(--danger);
 }
-@keyframes adm-pulse {
-  from { opacity: 0.3; }
-  to { opacity: 1; }
-}
 
-/* ── BRAND PALETTE TOKENS (CNT-07, PRD 6.1) ───────────────── */
+/* ── BRAND PALETTE TOKENS ─────────────────────────────────── */
 .adm-palette-preview {
   display: flex;
   gap: 10px;
@@ -1208,23 +1269,23 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 7px 11px;
   background: var(--white);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--charcoal);
 }
 .adm-palette-swatch {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   flex-shrink: 0;
 }
 
-/* ── HEALTH SIGNALS BAR (PRD 8.3, 11E) ─────────────────────── */
+/* ── HEALTH SIGNALS BAR ───────────────────────────────────── */
 .adm-health-bar {
   display: flex;
   flex-wrap: wrap;
@@ -1232,9 +1293,10 @@ body {
   gap: 16px;
   background: var(--white);
   border-bottom: 1px solid var(--border-light);
-  padding: 8px 24px;
-  font-size: 0.78rem;
+  padding: 7px 28px;
+  font-size: 0.76rem;
   color: var(--charcoal-muted);
+  font-variant-numeric: tabular-nums;
 }
 .adm-health-item {
   display: inline-flex;
@@ -1248,16 +1310,16 @@ body {
 .adm-health-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   padding: 2px 8px;
   border-radius: 999px;
   font-weight: 600;
-  font-size: 0.74rem;
+  font-size: 0.73rem;
 }
 .adm-health-online {
   background: var(--success-bg);
   color: var(--success);
-  border: 1px solid rgba(22, 101, 52, 0.2);
+  border: 1px solid rgba(21, 128, 61, 0.2);
 }
 .adm-health-offline {
   background: var(--danger-bg);
@@ -1265,23 +1327,17 @@ body {
   border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
-/* ── RBAC ROLE TAGS (SEC-11) ───────────────────────────────── */
-.adm-sidebar-role {
-  font-size: 0.76rem;
-  color: var(--gold);
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+/* ── RBAC ROLE TAGS ───────────────────────────────────────── */
 .adm-role-tag {
   display: inline-block;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  background: rgba(20, 51, 35, 0.07);
+  color: var(--deep-green);
 }
 .adm-role-super_admin {
   background: rgba(201, 169, 110, 0.18);
@@ -1304,13 +1360,13 @@ body {
   border: 1px solid rgba(71, 84, 77, 0.25);
 }
 
-/* ── FAVORITE FILTER TOOLBAR (ANA-10) ──────────────────────── */
+/* ── FAVORITE FILTER TOOLBAR ──────────────────────────────── */
 .adm-fav-filter-card {
-  border-left: 3px solid var(--gold);
+  border-left: 3px solid var(--champagne-gold-dark);
   background: var(--white);
 }
 
-/* ── LIVE DRAFT PREVIEW MODAL (CNT-09) ─────────────────────── */
+/* ── LIVE DRAFT PREVIEW MODAL ─────────────────────────────── */
 .adm-preview-modal-box {
   background: var(--white);
   border-radius: var(--radius-md);
@@ -1320,7 +1376,7 @@ body {
   position: relative;
 }
 
-/* ── BULK QR PRINT LAYOUT PREVIEWS (QRN-06) ────────────────── */
+/* ── BULK QR PRINT LAYOUT PREVIEWS ────────────────────────── */
 .print-layout-sticker {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1353,4 +1409,3 @@ body {
   justify-content: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
-

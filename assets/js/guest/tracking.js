@@ -1,33 +1,30 @@
 /**
- * BUMI SURABAYA v5.0
+ * BUMI SURABAYA v6.3
  * tracking.js — Event tracker, session storage, beacon unload
  *
  * Menangani:
  * - Deduplikasi kunjungan per sesi (FR-TRK-01)
  * - Atribusi sumber persisten via sessionStorage (FR-TRK-02)
  * - Retry queue untuk ketahanan offline (FR-TRK-03)
- * - sendBeacon dwell_update saat pagehide (FR-TRK-04)
- *
- * Perbaikan bug v4:
- * - event dwell_update dikirim sebagai PEMBARUAN baris session (bukan baris baru)
- * - dwell_ms dihitung dari visibilitychange & PageVisibility API
+ * - sendBeacon dwell_update saat pagehide dengan cooldown guard (FR-TRK-04, FR-P1-02)
  */
 
 (function(window) {
   'use strict';
 
   // ── State sesi ──────────────────────────────────────────────
-  var _sessionId  = null;
-  var _deviceId   = null;
-  var _fp         = null;
-  var _source     = null;
-  var _sourceType = 'general';
-  var _gasUrl     = '';
-  var _visitSent  = false;   // Deduplikasi: satu visit per session
-  var _dwellStart = 0;       // Timestamp mulai dwell aktif
-  var _dwellAccum = 0;       // Akumulasi dwell (ms)
+  var _sessionId    = null;
+  var _deviceId     = null;
+  var _fp           = null;
+  var _source       = null;
+  var _sourceType   = 'general';
+  var _gasUrl       = '';
+  var _visitSent    = false;   // Deduplikasi: satu visit per session
+  var _dwellStart   = 0;       // Timestamp mulai dwell aktif
+  var _dwellAccum   = 0;       // Akumulasi dwell (ms)
   var _interactions = 0;
-  var _scrollMax  = 0;
+  var _scrollMax    = 0;
+  var _lastBeaconTs = 0;       // Cooldown guard untuk mencegah pengiriman beacon ganda (FR-P1-02)
 
   // Kunci sessionStorage untuk deduplikasi
   var VISIT_SENT_KEY = 'bs_visit_sent';
@@ -126,7 +123,7 @@
       screen:      scr,
       ua:          ua,
       fp:          _fp || '',
-      dwell_ms:    _dwellAccum,
+      dwell_ms:    getCurrentDwell(),
       interactions:_interactions,
       scroll_max:  _scrollMax,
       hp:          hpValue,   // honeypot terhubung ke field dan window._bsHpValue (AF-06)
@@ -173,12 +170,17 @@
 
   /**
    * Kirim dwell_update via sendBeacon (fire-and-forget saat tab ditutup).
+   * Dilengkapi cooldown guard 1.000ms agar pagehide + beforeunload tidak mengirim ganda (FR-P1-02).
    */
   function sendDwellBeacon() {
     if (!_gasUrl || !_visitSent) return;
+    var now = Date.now();
+    if (_lastBeaconTs > 0 && (now - _lastBeaconTs) < 1000) return;
+    _lastBeaconTs = now;
+
     var payload = {
       action:      'log_event',
-      event_id:    window.BSFingerprint ? window.BSFingerprint.uuid4() : ('ev_' + Date.now()),
+      event_id:    window.BSFingerprint ? window.BSFingerprint.uuid4() : ('ev_' + now),
       session_id:  getSessionId(),
       device_id:   _deviceId || '',
       event:       'dwell_update',
@@ -255,6 +257,7 @@
     document.addEventListener('visibilitychange', function() {
       if (document.hidden) {
         pauseDwellTimer();
+        sendDwellBeacon();
       } else {
         startDwellTimer();
       }
@@ -266,9 +269,8 @@
     // Klik global sebagai sinyal interaksi
     document.addEventListener('click', trackInteraction);
 
-    // Beacon saat halaman ditutup
+    // Beacon saat halaman ditutup (dengan cooldown guard di sendDwellBeacon)
     window.addEventListener('pagehide', sendDwellBeacon);
-    // Fallback (tidak semua browser support pagehide)
     window.addEventListener('beforeunload', sendDwellBeacon);
 
     // Kirim visit event (deduplikasi: hanya sekali per sesi)

@@ -28,13 +28,13 @@ Spreadsheet resmi hotel terdiri dari tab-tab berikut:
 
 Tab `Users` menyimpan kredensial pengguna terenkripsi dengan salt kriptografis per-user dan 1.000 iterasi SHA-256 key stretching:
 
-### Struktur Kolom Tab `Users` (7 Kolom):
-1. `user_id`: ID unik pengguna (mis. `usr-1728800000000`).
-2. `username`: Nama pengguna login unik.
-3. `password_hash`: String hash password (`pbkdf2_sha256$1000$[salt]$[hash]`).
-4. `salt`: Salt acak hexadesimal kriptografis (32 karakter).
-5. `created_at`: Waktu pembuatan akun (ISO string).
-6. `must_change`: `TRUE` atau `FALSE` (wajib ganti kata sandi sebelum akses).
+### Struktur Kolom Tab `Users` (7 Kolom — Sesuai `Code.gs`):
+1. `username`: Nama pengguna login unik (case-insensitive).
+2. `password_hash`: String hash password (`pbkdf2_sha256$1000$[digest_hex]`).
+3. `salt`: Salt acak hexadesimal kriptografis (16 karakter).
+4. `must_change`: `TRUE` atau `FALSE` (wajib ganti kata sandi sebelum akses).
+5. `created_at`: Waktu pembuatan akun.
+6. `updated_at`: Waktu pembaruan terakhir akun.
 7. `role`: Peran resmi pengguna:
    - `super_admin`: Akses penuh ke seluruh fitur dan konfigurasi sistem.
    - `manager`: Akses manajemen operasional harian (staf, perangkat, outlet, promosi), tanpa izin mengubah threshold fraud atau konfigurasi URL backend.
@@ -67,20 +67,15 @@ setupUser('analis_audit', 'PassAnalis2026!', 'analyst_readonly');
 
 Tab `AuditLog` mencatat setiap aksi administratif sensitif secara permanen.
 
-### Struktur Kolom Tab `AuditLog` (9 Kolom):
-1. `log_id`: ID unik catatan audit (`aud-1728800000000-xxxx`).
-2. `ts_server`: Waktu server (ISO string WIB).
-3. `actor`: Username yang melakukan tindakan.
-4. `role`: Peran aktor saat tindakan terjadi.
-5. `action`: Jenis tindakan:
-   - `LOGIN`: Upaya login (status: `SUCCESS` atau `FAILED`).
-   - `MUTATION_SAVE_ALL`: Penyimpanan konfigurasi admin (status: `SUCCESS`, `FAILED`, atau `DENIED`).
-   - `CHANGE_PASSWORD`: Perubahan kata sandi administrator.
-   - `BREAK_GLASS_RECOVERY`: Pemulihan darurat akun terkunci.
-6. `target_object`: Objek sasaran mutasi (`config`, `sources`, `promotions`, `fraud_settings`, dll.).
-7. `status`: `SUCCESS`, `FAILED`, atau `DENIED`.
-8. `details`: Ringkasan mutasi (daftar atribut yang diubah, tanpa password/token mentah).
-9. `ip`: Alamat IP klien (disamarkan/masked).
+### Struktur Kolom Tab `AuditLog` (8 Kolom — Sesuai `Code.gs`):
+1. `timestamp`: Waktu server (ISO string WIB, diekspos sebagai `timestamp` dan `ts_server` di API).
+2. `actor`: Username yang melakukan tindakan.
+3. `role`: Peran aktor saat tindakan terjadi.
+4. `action`: Jenis tindakan (`LOGIN`, `MUTATION_SAVE`, `MUTATION_DENIED`, `CHANGE_PASSWORD`, `BREAK_GLASS_RESET`, `FEEDBACK_HANDLED`, `FEEDBACK_DENIED`, `SETUP_ADMIN`, `CREATE_USER`, `UPDATE_USER`).
+5. `target_object`: Objek sasaran mutasi (`admin_data`, `session`, `user:<username>`, `feedback`, dll.).
+6. `status`: `SUCCESS`, `FAILED`, atau `REJECTED`.
+7. `details`: Ringkasan mutasi (daftar atribut yang diubah, tanpa password/token mentah).
+8. `ip`: Alamat IP klien (disamarkan/masked).
 
 ---
 

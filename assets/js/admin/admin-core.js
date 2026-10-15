@@ -1,9 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.2 (FASE 2)
- * admin-core.js — Central state manager, navigation, auth lifecycle & health signals
- *
- * Mengelola state global aplikasi admin, otentikasi, perizinan role (SEC-11),
- * dan indikator status sinkronisasi & health sistem (PRD 8.3).
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * admin-core.js — Central state manager, SVG icon system (FR-ADM-01), RBAC enforcement (FR-P1-04) & health signals
  */
 
 (function (window) {
@@ -15,30 +12,29 @@
    * 1. State Global Portal Admin
    * ───────────────────────────────────────────────────────────── */
   var state = {
-    events:           [],       // raw events dari GAS
-    evalResult:       null,     // hasil evaluasi BSAntiFraud.evaluate()
-    currentPeriod:    '7d',     // '7d' | '30d'
-    currentFilter:    '',       // filter tombol sumber ('', 'staff', 'outlet', etc.)
-    editingCode:      null,     // null = tambah baru, string = edit sumber
-    editingOutletId:  null,     // null = tambah baru, number = edit gerai
-    editingPromoIdx:  null,     // null = tambah baru, number = edit promo
-    configData:       JSON.parse(JSON.stringify((window.BSConfig && BSConfig.DEFAULTS) || {})),
-    outlets:          [],
-    promos:           [],
-    staffDevices:     [],
-    auditLogs:        [],
-    userRole:         'super_admin',
-    username:         'admin',
+    events:             [],
+    evalResult:         null,
+    currentPeriod:      '7d',
+    currentFilter:      '',
+    editingCode:        null,
+    editingOutletId:    null,
+    editingPromoIdx:    null,
+    configData:         JSON.parse(JSON.stringify((window.BSConfig && BSConfig.DEFAULTS) || {})),
+    outlets:            [],
+    promos:             [],
+    staffDevices:       [],
+    auditLogs:          [],
+    userRole:           'super_admin',
+    username:           'admin',
     lastFocusedTrigger: null,
     syncStatus: {
-      state:      'saved',      // 'saved' | 'unsaved' | 'saving' | 'failed'
+      state:      'saved',
       lastError:  null,
       hasUnsaved: false,
       retryFn:    null
     }
   };
 
-  // Inisialisasi outlet & promosi dari config default jika belum ada
   if (state.configData.outlets && Array.isArray(state.configData.outlets)) {
     state.outlets = state.configData.outlets.slice();
   }
@@ -49,7 +45,7 @@
   BSAdmin.state = state;
 
   /* ─────────────────────────────────────────────────────────────
-   * 2. Helper DOM & Format Dasar
+   * 2. Helper DOM, Sanitasi & Sistem Ikon SVG Monoline (FR-ADM-01)
    * ───────────────────────────────────────────────────────────── */
   function $id(id) {
     return document.getElementById(id);
@@ -70,13 +66,38 @@
   }
   BSAdmin.maskIp = maskIp;
 
+  var SVG_PATHS = {
+    edit:     '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    rotate:   '<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>',
+    power:    '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>',
+    trash:    '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+    check:    '<polyline points="20 6 9 17 4 12"/>',
+    plus:     '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    save:     '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+    eye:      '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+    'eye-off':'<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>',
+    printer:  '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+    shield:   '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+    clock:    '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    link:     '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    lock:     '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
+  };
+
+  function icon(name, size) {
+    var sz = size || 14;
+    var p = SVG_PATHS[name] || SVG_PATHS.check;
+    return '<svg class="adm-icon" width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+  }
+  BSAdmin.icon = icon;
+
   /* ── Toast Helper ── */
   var _toastTimer = null;
   function showToast(msg, type) {
     var toast = $id('adm-toast');
     if (!toast) return;
-    toast.textContent = msg;
-    toast.className   = 'adm-toast adm-toast-' + (type || 'info');
+    toast.textContent   = msg;
+    toast.className     = 'adm-toast adm-toast-' + (type || 'info');
     toast.style.display = 'block';
     clearTimeout(_toastTimer);
     _toastTimer = setTimeout(function () {
@@ -85,7 +106,7 @@
   }
   BSAdmin.showToast = showToast;
 
-  /* ── Save / Sync Status Tracker (SRC-01 s/d SRC-03, SEC-09) ── */
+  /* ── Save / Sync Status Tracker ── */
   function updateSyncStatus(syncState, errorMsg, retryFn) {
     state.syncStatus.state = syncState;
     state.syncStatus.lastError = errorMsg || null;
@@ -116,7 +137,7 @@
   }
   BSAdmin.updateSyncStatus = updateSyncStatus;
 
-  /* ── Accessible Modal Manager (GUE-14, PRD 6.3) ── */
+  /* ── Accessible Modal Manager ── */
   function setupAccessibleModal(modalId, closeFn) {
     var modal = $id(modalId);
     if (!modal) return;
@@ -151,14 +172,16 @@
   BSAdmin.setupAccessibleModal = setupAccessibleModal;
 
   /* ─────────────────────────────────────────────────────────────
-   * 3. Penegakan Izin Role di Sisi UI (SEC-11)
+   * 3. Penegakan Izin Role di Sisi UI (SEC-11, FR-P1-04)
    * ───────────────────────────────────────────────────────────── */
   var ROLE_LABELS = {
     super_admin:      'Super Administrator (Akses Penuh)',
-    manager:          'Manager Operasional (Tanpa Config Sistem)',
-    content_editor:   'Editor Konten (Gerai & Promosi)',
+    manager:          'Manager Operasional',
+    content_editor:   'Editor Konten & Halaman Tamu',
     analyst_readonly: 'Analis Data (Hanya Baca)'
   };
+
+  var CONTENT_EDITOR_DISALLOWED_TABS = ['dashboard', 'sources', 'antifraud', 'config', 'audit', 'feedback'];
 
   function checkPermission(action) {
     var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
@@ -187,7 +210,6 @@
     var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
     var u = (window.BSAuth && BSAuth.getUsername()) || 'admin';
 
-    // Perbarui badge role di sidebar & account tab
     var userBadge = $id('adm-sidebar-user-role');
     if (userBadge) {
       userBadge.innerHTML = '<span class="adm-status-dot-sm"></span> ' + (ROLE_LABELS[r] || r);
@@ -197,18 +219,16 @@
       curUserEl.textContent = u + ' (' + (ROLE_LABELS[r] || r) + ')';
     }
 
-    // Tampilkan banner peringatan untuk role dengan hak terbatas
     var readonlyBanner = $id('adm-readonly-banner');
     if (readonlyBanner) {
       if (r === 'analyst_readonly') {
         readonlyBanner.style.display = 'block';
-        readonlyBanner.textContent = '🔒 Mode Baca-Saja: Peran analyst_readonly tidak memiliki izin untuk menyimpan perubahan data.';
+        readonlyBanner.textContent = 'Mode Baca-Saja: Peran analyst_readonly tidak memiliki izin untuk menyimpan perubahan data.';
       } else {
         readonlyBanner.style.display = 'none';
       }
     }
 
-    // Batasi tombol mutasi sesuai role
     var isReadonly = (r === 'analyst_readonly');
     var isContentOnly = (r === 'content_editor');
 
@@ -219,28 +239,25 @@
       }
     });
 
-    // Batasi tab navigasi jika role adalah content_editor
-    if (isContentOnly) {
-      var disallowedTabs = ['sources', 'antifraud', 'config', 'audit', 'feedback'];
-      document.querySelectorAll('.adm-nav-item').forEach(function (item) {
-        if (disallowedTabs.indexOf(item.dataset.tab) !== -1) {
-          item.style.opacity = '0.4';
-          item.title = 'Hanya dapat diakses oleh Super Admin & Manager.';
-        }
-      });
-    }
-
-    // Tab Feedback berisi data tamu (PII): sembunyikan untuk peran tanpa izin baca
-    if (r === 'content_editor' || r === 'analyst_readonly') {
-      document.querySelectorAll('.adm-nav-item').forEach(function (item) {
-        if (item.dataset.tab === 'feedback') item.style.display = 'none';
-      });
-    }
+    document.querySelectorAll('.adm-nav-item').forEach(function (item) {
+      var tab = item.dataset.tab;
+      if (isContentOnly && CONTENT_EDITOR_DISALLOWED_TABS.indexOf(tab) !== -1) {
+        item.style.opacity = '0.4';
+        item.setAttribute('aria-disabled', 'true');
+        item.title = 'Hanya dapat diakses oleh Super Admin & Manager.';
+      } else {
+        item.style.opacity = '';
+        item.removeAttribute('aria-disabled');
+      }
+      if ((r === 'content_editor' || r === 'analyst_readonly') && tab === 'feedback') {
+        item.style.display = 'none';
+      }
+    });
   }
   BSAdmin.applyRoleRestrictions = applyRoleRestrictions;
 
   /* ─────────────────────────────────────────────────────────────
-   * 4. Sinyal Health & Keandalan Operasional (PRD 8.3, 11E)
+   * 4. Sinyal Health & Keandalan Operasional
    * ───────────────────────────────────────────────────────────── */
   function updateHealthSignals(backendHealth) {
     var statusEl   = $id('adm-health-status');
@@ -249,7 +266,6 @@
     var serverTsEl = $id('adm-health-server-time');
     var dlqEl      = $id('adm-health-dlq-count');
 
-    // Cek dead-letter queue di localStorage
     var dlqCount = 0;
     try {
       var rawDlq = window.localStorage && localStorage.getItem('bs_dead_letter_queue');
@@ -259,31 +275,31 @@
       }
     } catch (_) {}
 
-    if (feVerEl) feVerEl.textContent = 'v6.2.0-phase2 (P2)';
+    if (feVerEl) feVerEl.textContent = 'v6.3.0-phase3';
 
     if (backendHealth && backendHealth.backend_version) {
       if (statusEl) {
         statusEl.className = 'adm-health-badge adm-health-online';
-        statusEl.innerHTML = '🟢 Backend Terhubung';
+        statusEl.innerHTML = '<span class="adm-status-dot-sm"></span> Backend Terhubung';
       }
       if (beVerEl)    beVerEl.textContent = backendHealth.backend_version;
       if (serverTsEl) serverTsEl.textContent = backendHealth.server_time || new Date().toLocaleString('id-ID');
     } else {
       if (statusEl) {
         statusEl.className = 'adm-health-badge adm-health-offline';
-        statusEl.innerHTML = '🔴 Backend Terputus / Belum Diuji';
+        statusEl.textContent = 'Backend Terputus / Belum Diuji';
       }
     }
 
     if (dlqEl) {
-      dlqEl.textContent = dlqCount + ' event gagal';
+      dlqEl.textContent = dlqCount + ' event tertunda';
       dlqEl.className = dlqCount > 0 ? 'adm-badge-warn' : 'adm-badge-ok';
     }
   }
   BSAdmin.updateHealthSignals = updateHealthSignals;
 
   /* ─────────────────────────────────────────────────────────────
-   * 5. Navigasi Antar Tab
+   * 5. Navigasi Antar Tab (dengan Pemblokiran RBAC — FR-P1-04)
    * ───────────────────────────────────────────────────────────── */
   var TAB_TITLES = {
     dashboard:  'Dashboard Analitik',
@@ -293,8 +309,8 @@
     'sales-wa': 'Nomor WhatsApp Sales & Reservasi',
     nfc:        'Programmer Kartu NFC (Web NFC)',
     'bulk-qr':  'Cetak QR Massal & Stiker Meja',
-    promos:     'Promosi & Konten Halaman Tamu',
-    appearance: 'Tampilan & Tema Visual',
+    promos:     'Promosi & Visibilitas Seksi Tamu',
+    appearance: 'CMS Isi Halaman Tamu & Identitas',
     config:     'Konfigurasi Backend & Ambang Batas',
     account:    'Pengaturan Akun & Keamanan',
     audit:      'Jejak Audit & Riwayat Mutasi',
@@ -302,6 +318,16 @@
   };
 
   function switchTab(name) {
+    var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
+    if (r === 'content_editor' && CONTENT_EDITOR_DISALLOWED_TABS.indexOf(name) !== -1) {
+      showToast('Peran Editor Konten hanya memiliki akses ke pengelolaan Gerai, Promosi, dan CMS Halaman Tamu.', 'warning');
+      return;
+    }
+    if (r === 'analyst_readonly' && name === 'feedback') {
+      showToast('Peran Analis Data tidak memiliki akses ke data PII Feedback Tamu.', 'warning');
+      return;
+    }
+
     document.querySelectorAll('.adm-nav-item').forEach(function (el) {
       el.classList.toggle('adm-nav-active', el.dataset.tab === name);
     });
@@ -311,7 +337,6 @@
     var titleEl = $id('adm-topbar-title');
     if (titleEl) titleEl.textContent = TAB_TITLES[name] || name;
 
-    // Panggil render handler per domain modul
     if (name === 'sources'    && BSAdmin.sources)    BSAdmin.sources.render();
     if (name === 'outlets'    && BSAdmin.content)    BSAdmin.content.renderOutlets();
     if (name === 'sales-wa'   && BSAdmin.content)    BSAdmin.content.renderSalesWa();
@@ -342,6 +367,9 @@
     state.userRole = r;
 
     applyRoleRestrictions();
+    if (r === 'content_editor') {
+      switchTab('appearance');
+    }
     if ($id('adm-cfg-gas-url')) $id('adm-cfg-gas-url').value = (window.BSConfig && BSConfig.getGasUrl()) || '';
   }
   BSAdmin.showPortal = showPortal;
@@ -387,23 +415,21 @@
 
     if (refreshBtn) {
       refreshBtn.disabled = true;
-      refreshBtn.textContent = '🔄 Memuat…';
+      refreshBtn.innerHTML = icon('rotate', 14) + ' <span>Memuat…</span>';
     }
 
-    // 1. Ambil data konfigurasi terproteksi admin
     window.BSApi && BSApi.getAdminData().then(function (admResp) {
       if (admResp && admResp.ok) {
         if (admResp.config) {
           state.configData = Object.assign({}, BSConfig.DEFAULTS, admResp.config);
+          if (admResp.config.guest_content && typeof admResp.config.guest_content === 'object') {
+            state.configData.guest_content = Object.assign({}, BSConfig.DEFAULTS.guest_content, admResp.config.guest_content);
+          }
           if (Array.isArray(admResp.config.outlets))    state.outlets = admResp.config.outlets.slice();
           if (Array.isArray(admResp.config.promotions)) state.promos  = admResp.config.promotions.slice();
         }
-        if (Array.isArray(admResp.sources) && window.BSStaffManager) {
-          if (typeof BSStaffManager.initSources === 'function') {
-            BSStaffManager.initSources(admResp.sources);
-          } else if (typeof BSStaffManager.loadFromCloud === 'function') {
-            BSStaffManager.loadFromCloud().catch(function () {});
-          }
+        if (Array.isArray(admResp.sources) && window.BSStaffManager && typeof BSStaffManager.initSources === 'function') {
+          BSStaffManager.initSources(admResp.sources);
         }
         if (Array.isArray(admResp.staff_devices)) {
           state.staffDevices = admResp.staff_devices.slice();
@@ -417,7 +443,6 @@
         }
       }
     }).catch(function () {
-      // Fallback ke config publik jika sesi admin terbatas
       return window.BSApi && BSApi.getPublicConfig().then(function (cfgResp) {
         if (cfgResp && cfgResp.ok && cfgResp.config) {
           state.configData = Object.assign({}, BSConfig.DEFAULTS, cfgResp.config);
@@ -425,12 +450,17 @@
         }
       }).catch(function () {});
     }).finally(function () {
-      // Render modul yang terpengaruh config
       if (BSAdmin.content) {
         BSAdmin.content.renderOutlets();
         BSAdmin.content.renderPromos();
         BSAdmin.content.populateSections();
         BSAdmin.content.renderSalesWa();
+        if (typeof BSAdmin.content.populateOutletDropdowns === 'function') {
+          BSAdmin.content.populateOutletDropdowns();
+        }
+      }
+      if (BSAdmin.sources) {
+        BSAdmin.sources.render();
       }
       if (BSAdmin.appearance) BSAdmin.appearance.populate();
       if (BSAdmin.fraud) {
@@ -438,12 +468,23 @@
         BSAdmin.fraud.renderStaffDevices();
       }
 
-      // 2. Ambil data event
+      if (state.userRole === 'content_editor') {
+        if (refreshBtn) {
+          refreshBtn.disabled = false;
+          refreshBtn.innerHTML = icon('rotate', 14) + ' <span>Perbarui</span>';
+        }
+        return;
+      }
+
       if (!window.BSApi) return;
       BSApi.getEventsData(month, 10000).then(function (resp) {
         if (!resp.ok) throw new Error(resp.error || 'Gagal memuat data event');
 
         state.events = resp.events || [];
+        if (Array.isArray(resp.sources) && resp.sources.length > 0 && !state.syncStatus.hasUnsaved && window.BSStaffManager && typeof BSStaffManager.initSources === 'function') {
+          BSStaffManager.initSources(resp.sources);
+          if (BSAdmin.sources) BSAdmin.sources.render();
+        }
         if (Array.isArray(resp.staff_devices) && resp.staff_devices.length > 0) {
           state.staffDevices = resp.staff_devices.slice();
           if (BSAdmin.fraud) BSAdmin.fraud.renderStaffDevices();
@@ -458,7 +499,6 @@
         var ftConfig = (state.configData && state.configData.fraud_thresholds)
           ? state.configData.fraud_thresholds : BSConfig.DEFAULTS.fraud_thresholds;
 
-        // Evaluasi 8 aturan anti-fraud
         state.evalResult = (window.BSAntiFraud && BSAntiFraud.evaluate)
           ? BSAntiFraud.evaluate(state.events, ftConfig, srcList, state.staffDevices)
           : null;
@@ -482,20 +522,19 @@
 
         if (BSAdmin.fraud) BSAdmin.fraud.renderTable();
 
-        showToast('Data berhasil dimuat — ' + state.events.length + ' event.', 'success');
+        showToast('Data berhasil dimuat (' + state.events.length + ' catatan event).', 'success');
       }).catch(function (err) {
         showToast('Gagal memuat event: ' + err.message, 'error');
       }).finally(function () {
         if (refreshBtn) {
           refreshBtn.disabled = false;
-          refreshBtn.textContent = '🔄 Perbarui';
+          refreshBtn.innerHTML = icon('rotate', 14) + ' <span>Perbarui</span>';
         }
       });
     });
   }
   BSAdmin.loadDashboard = loadDashboard;
 
-  // Ekspor namespace ke global
   window.BSAdmin = BSAdmin;
 
 })(window);

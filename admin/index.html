@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Admin Portal — Bumi Surabaya City Resort v6.0</title>
+  <title>Portal Manajemen — Bumi Surabaya City Resort v6.3</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +27,7 @@
 <body>
 
 <!-- ═══════════════════════════════════════════════════════════
-     LAYAR LOGIN ADMIN
+     LAYAR LOGIN ADMIN (Anti-Slop Clean UI — FR-ADM-01, FR-ADM-04)
 ═══════════════════════════════════════════════════════════════ -->
 <div id="adm-login-screen" class="adm-login-screen">
   <div class="adm-login-card">
@@ -37,7 +37,7 @@
       </div>
       <div class="adm-login-badge">PORTAL MANAJEMEN RESOR</div>
       <h1>Bumi Surabaya</h1>
-      <p>Digital Guest Experience &amp; Analytics Platform v6.0</p>
+      <p>Digital Guest Experience &amp; Attribution Platform v6.3</p>
     </div>
 
     <div id="adm-lockout-msg" class="adm-alert adm-alert-danger" style="display:none;"></div>
@@ -47,7 +47,9 @@
       <div class="adm-form-group">
         <label for="adm-username">Nama Pengguna (Username)</label>
         <div class="adm-input-icon-wrap">
-          <span class="adm-input-icon">👤</span>
+          <span class="adm-input-icon">
+            <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
           <input
             type="text"
             id="adm-username"
@@ -65,19 +67,23 @@
         <label for="adm-password">Kata Sandi (Password)</label>
         <div style="position:relative;">
           <div class="adm-input-icon-wrap">
-            <span class="adm-input-icon">🔑</span>
+            <span class="adm-input-icon">
+              <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
             <input
               type="password"
               id="adm-password"
               class="adm-input"
-              placeholder="Masukkan password admin"
+              placeholder="Masukkan kata sandi admin"
               autocomplete="current-password"
               required
             >
           </div>
-          <button type="button" id="adm-toggle-pw" class="adm-pw-toggle" aria-label="Tampilkan / sembunyikan kata sandi">👁</button>
+          <button type="button" id="adm-toggle-pw" class="adm-pw-toggle" aria-label="Tampilkan / sembunyikan kata sandi">
+            <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
         </div>
-        <span class="adm-field-hint">Kata sandi awal default: <code>946217</code> (wajib diganti saat login pertama).</span>
+        <span class="adm-field-hint">Gunakan kredensial yang diinisialisasi melalui <code>setupInitialAdmin</code> / <code>setupUser</code>.</span>
       </div>
 
       <button type="submit" id="adm-login-btn" class="adm-btn adm-btn-primary adm-btn-full adm-btn-lg">
@@ -86,8 +92,11 @@
     </form>
 
     <div class="adm-login-footer">
-      <span class="adm-security-badge">🛡️ Terproteksi Enkripsi Sesi Admin</span>
-      <p>Hanya staf berwenang dan manajemen yang memiliki hak akses sistem ini.</p>
+      <span class="adm-security-badge">
+        <svg class="adm-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Terproteksi Sesi Kriptografis &amp; RBAC</span>
+      </span>
+      <p>Hanya personel manajemen berwenang yang memiliki hak akses ke sistem ini.</p>
     </div>
   </div>
 
@@ -95,28 +104,28 @@
   <div id="adm-must-change-modal" class="adm-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-mc-title" style="display:none;">
     <div class="adm-modal-box" style="max-width:440px;">
       <div class="adm-modal-header">
-        <h3 id="adm-mc-title">⚠️ Wajib Perbarui Kata Sandi</h3>
+        <h3 id="adm-mc-title">Wajib Perbarui Kata Sandi</h3>
       </div>
       <div class="adm-alert adm-alert-warn" style="margin-bottom:16px;">
-        Demi standar keamanan resor, akun Anda diwajibkan membuat kata sandi baru sebelum dapat mengakses portal manajemen.
+        Demi standar keamanan resor, akun Anda diwajibkan membuat kata sandi baru (minimal 8 karakter) sebelum dapat mengakses portal manajemen.
       </div>
       <div id="adm-mc-err" class="adm-alert adm-alert-danger" style="display:none;margin-bottom:14px;"></div>
       <form id="adm-must-change-form" novalidate>
         <div class="adm-form-group">
           <label for="adm-mc-old-pw">Kata Sandi Saat Ini <span class="adm-required">*</span></label>
-          <input type="password" id="adm-mc-old-pw" class="adm-input" placeholder="Kata sandi saat ini (default: 946217)" required>
+          <input type="password" id="adm-mc-old-pw" class="adm-input" placeholder="Masukkan kata sandi sementara saat ini" required>
         </div>
         <div class="adm-form-group">
           <label for="adm-mc-new-pw">Kata Sandi Baru <span class="adm-required">*</span></label>
-          <input type="password" id="adm-mc-new-pw" class="adm-input" placeholder="Minimal 6 karakter" required>
+          <input type="password" id="adm-mc-new-pw" class="adm-input" minlength="8" placeholder="Minimal 8 karakter" required>
         </div>
         <div class="adm-form-group">
           <label for="adm-mc-confirm-pw">Konfirmasi Kata Sandi Baru <span class="adm-required">*</span></label>
-          <input type="password" id="adm-mc-confirm-pw" class="adm-input" placeholder="Ketik ulang kata sandi baru" required>
+          <input type="password" id="adm-mc-confirm-pw" class="adm-input" minlength="8" placeholder="Ketik ulang kata sandi baru" required>
         </div>
         <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px;">
           <button type="submit" class="adm-btn adm-btn-primary adm-btn-full" id="adm-mc-submit-btn">
-            🔐 Simpan Kata Sandi Baru &amp; Masuk
+            Simpan Kata Sandi Baru &amp; Masuk
           </button>
         </div>
       </form>
@@ -130,12 +139,12 @@
 ═══════════════════════════════════════════════════════════════ -->
 <div id="adm-portal" class="adm-portal" style="display:none;">
 
-  <!-- ── SIDEBAR ──────────────────────────────────────────────── -->
+  <!-- ── SIDEBAR (Monoline SVG Icons — FR-ADM-01) ─────────────── -->
   <aside class="adm-sidebar" id="adm-sidebar" role="navigation" aria-label="Menu utama admin">
     <div class="adm-sidebar-header">
       <div class="adm-sidebar-logo">
-        <img src="../assets/images/logo-hotel.png" alt="Bumi Surabaya" class="adm-sidebar-brand-img" width="160">
-        <span class="adm-sidebar-ver">v6.0</span>
+        <img src="../assets/images/logo-hotel.png" alt="Bumi Surabaya" class="adm-sidebar-brand-img" width="150">
+        <span class="adm-sidebar-ver">v6.3</span>
       </div>
       <button id="adm-sidebar-close" class="adm-sidebar-close" aria-label="Tutup sidebar">✕</button>
     </div>
@@ -151,69 +160,96 @@
     <nav class="adm-nav">
       <div class="adm-nav-group-title">ANALITIK &amp; PERFORMA</div>
       <a href="#" class="adm-nav-item adm-nav-active" data-tab="dashboard">
-        <span class="adm-nav-icon">📊</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </span>
         <span>Dashboard Analitik</span>
       </a>
       <a href="#" class="adm-nav-item" data-tab="sources">
-        <span class="adm-nav-icon">👥</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
         <span>Staf &amp; Kartu NFC</span>
       </a>
       <a href="#" class="adm-nav-item" data-tab="antifraud">
-        <span class="adm-nav-icon">🛡️</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
         <span>Audit Anti-Fraud</span>
       </a>
       <a href="#" class="adm-nav-item" data-tab="feedback">
-        <span class="adm-nav-icon">💬</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
         <span>Feedback Tamu</span>
         <span id="adm-feedback-badge" class="adm-nav-badge" style="display:none;"></span>
       </a>
 
       <div class="adm-nav-group-title">OPERASIONAL OUTLET</div>
       <a href="#" class="adm-nav-item" data-tab="outlets">
-        <span class="adm-nav-icon">🍽️</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+        </span>
         <span>Manajemen Outlet</span>
       </a>
       <a href="#" class="adm-nav-item" data-tab="sales-wa">
-        <span class="adm-nav-icon">📱</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </span>
         <span>WhatsApp Sales</span>
       </a>
       <a href="#" class="adm-nav-item" data-tab="nfc">
-        <span class="adm-nav-icon">📡</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8.32a7.43 7.43 0 0 1 0 7.36"/><path d="M9.46 6.21a11.76 11.76 0 0 1 0 11.58"/><path d="M12.91 4.1a15.91 15.91 0 0 1 .01 15.8"/><path d="M16.37 2a20.16 20.16 0 0 1 0 20"/></svg>
+        </span>
         <span>Programmer NFC</span>
       </a>
       <a href="#" class="adm-nav-item" data-tab="bulk-qr">
-        <span class="adm-nav-icon">🖨️</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        </span>
         <span>Cetak QR Massal</span>
       </a>
 
-      <div class="adm-nav-group-title">KONTEN &amp; TEMA</div>
+      <div class="adm-nav-group-title">KONTEN &amp; CMS TAMU</div>
       <a href="#" class="adm-nav-item" data-tab="promos">
-        <span class="adm-nav-icon">✨</span>
-        <span>Promosi &amp; Halaman Tamu</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </span>
+        <span>Promosi &amp; Visibilitas</span>
       </a>
       <a href="#" class="adm-nav-item" data-tab="appearance">
-        <span class="adm-nav-icon">🎨</span>
-        <span>Tampilan &amp; Tema</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        </span>
+        <span>CMS Isi Halaman Tamu</span>
       </a>
 
       <div class="adm-nav-group-title">AUDIT &amp; KEAMANAN</div>
       <a href="#" class="adm-nav-item" data-tab="audit">
-        <span class="adm-nav-icon">📜</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </span>
         <span>Jejak Audit</span>
       </a>
       <a href="#" class="adm-nav-item" data-tab="config">
-        <span class="adm-nav-icon">⚙️</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </span>
         <span>Konfigurasi Backend</span>
       </a>
       <a href="#" class="adm-nav-item" data-tab="account">
-        <span class="adm-nav-icon">🔐</span>
+        <span class="adm-nav-icon">
+          <svg class="adm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </span>
         <span>Akun &amp; Keamanan</span>
       </a>
     </nav>
 
     <div class="adm-sidebar-footer">
       <button id="adm-logout-btn" class="adm-btn adm-btn-ghost adm-btn-full">
-        🚪 Keluar Sesi
+        <svg class="adm-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>Keluar Sesi</span>
       </button>
     </div>
   </aside><!-- .adm-sidebar -->
@@ -224,124 +260,138 @@
     <!-- Top bar -->
     <header class="adm-topbar" role="banner">
       <div class="adm-topbar-left">
-        <button id="adm-sidebar-toggle" class="adm-sidebar-toggle" aria-label="Buka / tutup sidebar">☰</button>
+        <button id="adm-sidebar-toggle" class="adm-sidebar-toggle" aria-label="Buka / tutup sidebar">
+          <svg class="adm-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
         <div>
-          <span class="adm-topbar-breadcrumb">Bumi Surabaya / Manajemen</span>
+          <span class="adm-topbar-breadcrumb">Bumi Surabaya / Portal Manajemen</span>
           <h1 class="adm-topbar-title" id="adm-topbar-title">Dashboard Analitik</h1>
         </div>
       </div>
 
       <div class="adm-topbar-actions">
-        <!-- Status Simpan & Sinkronisasi (SRC-05, SRC-06, SEC-09) -->
         <div id="adm-sync-indicator" class="adm-sync-indicator adm-sync-saved" role="status" aria-live="polite">
           <span id="adm-sync-dot" class="adm-sync-dot"></span>
           <span id="adm-sync-text">Tersimpan</span>
           <button id="adm-sync-retry-btn" class="adm-btn adm-btn-xs adm-btn-danger" style="display:none;margin-left:6px;">Coba Lagi</button>
         </div>
-        <!-- Pemilih bulan -->
         <div class="adm-select-wrap">
           <select id="adm-month-select" class="adm-select" aria-label="Pilih bulan data">
             <option value="">Memuat bulan…</option>
           </select>
         </div>
-        <!-- Tombol refresh -->
-        <button id="adm-refresh-btn" class="adm-btn adm-btn-secondary" aria-label="Perbarui data">🔄 Perbarui</button>
-        <!-- Tombol ekspor CSV -->
-        <button id="adm-export-btn" class="adm-btn adm-btn-gold" aria-label="Unduh laporan CSV">⬇ Ekspor CSV</button>
+        <button id="adm-refresh-btn" class="adm-btn adm-btn-secondary" aria-label="Perbarui data">
+          <svg class="adm-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+          <span>Perbarui</span>
+        </button>
+        <button id="adm-export-btn" class="adm-btn adm-btn-gold" aria-label="Unduh laporan CSV">
+          <svg class="adm-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Ekspor CSV</span>
+        </button>
       </div>
     </header>
 
-    <!-- Bar Sinyal Health & Keandalan Operasional (PRD 8.3, 11E) -->
+    <!-- Bar Sinyal Health & Keandalan Operasional -->
     <div class="adm-health-bar" id="adm-health-bar" role="status" aria-label="Sinyal Keandalan Sistem">
       <div class="adm-health-item">
-        <span id="adm-health-status" class="adm-health-badge adm-health-online">🟢 Backend Menunggu Pengujian</span>
+        <span id="adm-health-status" class="adm-health-badge adm-health-online"><span class="adm-status-dot-sm"></span> Backend Siap</span>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Frontend:</span> <strong id="adm-health-frontend-ver">v6.2.0-phase2</strong>
+        <span class="adm-health-label">Frontend:</span> <strong id="adm-health-frontend-ver">v6.3.0-phase3</strong>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Backend:</span> <strong id="adm-health-backend-ver">v6.2.0-phase2</strong>
+        <span class="adm-health-label">Backend:</span> <strong id="adm-health-backend-ver">v6.3.0-phase3</strong>
       </div>
       <div class="adm-health-item">
         <span class="adm-health-label">Waktu Server:</span> <span id="adm-health-server-time">—</span>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Dead-Letter Queue:</span> <span id="adm-health-dlq-count" class="adm-badge-ok">0 event gagal</span>
+        <span class="adm-health-label">Antrean Tertunda:</span> <span id="adm-health-dlq-count" class="adm-badge-ok">0 event tertunda</span>
       </div>
     </div>
 
-    <!-- Banner Peringatan Readonly / Hak Akses Terbatas (SEC-11) -->
-    <div id="adm-readonly-banner" class="adm-alert adm-alert-warn" style="display:none;margin:12px 24px 0 24px;"></div>
+    <!-- Banner Peringatan Readonly -->
+    <div id="adm-readonly-banner" class="adm-alert adm-alert-warn" style="display:none;margin:12px 28px 0 28px;"></div>
 
     <!-- Notifikasi toast global -->
     <div id="adm-toast" class="adm-toast" role="status" aria-live="polite" style="display:none;"></div>
 
     <!-- ═══════════════════════════════════════════════════════
-         PANEL 1: DASHBOARD ANALITIK (YANG SUDAH ADA)
+         PANEL 1: DASHBOARD ANALITIK (Anti-Slop Clean Hierarchy — FR-ADM-01 s/d FR-ADM-04)
     ═══════════════════════════════════════════════════════════ -->
     <section id="tab-dashboard" class="adm-tab-pane adm-tab-active" aria-label="Dashboard utama">
 
-      <!-- Toolbar Filter Favorit & Rentang Laporan Cepat (ANA-10) -->
-      <div class="adm-card adm-fav-filter-card" style="margin-bottom:20px;padding:12px 18px;">
+      <!-- Toolbar Rentang & Filter Cepat -->
+      <div class="adm-card adm-fav-filter-card" style="margin-bottom:18px;padding:12px 18px;">
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
           <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
-            <span style="font-size:0.8rem;font-weight:600;color:var(--color-text-muted,#6b7280);">⚡ Filter Cepat (ANA-10):</span>
+            <span style="font-size:0.78rem;font-weight:600;color:var(--charcoal-muted);">Preset Analitik:</span>
             <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="staff_7d">Staf (7 Hari)</button>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="outlets_30d">Gerai (30 Hari)</button>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="all_30d">Semua (30 Hari)</button>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-gold" id="adm-load-fav-btn" style="display:none;">⭐ Muat Favorit</button>
+            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="outlets_30d">Gerai F&amp;B (30 Hari)</button>
+            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="all_30d">Semua Sumber (30 Hari)</button>
+            <button type="button" class="adm-btn adm-btn-xs adm-btn-gold" id="adm-load-fav-btn" style="display:none;">Muat Filter Tersimpan</button>
           </div>
           <div>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-ghost" id="adm-save-fav-btn" title="Simpan kombinasi periode dan filter saat ini sebagai favorit">⭐ Simpan Filter Favorit</button>
+            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-save-fav-btn" title="Simpan kombinasi periode dan filter saat ini">Simpan Filter Saat Ini</button>
           </div>
         </div>
       </div>
 
-      <!-- Kartu metrik utama -->
+      <!-- Kartu metrik utama (Monokromatik Emerald & Champagne Gold — FR-ADM-03) -->
       <div class="adm-metrics-grid">
         <div class="adm-metric-card" id="adm-metric-visits">
-          <div class="adm-metric-icon-wrap" style="background:rgba(26,60,42,0.1);color:#1a3c2a;">👁️</div>
-          <div class="adm-metric-body">
+          <div class="adm-metric-top">
             <div class="adm-metric-label">Total Kunjungan</div>
-            <div class="adm-metric-value">—</div>
-            <div class="adm-metric-sub">Kunjungan halaman tamu</div>
+            <div class="adm-metric-icon-wrap">
+              <svg class="adm-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
           </div>
+          <div class="adm-metric-value">—</div>
+          <div class="adm-metric-sub">Kunjungan halaman tamu valid</div>
         </div>
 
         <div class="adm-metric-card" id="adm-metric-score">
-          <div class="adm-metric-icon-wrap" style="background:rgba(201,169,110,0.18);color:#b08f51;">🏆</div>
-          <div class="adm-metric-body">
-            <div class="adm-metric-label">Quality Score</div>
-            <div class="adm-metric-value">—</div>
-            <div class="adm-metric-sub">Skor kualitas interaksi</div>
+          <div class="adm-metric-top">
+            <div class="adm-metric-label">Skor Kualitas Interaksi</div>
+            <div class="adm-metric-icon-wrap" style="background:rgba(201,169,110,0.16);color:#8b6d34;">
+              <svg class="adm-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+            </div>
           </div>
+          <div class="adm-metric-value">—</div>
+          <div class="adm-metric-sub">Rata-rata tertimbang (skala 0–5)</div>
         </div>
 
-        <div class="adm-metric-card" id="adm-metric-reviews" title="Jumlah event klik tombol Google Review oleh tamu (ANA-02)">
-          <div class="adm-metric-icon-wrap" style="background:rgba(234,179,8,0.15);color:#ca8a04;">⭐</div>
-          <div class="adm-metric-body">
+        <div class="adm-metric-card" id="adm-metric-reviews">
+          <div class="adm-metric-top">
             <div class="adm-metric-label">Klik Google Review</div>
-            <div class="adm-metric-value">—</div>
-            <div class="adm-metric-sub">Klik tombol buka Google Review</div>
+            <div class="adm-metric-icon-wrap" style="background:rgba(201,169,110,0.16);color:#8b6d34;">
+              <svg class="adm-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
           </div>
+          <div class="adm-metric-value">—</div>
+          <div class="adm-metric-sub">Intensi klik tombol ulasan Google</div>
         </div>
 
-        <div class="adm-metric-card" id="adm-metric-wa" title="Jumlah event klik tombol WhatsApp oleh tamu">
-          <div class="adm-metric-icon-wrap" style="background:rgba(37,211,102,0.15);color:#16a34a;">💬</div>
-          <div class="adm-metric-body">
-            <div class="adm-metric-label">WA Clicks</div>
-            <div class="adm-metric-value">—</div>
-            <div class="adm-metric-sub">Klik WhatsApp reservasi</div>
+        <div class="adm-metric-card" id="adm-metric-wa">
+          <div class="adm-metric-top">
+            <div class="adm-metric-label">Interaksi WhatsApp</div>
+            <div class="adm-metric-icon-wrap">
+              <svg class="adm-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
           </div>
+          <div class="adm-metric-value">—</div>
+          <div class="adm-metric-sub">Klik reservasi &amp; sales concierge</div>
         </div>
 
-        <div class="adm-metric-card" id="adm-metric-conv" title="Rasio: (Klik Google Review / Total Kunjungan) × 100% (ANA-03)">
-          <div class="adm-metric-icon-wrap" style="background:rgba(59,130,246,0.15);color:#2563eb;">🎯</div>
-          <div class="adm-metric-body">
-            <div class="adm-metric-label">Rasio Klik Review / Kunjungan</div>
-            <div class="adm-metric-value">—</div>
-            <div class="adm-metric-sub">Persentase sesi membuka review</div>
+        <div class="adm-metric-card" id="adm-metric-conv">
+          <div class="adm-metric-top">
+            <div class="adm-metric-label">Rasio Konversi Ulasan</div>
+            <div class="adm-metric-icon-wrap">
+              <svg class="adm-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            </div>
           </div>
+          <div class="adm-metric-value">—</div>
+          <div class="adm-metric-sub">Proporsi klik ulasan per kunjungan</div>
         </div>
       </div>
 
@@ -349,12 +399,12 @@
       <div class="adm-card">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">📈 Tren Interaksi Harian</h2>
-            <p class="adm-card-subtitle">Perkembangan kunjungan, klik ulasan, dan WhatsApp per hari (WIB)</p>
+            <h2 class="adm-card-title">Tren Interaksi Harian</h2>
+            <p class="adm-card-subtitle">Kunjungan valid dan klik ulasan Google per hari (WIB)</p>
           </div>
           <div class="adm-pill-toggle">
-            <button class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-trend-7d">7 Hari</button>
-            <button class="adm-btn adm-btn-xs adm-btn-primary"   id="adm-trend-30d">30 Hari</button>
+            <button class="adm-btn adm-btn-xs adm-btn-primary"   id="adm-trend-7d">7 Hari</button>
+            <button class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-trend-30d">30 Hari</button>
           </div>
         </div>
         <div class="adm-chart-wrap">
@@ -367,23 +417,23 @@
         <div class="adm-card">
           <div class="adm-card-header">
             <div>
-              <h2 class="adm-card-title">🏆 Top Performa Staf</h2>
-              <p class="adm-card-subtitle">Peringkat staf terbaik berdasarkan klik review dan skor</p>
+              <h2 class="adm-card-title">Peringkat Performa Staf &amp; Sales</h2>
+              <p class="adm-card-subtitle">Urutan atribusi berdasarkan skor interaksi valid dan klik ulasan</p>
             </div>
           </div>
           <div class="adm-table-wrap">
             <table class="adm-table" aria-label="Peringkat staf terbaik">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Nama Staf</th>
-                  <th>Gerai</th>
+                  <th class="bs-num" style="width:48px;">#</th>
+                  <th>Nama Staf / Sales</th>
+                  <th>Unit / Gerai</th>
                   <th class="bs-num">Skor</th>
                   <th class="bs-num">Klik Review</th>
                 </tr>
               </thead>
               <tbody id="adm-leaderboard-staff">
-                <tr><td colspan="5" class="bs-empty">Memuat data leaderboard…</td></tr>
+                <tr><td colspan="5" class="bs-empty">Memuat data peringkat staf…</td></tr>
               </tbody>
             </table>
           </div>
@@ -392,22 +442,22 @@
         <div class="adm-card">
           <div class="adm-card-header">
             <div>
-              <h2 class="adm-card-title">🍽️ Top Performa Gerai</h2>
-              <p class="adm-card-subtitle">Aktivitas dan ulasan tamu per restoran / lounge</p>
+              <h2 class="adm-card-title">Peringkat Performa Gerai F&amp;B</h2>
+              <p class="adm-card-subtitle">Aktivitas kunjungan dan ulasan tamu per restoran / lounge</p>
             </div>
           </div>
           <div class="adm-table-wrap">
             <table class="adm-table" aria-label="Peringkat gerai terbaik">
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th class="bs-num" style="width:48px;">#</th>
                   <th>Gerai F&amp;B</th>
                   <th class="bs-num">Skor</th>
                   <th class="bs-num">Klik Review</th>
                 </tr>
               </thead>
               <tbody id="adm-leaderboard-outlets">
-                <tr><td colspan="4" class="bs-empty">Memuat data gerai…</td></tr>
+                <tr><td colspan="4" class="bs-empty">Memuat data peringkat gerai…</td></tr>
               </tbody>
             </table>
           </div>
@@ -418,12 +468,13 @@
       <div class="adm-card">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">🔍 Analisis Lengkap per Sumber</h2>
-            <p class="adm-card-subtitle">Rincian performa setiap kartu NFC, staf, dan titik QR meja</p>
+            <h2 class="adm-card-title">Matriks Atribusi per Sumber</h2>
+            <p class="adm-card-subtitle">Rincian metrik setiap kartu NFC, staf, sales, dan titik QR meja</p>
           </div>
-          <div class="adm-filter-row">
+          <div class="adm-filter-row" style="display:flex;gap:6px;flex-wrap:wrap;">
             <button class="adm-btn adm-btn-xs adm-btn-primary"   data-filter="">Semua</button>
             <button class="adm-btn adm-btn-xs adm-btn-secondary" data-filter="staff">Staf</button>
+            <button class="adm-btn adm-btn-xs adm-btn-secondary" data-filter="sales">Sales</button>
             <button class="adm-btn adm-btn-xs adm-btn-secondary" data-filter="outlet">Gerai</button>
             <button class="adm-btn adm-btn-xs adm-btn-secondary" data-filter="nfc">NFC Meja</button>
           </div>
@@ -432,11 +483,11 @@
           <table class="adm-table" id="adm-source-table" aria-label="Tabel analisis per sumber">
             <thead>
               <tr>
-                <th>Nama / Kode</th>
+                <th>Nama / Kode Sumber</th>
                 <th>Tipe</th>
-                <th>Gerai</th>
+                <th>Unit / Gerai</th>
                 <th class="bs-num">Kunjungan</th>
-                <th class="bs-num">Ulasan</th>
+                <th class="bs-num">Klik Review</th>
                 <th class="bs-num">Skor</th>
                 <th class="bs-num">Konversi</th>
                 <th>Status</th>
@@ -458,8 +509,8 @@
       <div class="adm-card">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">👥 Manajemen Staf &amp; Kartu NFC</h2>
-            <p class="adm-card-subtitle">Kelola penugasan staf, assign kartu NFC, rotasi token, dan status aktif</p>
+            <h2 class="adm-card-title">Manajemen Staf, Sales &amp; Titik NFC</h2>
+            <p class="adm-card-subtitle">Kelola penugasan personel, kartu NFC fisik, rotasi kode URL, dan status aktif</p>
           </div>
           <div class="adm-card-actions">
             <button id="adm-add-source-btn" class="adm-btn adm-btn-primary">+ Tambah Staf / Titik</button>
@@ -473,10 +524,10 @@
                 <th>Kode URL</th>
                 <th>Nama</th>
                 <th>Tipe</th>
-                <th>Gerai</th>
+                <th>Unit / Gerai</th>
                 <th>Jabatan</th>
-                <th>WA Sales</th>
-                <th>Kartu</th>
+                <th>WhatsApp</th>
+                <th>Kartu Fisik</th>
                 <th>Status</th>
                 <th>Aksi</th>
               </tr>
@@ -488,8 +539,11 @@
         </div>
 
         <div class="adm-table-footer">
-          <button id="adm-save-sources-btn" class="adm-btn adm-btn-gold">💾 Simpan &amp; Sinkronkan ke Cloud</button>
-          <span class="adm-field-hint">Perubahan akan langsung disinkronkan ke Google Sheets backend.</span>
+          <button id="adm-save-sources-btn" class="adm-btn adm-btn-gold">
+            <svg class="adm-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span>Simpan &amp; Sinkronkan ke Cloud</span>
+          </button>
+          <span class="adm-field-hint">Menyimpan seluruh daftar sumber aktif dan nonaktif ke lembar <code>Sources</code> Google Sheets.</span>
         </div>
       </div>
     </section><!-- #tab-sources -->
@@ -502,26 +556,25 @@
       <div class="adm-card">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">🛡️ Audit Anti-Kecurangan &amp; Integritas Data</h2>
-            <p class="adm-card-subtitle">Deteksi anomali: burst clicks, bot hopping, spoofing, dan kunjungan di luar jam</p>
+            <h2 class="adm-card-title">Audit Anti-Kecurangan &amp; Integritas Metrik</h2>
+            <p class="adm-card-subtitle">Deteksi otomatis untuk lonjakan trafik tidak wajar, source hopping, self-tap staf, dan sinyal bot</p>
           </div>
         </div>
 
-        <!-- Ringkasan fraud per aturan -->
         <div class="adm-fraud-summary" id="adm-fraud-summary">
           <p class="bs-empty">Muat data dashboard terlebih dahulu.</p>
         </div>
 
-        <div class="adm-table-wrap" style="margin-top:20px;">
+        <div class="adm-table-wrap" style="margin-top:18px;">
           <table class="adm-table" id="adm-fraud-table" aria-label="Daftar event mencurigakan">
             <thead>
               <tr>
-                <th>Timestamp</th>
+                <th>Waktu Server</th>
                 <th>Sumber</th>
-                <th>Device ID (samar)</th>
-                <th>IP (samar)</th>
-                <th>Flag Aturan</th>
-                <th>Aksi Remediasi</th>
+                <th>Device ID (Samar)</th>
+                <th>IP (Samar)</th>
+                <th>Aturan Terpicu</th>
+                <th>Tindakan Remediasi</th>
               </tr>
             </thead>
             <tbody id="adm-fraud-tbody">
@@ -531,20 +584,20 @@
         </div>
       </div>
 
-      <!-- Daftar HP Staf Terdaftar (SRC-08) -->
-      <div class="adm-card" style="margin-top:24px;">
+      <!-- Daftar HP Staf Terdaftar -->
+      <div class="adm-card" style="margin-top:20px;">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">📱 Perangkat Staf Terdaftar (StaffDevices — AF-03)</h2>
-            <p class="adm-card-subtitle">Daftar perangkat staf hotel untuk pengecualian kunjungan mandiri (self-tap) dan audit integritas</p>
+            <h2 class="adm-card-title">Daftar Perangkat Staf Terdaftar</h2>
+            <p class="adm-card-subtitle">Perangkat di daftar ini dikecualikan otomatis dari perhitungan kunjungan dan skor (pencegahan self-tap)</p>
           </div>
         </div>
 
-        <form id="adm-staff-device-form" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-          <input type="text" id="adm-sd-device-id" class="adm-input" placeholder="Device ID (32-hex)" style="flex:2;min-width:200px;" required>
-          <input type="text" id="adm-sd-staff-code" class="adm-input" placeholder="Kode Staf / Sumber (mis. widi)" style="flex:1;min-width:140px;" required>
-          <input type="text" id="adm-sd-label" class="adm-input" placeholder="Label perangkat (mis. HP Staf A)" style="flex:1;min-width:140px;">
-          <button type="submit" class="adm-btn adm-btn-primary" id="adm-sd-submit-btn">➕ Daftarkan Perangkat</button>
+        <form id="adm-staff-device-form" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+          <input type="text" id="adm-sd-device-id" class="adm-input" placeholder="Device ID (UUID / Hash)" style="flex:2;min-width:200px;" required>
+          <input type="text" id="adm-sd-staff-code" class="adm-input" placeholder="Kode Sumber Staf (mis. staff-budi)" style="flex:1;min-width:140px;" required>
+          <input type="text" id="adm-sd-label" class="adm-input" placeholder="Keterangan perangkat (mis. HP Operasional)" style="flex:1;min-width:140px;">
+          <button type="submit" class="adm-btn adm-btn-primary" id="adm-sd-submit-btn">+ Daftarkan Perangkat</button>
         </form>
 
         <div class="adm-table-wrap">
@@ -552,9 +605,9 @@
             <thead>
               <tr>
                 <th>Device ID</th>
-                <th>Staf / Sumber</th>
-                <th>Label</th>
-                <th>Terdaftar Pada</th>
+                <th>Kode Staf / Sumber</th>
+                <th>Keterangan</th>
+                <th>Tanggal Terdaftar</th>
                 <th>Aksi</th>
               </tr>
             </thead>
@@ -568,125 +621,37 @@
 
 
     <!-- ═══════════════════════════════════════════════════════
-         PANEL 4: MANAJEMEN OUTLET (BARU)
+         PANEL 4: MANAJEMEN OUTLET (Tanpa Kartu Mock Statis — FR-ADM-05)
     ═══════════════════════════════════════════════════════════ -->
     <section id="tab-outlets" class="adm-tab-pane" aria-label="Manajemen outlet F&B" style="display:none;">
       <div class="adm-card">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">🍽️ Manajemen Gerai F&amp;B Hotel</h2>
-            <p class="adm-card-subtitle">Kelola informasi 4 gerai ikonik, jam operasional, foto, dan kapasitas khusus</p>
+            <h2 class="adm-card-title">Manajemen Gerai F&amp;B Hotel</h2>
+            <p class="adm-card-subtitle">Kelola profil restoran &amp; lounge, jam operasional, tautan Google Review per gerai, dan reservasi</p>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button type="button" class="adm-btn adm-btn-secondary" id="adm-preview-draft-btn-outlets">👁️ Preview Draft Tamu</button>
-            <button type="button" class="adm-btn adm-btn-primary" id="adm-add-outlet-btn">
-              + Tambah Gerai Baru
-            </button>
+            <button type="button" class="adm-btn adm-btn-secondary" id="adm-preview-draft-btn-outlets">Pratinjau Halaman Tamu</button>
+            <button type="button" class="adm-btn adm-btn-primary" id="adm-add-outlet-btn">+ Tambah Gerai Baru</button>
           </div>
         </div>
 
         <div class="adm-outlets-admin-grid" id="adm-outlets-grid">
-          <!-- Outlet 1: Arumanis -->
-          <div class="adm-outlet-card-item">
-            <div class="adm-outlet-card-media">
-              <img src="../assets/images/outlets/arumanis.jpg" alt="Arumanis Restaurant">
-              <span class="adm-outlet-badge-tag">Private Room 30 Pax</span>
-            </div>
-            <div class="adm-outlet-card-body">
-              <div class="adm-outlet-card-title">Arumanis Restaurant</div>
-              <div class="adm-outlet-card-type">Authentic Indonesian &amp; International Buffet</div>
-              <p class="adm-outlet-card-desc">Nuansa Jawa yang anggun menghadirkan cita rasa Indonesia autentik berpadu buffet Western &amp; Oriental, serta private room 30 orang.</p>
-              <div class="adm-outlet-meta-row">
-                <span>🕒 06.00 – 22.00 WIB</span>
-                <span class="adm-badge-ok">Aktif</span>
-              </div>
-              <div class="adm-outlet-card-actions">
-                <button class="adm-btn adm-btn-xs adm-btn-secondary">✏ Edit Detail</button>
-                <button class="adm-btn adm-btn-xs adm-btn-secondary">🖼 Ganti Foto</button>
-                <button class="adm-btn adm-btn-xs adm-btn-danger">🚫 Nonaktifkan</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Outlet 2: Kizahashi -->
-          <div class="adm-outlet-card-item">
-            <div class="adm-outlet-card-media">
-              <img src="../assets/images/outlets/kizahashi.svg" alt="Kizahashi">
-              <span class="adm-outlet-badge-tag">2 Ruang Tatami @10 Pax</span>
-            </div>
-            <div class="adm-outlet-card-body">
-              <div class="adm-outlet-card-title">Kizahashi Japanese Restaurant</div>
-              <div class="adm-outlet-card-type">Authentic Japanese Restaurant</div>
-              <p class="adm-outlet-card-desc">Restoran Jepang autentik dengan sushi, sashimi segar, teppanyaki live cooking, ramen, udon, dan tempura, dilengkapi 2 ruang Tatami @10 orang.</p>
-              <div class="adm-outlet-meta-row">
-                <span>🕒 11.30 – 14.30 &amp; 18.00 – 22.00 WIB</span>
-                <span class="adm-badge-ok">Aktif</span>
-              </div>
-              <div class="adm-outlet-card-actions">
-                <button class="adm-btn adm-btn-xs adm-btn-secondary">✏ Edit Detail</button>
-                <button class="adm-btn adm-btn-xs adm-btn-secondary">🖼 Ganti Foto</button>
-                <button class="adm-btn adm-btn-xs adm-btn-danger">🚫 Nonaktifkan</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Outlet 3: Lobby Lounge -->
-          <div class="adm-outlet-card-item">
-            <div class="adm-outlet-card-media">
-              <img src="../assets/images/outlets/lobby-lounge.jpg" alt="Lobby Lounge">
-              <span class="adm-outlet-badge-tag">Live Music &amp; High Tea</span>
-            </div>
-            <div class="adm-outlet-card-body">
-              <div class="adm-outlet-card-title">Lobby Lounge</div>
-              <div class="adm-outlet-card-type">All-Day Lounge &amp; Refreshments</div>
-              <p class="adm-outlet-card-desc">Suasana santai dan megah untuk all-day refreshments, kopi istimewa, dan aneka kue lokal — tempat sempurna untuk bertemu kolega dan teman.</p>
-              <div class="adm-outlet-meta-row">
-                <span>🕒 08.00 – 23.00 WIB</span>
-                <span class="adm-badge-ok">Aktif</span>
-              </div>
-              <div class="adm-outlet-card-actions">
-                <button class="adm-btn adm-btn-xs adm-btn-secondary">✏ Edit Detail</button>
-                <button class="adm-btn adm-btn-xs adm-btn-secondary">🖼 Ganti Foto</button>
-                <button class="adm-btn adm-btn-xs adm-btn-danger">🚫 Nonaktifkan</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Outlet 4: DeliKopi -->
-          <div class="adm-outlet-card-item">
-            <div class="adm-outlet-card-media">
-              <img src="../assets/images/outlets/delikopi.svg" alt="DeliKopi">
-              <span class="adm-outlet-badge-tag">Fresh Bakery Daily</span>
-            </div>
-            <div class="adm-outlet-card-body">
-              <div class="adm-outlet-card-title">DeliKopi</div>
-              <div class="adm-outlet-card-type">Specialty Coffee &amp; Gourmet Pastry</div>
-              <p class="adm-outlet-card-desc">Kopi istimewa serta ragam roti dan pastry segar setiap hari, menghidupkan kembali konsep Delicatessen hotel legendaris.</p>
-              <div class="adm-outlet-meta-row">
-                <span>🕒 07.00 – 21.00 WIB</span>
-                <span class="adm-badge-ok">Aktif</span>
-              </div>
-              <div class="adm-outlet-card-actions">
-                <button class="adm-btn adm-btn-xs adm-btn-secondary">✏ Edit Detail</button>
-                <button class="adm-btn adm-btn-xs adm-btn-secondary">🖼 Ganti Foto</button>
-                <button class="adm-btn adm-btn-xs adm-btn-danger">🚫 Nonaktifkan</button>
-              </div>
-            </div>
-          </div>
+          <p class="bs-empty" style="grid-column:1/-1;">Memuat daftar gerai F&amp;B…</p>
         </div>
       </div>
     </section><!-- #tab-outlets -->
 
 
     <!-- ═══════════════════════════════════════════════════════
-         PANEL 5: NOMOR WHATSAPP SALES & DEPARTEMEN (BARU)
+         PANEL 5: NOMOR WHATSAPP SALES & DEPARTEMEN
     ═══════════════════════════════════════════════════════════ -->
     <section id="tab-sales-wa" class="adm-tab-pane" aria-label="WhatsApp sales dan departemen" style="display:none;">
       <div class="adm-card">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">📱 Konfigurasi Nomor WhatsApp Sales &amp; Reservasi</h2>
-            <p class="adm-card-subtitle">Pengaturan nomor khusus tim sales, wedding, banquet, kamar, dan template pesan</p>
+            <h2 class="adm-card-title">Direktori WhatsApp Sales &amp; Reservasi</h2>
+            <p class="adm-card-subtitle">Daftar kontak yang tampil pada pemilih WhatsApp (Sales Picker) di halaman tamu</p>
           </div>
           <button id="adm-add-sales-wa-btn" class="adm-btn adm-btn-primary">+ Tambah Sales Baru</button>
         </div>
@@ -696,9 +661,9 @@
             <thead>
               <tr>
                 <th>Departemen / Unit</th>
-                <th>Penanggung Jawab</th>
+                <th>Nama Sales</th>
                 <th>Nomor WhatsApp</th>
-                <th>Template Salam Pembuka</th>
+                <th>Template Pesan Pembuka</th>
                 <th>Jam Layanan</th>
                 <th>Status</th>
                 <th>Aksi</th>
@@ -711,12 +676,11 @@
         </div>
       </div>
 
-      <!-- Konfigurasi Global WhatsApp Hotel -->
-      <div class="adm-card" style="margin-top:24px;">
+      <div class="adm-card" style="margin-top:20px;">
         <div class="adm-card-header">
           <div>
-            <h3 class="adm-card-title">🌐 Pengaturan Nomor &amp; Template WhatsApp Global Hotel</h3>
-            <p class="adm-card-subtitle">Nomor utama hotel sebagai tujuan fallback jika tamu dilayani staf non-sales</p>
+            <h3 class="adm-card-title">Konfigurasi Nomor &amp; Template WhatsApp Utama Hotel</h3>
+            <p class="adm-card-subtitle">Digunakan sebagai jalur reservasi utama apabila tamu memindai titik staf non-sales atau umum</p>
           </div>
         </div>
         <div class="adm-form-group">
@@ -724,7 +688,7 @@
           <input type="text" id="adm-wa-global-num" class="adm-input" value="628113388523">
         </div>
         <div class="adm-form-group">
-          <label for="adm-wa-staff-tmpl">Template Pesan Staf Standar (Non-Sales)</label>
+          <label for="adm-wa-staff-tmpl">Template Pesan Saat Dilayani Staf (Mendukung variabel <code>{staff_name}</code>)</label>
           <input type="text" id="adm-wa-staff-tmpl" class="adm-input" value="Halo, saya tamu Bumi Surabaya. Saya baru saja dilayani oleh {staff_name} dan ingin melakukan reservasi.">
         </div>
         <div class="adm-form-group">
@@ -732,28 +696,28 @@
           <input type="text" id="adm-wa-gen-tmpl" class="adm-input" value="Halo Bumi Surabaya, saya ingin informasi mengenai reservasi dan layanan hotel.">
         </div>
         <button id="adm-save-global-wa-btn" class="adm-btn adm-btn-gold">
-          💾 Simpan Pengaturan WhatsApp Global
+          Simpan Pengaturan WhatsApp Global
         </button>
       </div>
     </section><!-- #tab-sales-wa -->
 
 
     <!-- ═══════════════════════════════════════════════════════
-         PANEL 6: PROGRAMMER NFC (YANG SUDAH ADA)
+         PANEL 6: PROGRAMMER NFC
     ═══════════════════════════════════════════════════════════ -->
     <section id="tab-nfc" class="adm-tab-pane" aria-label="Programmer kartu NFC" style="display:none;">
       <div class="adm-card" style="max-width:680px;margin:0 auto;">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">📡 Tulis Kartu NFC Fisik (Web NFC API)</h2>
-            <p class="adm-card-subtitle">Program URL tamu langsung ke kartu NFC NTAG213/215/216 dari browser Chrome Android</p>
+            <h2 class="adm-card-title">Programmer Kartu NFC Fisik &amp; Kartu QR Tunggal</h2>
+            <p class="adm-card-subtitle">Program URL atribusi ke chip NFC NTAG213/215/216 melalui Web NFC (Chrome Android) atau cetak kartu individual</p>
           </div>
         </div>
 
-        <div id="adm-nfc-compat-banner" class="adm-alert adm-alert-warn" style="display:none;margin-top:14px;"></div>
+        <div id="adm-nfc-compat-banner" class="adm-alert adm-alert-warn" style="display:none;margin-top:12px;"></div>
         <div id="adm-nfc-status-bar" class="adm-nfc-status" style="margin-top:12px;"></div>
 
-        <div class="adm-form-group" style="margin-top:20px;">
+        <div class="adm-form-group" style="margin-top:18px;">
           <label for="adm-nfc-source-select">Pilih Staf / Titik NFC</label>
           <select id="adm-nfc-source-select" class="adm-select adm-input">
             <option value="">— Pilih sumber —</option>
@@ -761,45 +725,44 @@
         </div>
 
         <div class="adm-form-group">
-          <label>URL yang akan ditulis ke kartu fisik</label>
+          <label>URL Atribusi Kartu</label>
           <div style="display:flex;gap:8px;align-items:center;">
             <input type="text" id="adm-nfc-url-preview" class="adm-input" readonly
                    style="flex:1;background:#f5f5f5;" placeholder="Pilih sumber untuk melihat URL">
-            <button id="adm-nfc-copy-btn" class="adm-btn adm-btn-secondary" aria-label="Salin URL">📋 Salin</button>
+            <button id="adm-nfc-copy-btn" class="adm-btn adm-btn-secondary" aria-label="Salin URL">Salin URL</button>
           </div>
         </div>
 
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
+        <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
           <button id="adm-nfc-write-btn" class="adm-btn adm-btn-primary" disabled>
-            📡 Tulis ke Kartu NFC Sekarang
+            Tulis ke Kartu NFC Sekarang
           </button>
           <button id="adm-nfc-mark-programmed" class="adm-btn adm-btn-gold" disabled>
-            ✅ Tandai Sudah Diprogram
+            Tandai Sudah Diprogram
           </button>
         </div>
 
-        <div class="adm-card" style="margin-top:24px;background:#f9f7f4;border:1px dashed var(--champagne-gold);">
-          <h3 style="font-size:0.92rem;margin-bottom:10px;color:var(--deep-green);font-weight:700;">
-            📋 Panduan Alternatif: Tulis Manual via NFC Tools (iOS / Android / Mac)
+        <div class="adm-card no-print" style="margin-top:20px;background:#faf9f6;border:1px solid var(--border-gold);">
+          <h3 style="font-size:0.9rem;margin-bottom:8px;color:var(--deep-green);font-weight:700;">
+            Panduan Alternatif: Pemrograman Manual via Aplikasi NFC Tools (iOS / Android)
           </h3>
-          <ol style="padding-left:20px;line-height:1.9;font-size:0.85rem;color:var(--charcoal-light);">
-            <li>Pilih staf atau meja di atas, lalu klik <strong>Salin URL</strong>.</li>
+          <ol style="padding-left:20px;line-height:1.8;font-size:0.83rem;color:var(--charcoal-light);">
+            <li>Pilih staf atau titik meja di atas, lalu klik <strong>Salin URL</strong>.</li>
             <li>Buka aplikasi <strong>NFC Tools</strong> di ponsel Anda.</li>
-            <li>Pilih tab <strong>Write</strong> → <strong>Add a record</strong> → <strong>URL / URI</strong>.</li>
-            <li>Tempelkan (Paste) URL yang sudah disalin ke kolom URL.</li>
-            <li>Tekan <strong>Write</strong> lalu tempelkan kartu fisik ke bagian sensor NFC ponsel.</li>
-            <li>Kembali ke halaman ini dan klik tombol <strong>Tandai Sudah Diprogram</strong>.</li>
+            <li>Pilih menu <strong>Write</strong> → <strong>Add a record</strong> → <strong>URL / URI</strong>.</li>
+            <li>Tempelkan URL yang telah disalin, tekan <strong>Write</strong>, lalu tempelkan kartu NFC ke ponsel.</li>
+            <li>Klik tombol <strong>Tandai Sudah Diprogram</strong> di halaman ini untuk memperbarui status kartu.</li>
           </ol>
         </div>
 
         <!-- Preview QR Code Tunggal -->
-        <div class="adm-form-group" style="margin-top:24px;">
-          <label>Preview QR Code Individual</label>
+        <div class="adm-form-group" id="adm-single-qr-print-group" style="margin-top:20px;">
+          <label class="no-print">Pratinjau Kartu QR Individual</label>
           <div id="adm-qr-preview" class="adm-qr-wrap">
-            <p class="bs-empty" style="font-size:0.82rem;">Pilih sumber untuk menampilkan QR Code.</p>
+            <p class="bs-empty" style="font-size:0.82rem;">Pilih sumber untuk menampilkan kartu QR Code.</p>
           </div>
-          <button id="adm-print-qr-btn" class="adm-btn adm-btn-secondary" style="margin-top:14px;" disabled>
-            🖨️ Cetak Kartu Individual Ini
+          <button id="adm-print-qr-btn" class="adm-btn adm-btn-secondary no-print" style="margin-top:12px;" disabled>
+            Cetak Kartu Individual Ini
           </button>
         </div>
       </div>
@@ -807,39 +770,39 @@
 
 
     <!-- ═══════════════════════════════════════════════════════
-         PANEL 7: CETAK QR MASSAL (BARU)
+         PANEL 7: CETAK QR MASSAL
     ═══════════════════════════════════════════════════════════ -->
     <section id="tab-bulk-qr" class="adm-tab-pane" aria-label="Cetak QR massal" style="display:none;">
       <div class="adm-card">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">🖨️ Cetak QR Code &amp; Kartu Meja Massal</h2>
-            <p class="adm-card-subtitle">Pilih sumber dan cetak sekaligus dalam format kartu stiker meja atau tent card akrilik</p>
+            <h2 class="adm-card-title">Generator Cetak QR Code &amp; Kartu Meja Massal</h2>
+            <p class="adm-card-subtitle">Cetak atribut staf, stiker meja 50x50mm, tent card lipat A6, atau lembar grid A4</p>
           </div>
           <div class="adm-card-actions" style="flex-wrap:wrap;gap:8px;align-items:center;">
-            <select class="adm-select" id="adm-print-format-select">
+            <select class="adm-select" id="adm-print-format-select" style="width:auto;">
               <option value="card">Kartu Nama (85 x 55 mm)</option>
               <option value="tent">Tent Card Meja A6 Lipat (105 x 148 mm)</option>
               <option value="sticker">Stiker Meja Compact (50 x 50 mm)</option>
               <option value="a4grid">Lembar A4 Grid (8 Kartu / Halaman)</option>
             </select>
-            <select class="adm-select" id="adm-bulk-filter-select">
+            <select class="adm-select" id="adm-bulk-filter-select" style="width:auto;">
               <option value="all">Semua Tipe Sumber</option>
               <option value="staff">Khusus Staf Hotel</option>
               <option value="sales">Khusus Sales Representative</option>
               <option value="outlet">Khusus Gerai F&amp;B</option>
               <option value="nfc">Khusus Meja / NFC</option>
             </select>
-            <input type="text" id="adm-bulk-search" class="adm-input" placeholder="Cari nama / kode..." style="width:160px;padding:4px 8px;font-size:0.8rem;">
+            <input type="text" id="adm-bulk-search" class="adm-input" placeholder="Cari nama / kode..." style="width:160px;padding:6px 10px;font-size:0.8rem;">
             <label style="display:inline-flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;">
               <input type="checkbox" id="adm-bulk-reprint-only"> Perlu Cetak Ulang
             </label>
             <label style="display:inline-flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;">
               <input type="checkbox" id="adm-bulk-include-archived"> Sertakan Nonaktif
             </label>
-            <span id="adm-bulk-count-info" style="font-size:0.78rem;color:var(--color-text-muted,#6b7280);"></span>
+            <span id="adm-bulk-count-info" style="font-size:0.78rem;color:var(--charcoal-muted);"></span>
             <button class="adm-btn adm-btn-gold" id="adm-bulk-print-btn">
-              🖨️ Cetak Semua Kartu Terpilih
+              Cetak Kartu Terpilih
             </button>
           </div>
         </div>
@@ -852,78 +815,99 @@
 
 
     <!-- ═══════════════════════════════════════════════════════
-         PANEL 8: PROMOSI & KONTEN HALAMAN TAMU (BARU)
-    ═══════════════════════════════════════════════════════ -->
+         PANEL 8: PROMOSI & VISIBILITAS 8 SEKSI HALAMAN TAMU
+    ═══════════════════════════════════════════════════════════ -->
     <section id="tab-promos" class="adm-tab-pane" aria-label="Promosi dan bagian halaman tamu" style="display:none;">
       <div class="adm-card">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">✨ Promosi &amp; Visibilitas Seksi Halaman Tamu</h2>
-            <p class="adm-card-subtitle">Atur seksi yang tampil di layar tamu dan daftar penawaran eksklusif</p>
+            <h2 class="adm-card-title">Manajemen Promosi &amp; Visibilitas 8 Seksi Halaman Tamu</h2>
+            <p class="adm-card-subtitle">Atur visibilitas setiap blok di layar tamu dan kelola daftar penawaran eksklusif</p>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button type="button" class="adm-btn adm-btn-secondary" id="adm-preview-draft-btn">👁️ Preview Draft Tamu</button>
+            <button type="button" class="adm-btn adm-btn-secondary" id="adm-preview-draft-btn">Pratinjau Halaman Tamu</button>
             <button type="button" class="adm-btn adm-btn-primary" id="adm-add-promo-btn">+ Tambah Promosi Baru</button>
           </div>
         </div>
 
-        <h3 class="adm-subheading">Visibilitas Seksi Halaman Tamu</h3>
+        <h3 class="adm-subheading">Kontrol Visibilitas Seksi &amp; Komponen Halaman Tamu</h3>
         <div class="adm-toggles-grid">
           <label class="adm-toggle-item">
             <input type="checkbox" id="adm-sec-review" checked>
             <div class="adm-toggle-label">
               <strong>Seksi Google Review</strong>
-              <span>Tampilkan tombol &amp; rating 5-bintang</span>
+              <span>Tampilkan kartu &amp; tombol ulasan Google</span>
             </div>
           </label>
           <label class="adm-toggle-item">
-            <input type="checkbox" id="adm-sec-wa" checked>
+            <input type="checkbox" id="adm-sec-feedback" checked>
             <div class="adm-toggle-label">
-              <strong>Seksi WhatsApp Concierge</strong>
-              <span>Tampilkan tombol chat reservasi</span>
+              <strong>Formulir Direct Feedback</strong>
+              <span>Tampilkan tombol &amp; form masukan internal</span>
             </div>
           </label>
           <label class="adm-toggle-item">
             <input type="checkbox" id="adm-sec-outlets" checked>
             <div class="adm-toggle-label">
-              <strong>Seksi Gerai F&amp;B</strong>
-              <span>Tampilkan 4 outlet ikonik hotel</span>
+              <strong>Seksi Katalog Gerai F&amp;B</strong>
+              <span>Tampilkan daftar restoran &amp; lounge aktif</span>
             </div>
           </label>
           <label class="adm-toggle-item">
             <input type="checkbox" id="adm-sec-promos" checked>
             <div class="adm-toggle-label">
               <strong>Seksi Penawaran Eksklusif</strong>
-              <span>Tampilkan promo kuliner aktif</span>
+              <span>Tampilkan daftar kartu promosi aktif</span>
+            </div>
+          </label>
+          <label class="adm-toggle-item">
+            <input type="checkbox" id="adm-sec-wa" checked>
+            <div class="adm-toggle-label">
+              <strong>Seksi WhatsApp Concierge</strong>
+              <span>Tampilkan kartu reservasi WhatsApp</span>
             </div>
           </label>
           <label class="adm-toggle-item">
             <input type="checkbox" id="adm-sec-social" checked>
             <div class="adm-toggle-label">
               <strong>Seksi Media Sosial</strong>
-              <span>Tampilkan tautan Instagram &amp; Facebook</span>
+              <span>Tampilkan tautan sosial media resmi</span>
+            </div>
+          </label>
+          <label class="adm-toggle-item">
+            <input type="checkbox" id="adm-sec-final-cta" checked>
+            <div class="adm-toggle-label">
+              <strong>Seksi Final CTA Penutup</strong>
+              <span>Tampilkan banner ajakan penutup di atas footer</span>
+            </div>
+          </label>
+          <label class="adm-toggle-item">
+            <input type="checkbox" id="adm-sec-mobile-bar" checked>
+            <div class="adm-toggle-label">
+              <strong>Floating Mobile Action Bar</strong>
+              <span>Tampilkan bilah pintasan Review &amp; WA di layar ponsel</span>
             </div>
           </label>
         </div>
-        <div style="margin-top:16px;">
-          <button id="adm-save-sections-btn" class="adm-btn adm-btn-gold">💾 Simpan Visibilitas Seksi</button>
+        <div style="margin-top:14px;">
+          <button id="adm-save-sections-btn" class="adm-btn adm-btn-gold">Simpan Visibilitas Seksi</button>
         </div>
 
-        <h3 class="adm-subheading" style="margin-top:32px;">Daftar Promosi Aktif</h3>
+        <h3 class="adm-subheading" style="margin-top:28px;">Daftar Penawaran &amp; Promosi</h3>
         <div class="adm-table-wrap">
           <table class="adm-table">
             <thead>
               <tr>
                 <th>Nama Promosi</th>
                 <th>Gerai</th>
-                <th>Harga</th>
-                <th>Periode Berlaku</th>
+                <th>Harga / Penawaran</th>
+                <th>Jadwal Berlaku</th>
                 <th>Status</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody id="adm-promos-tbody">
-              <!-- Dynamically populated -->
+              <!-- Dirender dinamis oleh admin-content.js -->
             </tbody>
           </table>
         </div>
@@ -932,198 +916,698 @@
 
 
     <!-- ═══════════════════════════════════════════════════════
-         PANEL 9: TAMPILAN & TEMA (BARU)
+         PANEL 9: CMS PENGELOLAAN PENUH ISI TAMPILAN HALAMAN TAMU (FR-CMS-01 s/d FR-CMS-08)
+         KONTRAK KERAS: Tidak mengubah tone warna maupun layout halaman tamu!
     ═══════════════════════════════════════════════════════════ -->
-    <section id="tab-appearance" class="adm-tab-pane" aria-label="Tampilan dan tema" style="display:none;">
-      <div class="adm-card" style="max-width:720px;margin:0 auto;">
+    <section id="tab-appearance" class="adm-tab-pane" aria-label="CMS Isi Halaman Tamu" style="display:none;">
+
+      <!-- Toolbar Sticky CMS -->
+      <div class="adm-cms-toolbar">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;">
+          <div>
+            <h2 class="adm-card-title" style="font-size:1.1rem;">CMS Pengelolaan Penuh Isi Tampilan Halaman Tamu</h2>
+            <p class="adm-card-subtitle">Kelola 100% teks, judul seksi, label tombol, tautan, gambar, footer, dan modal halaman tamu (Tone warna &amp; layout halaman tamu dikunci permanen).</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="adm-btn adm-btn-secondary" id="adm-cms-reset-btn">Kembalikan Teks Standar</button>
+            <button type="button" class="adm-btn adm-btn-secondary" id="adm-cms-preview-btn">Pratinjau Draft Tamu</button>
+            <button type="button" class="adm-btn adm-btn-gold" id="adm-app-save-btn">Simpan Seluruh Konten Halaman Tamu</button>
+          </div>
+        </div>
+        <div class="adm-cms-zone-nav" role="tablist" aria-label="Filter zona halaman tamu">
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-primary"   data-cms-zone-btn="all">Tampilkan Semua Zona (1–6)</button>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-cms-zone-btn="hero">1. Identitas, Loading &amp; Hero</button>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-cms-zone-btn="review">2. Google Review &amp; Feedback</button>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-cms-zone-btn="catalog">3. Seksi Gerai &amp; Promosi</button>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-cms-zone-btn="wa">4. WA Concierge &amp; Sales Picker</button>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-cms-zone-btn="footer">5. Sosial, Final CTA &amp; Footer</button>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-cms-zone-btn="privacy">6. Modal Kebijakan Privasi</button>
+        </div>
+      </div>
+
+      <!-- ZONA 1: IDENTITAS HOTEL, LOADING SCREEN & HERO SECTION (FR-CMS-02) -->
+      <div class="adm-card adm-cms-zone-pane" id="cms-zone-hero">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">🎨 Kustomisasi Tampilan &amp; Teks Hero</h2>
-            <p class="adm-card-subtitle">Ubah teks pembuka, warna identitas hotel, dan salam personalisasi</p>
+            <h3 class="adm-card-title">Zona 1 — Identitas Umum Hotel, Loading Screen &amp; Hero Section</h3>
+            <p class="adm-card-subtitle">Mengatur profil utama hotel, logo, layar pemuatan awal, gambar latar hero, 5 sapaan kontekstual, dan tombol utama</p>
           </div>
         </div>
 
-        <div class="adm-form-group">
-          <label>Identitas Palet Merek Resmi (Terkunci Sesuai PRD 6.1)</label>
-          <p class="adm-field-hint" style="margin-bottom:8px;">
-            Palet merek resmi resor dikunci demi integritas visual dan konsistensi luxury hospitality brand.
-          </p>
+        <div class="adm-form-group" style="margin-bottom:20px;">
+          <label>Status Kontrak Visual Halaman Tamu (Tone Warna &amp; Layout Terkunci)</label>
           <div class="adm-palette-preview">
-            <div class="adm-palette-chip">
-              <span class="adm-palette-swatch" style="background:#1a3c2a;"></span>
-              <span>#1a3c2a (Deep Emerald)</span>
-            </div>
-            <div class="adm-palette-chip">
-              <span class="adm-palette-swatch" style="background:#10261b;"></span>
-              <span>#10261b (Forest Dark)</span>
-            </div>
-            <div class="adm-palette-chip">
-              <span class="adm-palette-swatch" style="background:#c9a96e;"></span>
-              <span>#c9a96e (Champagne Gold)</span>
-            </div>
-            <div class="adm-palette-chip">
-              <span class="adm-palette-swatch" style="background:#faf8f5;"></span>
-              <span>#faf8f5 (Warm Ivory)</span>
-            </div>
-            <div class="adm-palette-chip">
-              <span class="adm-palette-swatch" style="background:#1c2420;"></span>
-              <span>#1c2420 (Charcoal)</span>
-            </div>
+            <div class="adm-palette-chip"><span class="adm-palette-swatch" style="background:#1a3c2a;"></span><span>#1a3c2a Deep Emerald</span></div>
+            <div class="adm-palette-chip"><span class="adm-palette-swatch" style="background:#2d5a40;"></span><span>#2d5a40 Emerald Light</span></div>
+            <div class="adm-palette-chip"><span class="adm-palette-swatch" style="background:#c9a96e;"></span><span>#c9a96e Champagne Gold</span></div>
+            <div class="adm-palette-chip"><span class="adm-palette-swatch" style="background:#f6f5f0;"></span><span>#f6f5f0 Warm Ivory</span></div>
+            <div class="adm-palette-chip"><span class="adm-palette-swatch" style="background:#2c2c2c;"></span><span>#2c2c2c Charcoal</span></div>
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-hotel-name">Nama Resmi Hotel (Header, Title &amp; Footer)</label>
+            <input type="text" id="adm-cms-hotel-name" class="adm-input" placeholder="Bumi Surabaya City Resort">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-hotel-phone">Nomor Telepon Resmi Hotel</label>
+            <input type="text" id="adm-cms-hotel-phone" class="adm-input" placeholder="+62313545888">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-logo-url">Path / URL Gambar Logo Hotel (Hero &amp; Footer)</label>
+            <input type="text" id="adm-cms-logo-url" class="adm-input" placeholder="assets/images/logo-hotel.png">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-hero-bg-url">Path / URL Gambar Latar Hero (Opsional)</label>
+            <input type="text" id="adm-cms-hero-bg-url" class="adm-input" placeholder="Kosongkan untuk gradien resmi Deep Emerald">
           </div>
         </div>
 
         <div class="adm-form-group">
-          <label for="adm-app-hero-title">Teks Judul Hero</label>
-          <input type="text" id="adm-app-hero-title" class="adm-input" value="Bumi Surabaya City Resort">
+          <label for="adm-cms-hotel-address">Alamat Lengkap Hotel (Ditampilkan di Footer Halaman Tamu)</label>
+          <input type="text" id="adm-cms-hotel-address" class="adm-input" placeholder="Jl. Jenderal Basuki Rachmat No.106-128, Surabaya 60271, East Java, Indonesia">
         </div>
 
         <div class="adm-form-group">
-          <label for="adm-app-hero-sub">Sub-judul Hero</label>
-          <input type="text" id="adm-app-hero-sub" class="adm-input" value="Hotel Bintang Lima di Jantung Surabaya">
+          <label for="adm-cms-hotel-desc">Deskripsi Meta Halaman Tamu (SEO &amp; OpenGraph)</label>
+          <input type="text" id="adm-cms-hotel-desc" class="adm-input" placeholder="Welcome to Bumi Surabaya City Resort...">
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-loading-title">Teks Utama Layar Pemuatan (Loading Screen)</label>
+            <input type="text" id="adm-cms-loading-title" class="adm-input" placeholder="Bumi Surabaya City Resort">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-loading-sub">Sub-teks Layar Pemuatan (Loading Subtitle)</label>
+            <input type="text" id="adm-cms-loading-sub" class="adm-input" placeholder="Preparing your experience…">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-app-hero-title">Judul Utama Hero (<code>#bs-hotel-name</code>)</label>
+            <input type="text" id="adm-app-hero-title" class="adm-input" placeholder="Bumi Surabaya City Resort">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-app-hero-sub">Sub-judul Hero (<code>#bs-subtitle</code>)</label>
+            <input type="text" id="adm-app-hero-sub" class="adm-input" placeholder="Five-Star City Resort in the Heart of Surabaya">
+          </div>
         </div>
 
         <div class="adm-form-group">
-          <label for="adm-app-welcome-gen">Pesan Sambutan Umum (Default)</label>
-          <textarea id="adm-app-welcome-gen" class="adm-input" rows="2">Kami dengan bangga menyambut Anda di Bumi Surabaya City Resort.</textarea>
+          <label for="adm-app-welcome-gen">1. Sapaan Tamu Umum / Tanpa Sumber (Mendukung <code>{hotel_name}</code>)</label>
+          <textarea id="adm-app-welcome-gen" class="adm-input" rows="2"></textarea>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-app-welcome-staff">2. Sapaan Saat Dilayani Staf (Variabel: <code>{staff_name}</code>, <code>{role}</code>, <code>{outlet}</code>)</label>
+            <textarea id="adm-app-welcome-staff" class="adm-input" rows="2"></textarea>
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-welcome-sales">3. Sapaan Saat Dilayani Sales (Variabel: <code>{staff_name}</code>, <code>{role}</code>, <code>{outlet}</code>)</label>
+            <textarea id="adm-cms-welcome-sales" class="adm-input" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-welcome-outlet">4. Sapaan Sumber Gerai F&amp;B (Variabel: <code>{outlet_name}</code>)</label>
+            <input type="text" id="adm-cms-welcome-outlet" class="adm-input" placeholder="Enjoy an exclusive culinary experience at {outlet_name}.">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-welcome-nfc">5. Sapaan Stiker / Kartu NFC Meja (Variabel: <code>{outlet_name}</code>)</label>
+            <input type="text" id="adm-cms-welcome-nfc" class="adm-input" placeholder="Welcome to {outlet_name}! Enjoy an unforgettable experience with us.">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-hero-rev-btn">Label Tombol Review di Hero</label>
+            <input type="text" id="adm-cms-hero-rev-btn" class="adm-input" placeholder="Share Your Experience">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-hero-wa-btn">Label Tombol WhatsApp di Hero</label>
+            <input type="text" id="adm-cms-hero-wa-btn" class="adm-input" placeholder="Chat with Us">
+          </div>
         </div>
 
         <div class="adm-form-group">
-          <label for="adm-app-welcome-staff">Pesan Sambutan Sapaan Staf</label>
-          <textarea id="adm-app-welcome-staff" class="adm-input" rows="2">Halo! Anda saat ini dilayani dengan tulus oleh {staff_name} ({role}) dari {outlet}.</textarea>
+          <label for="adm-cms-hero-scroll-hint">Teks Petunjuk Gulir Bawah Hero (Scroll Hint)</label>
+          <input type="text" id="adm-cms-hero-scroll-hint" class="adm-input" placeholder="Scroll to explore">
         </div>
-
-        <button id="adm-app-save-btn" class="adm-btn adm-btn-primary">
-          💾 Simpan Perubahan Tampilan
-        </button>
       </div>
+
+      <!-- ZONA 2: GOOGLE REVIEW & DIRECT FEEDBACK (FR-CMS-03) -->
+      <div class="adm-card adm-cms-zone-pane" id="cms-zone-review">
+        <div class="adm-card-header">
+          <div>
+            <h3 class="adm-card-title">Zona 2 — Seksi Google Review &amp; Formulir Direct Feedback</h3>
+            <p class="adm-card-subtitle">Mengatur tautan utama Google Review, teks kartu ulasan, serta seluruh label dan placeholder form masukan langsung</p>
+          </div>
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-review-url">URL Utama Google Review Hotel (Fallback jika gerai tidak memiliki URL khusus)</label>
+          <input type="url" id="adm-cms-review-url" class="adm-input" placeholder="https://search.google.com/local/writereview?placeid=...">
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-rev-sec-title">Judul Seksi Review (<code>#bs-review-heading</code>)</label>
+            <input type="text" id="adm-cms-rev-sec-title" class="adm-input" placeholder="We'd Love to Hear From You">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-rev-sec-sub">Sub-judul Seksi Review</label>
+            <input type="text" id="adm-cms-rev-sec-sub" class="adm-input" placeholder="Your feedback helps our team keep improving every day.">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-rev-card-title">Judul di Dalam Kartu Review</label>
+            <input type="text" id="adm-cms-rev-card-title" class="adm-input" placeholder="Share Your Experience">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-rev-card-btn">Label Tombol Buka Google Review</label>
+            <input type="text" id="adm-cms-rev-card-btn" class="adm-input" placeholder="Review Us on Google">
+          </div>
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-rev-card-prompt">Teks Ajakan di Dalam Kartu Review (<code>#bs-review-prompt</code>)</label>
+          <textarea id="adm-cms-rev-card-prompt" class="adm-input" rows="2"></textarea>
+        </div>
+
+        <h4 class="adm-subheading" style="margin-top:18px;">Pengaturan Formulir Direct Feedback Internal</h4>
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-fb-toggle-btn">Label Tombol Pembuka Form Feedback</label>
+            <input type="text" id="adm-cms-fb-toggle-btn" class="adm-input" placeholder="Direct Feedback">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-fb-rating-lbl">Teks Pertanyaan Rating Bintang</label>
+            <input type="text" id="adm-cms-fb-rating-lbl" class="adm-input" placeholder="How would you rate your experience?">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-fb-msg-ph">Placeholder Kolom Pesan Masukan</label>
+            <input type="text" id="adm-cms-fb-msg-ph" class="adm-input" placeholder="Tell us about your experience...">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-fb-name-ph">Placeholder Kolom Nama Tamu</label>
+            <input type="text" id="adm-cms-fb-name-ph" class="adm-input" placeholder="Your name (optional)">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-fb-wa-ph">Placeholder Kolom Nomor WhatsApp Tamu</label>
+            <input type="text" id="adm-cms-fb-wa-ph" class="adm-input" placeholder="WhatsApp number (optional)">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-fb-submit-lbl">Label Tombol Kirim Masukan</label>
+            <input type="text" id="adm-cms-fb-submit-lbl" class="adm-input" placeholder="Send Feedback">
+          </div>
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-fb-thanks-txt">Pesan Konfirmasi Terima Kasih Setelah Feedback Terkirim</label>
+          <input type="text" id="adm-cms-fb-thanks-txt" class="adm-input" placeholder="Thank you! Your feedback means a lot to us.">
+        </div>
+      </div>
+
+      <!-- ZONA 3: HEADER & TEMPLATE SEKSI GERAI F&B DAN PROMOSI (FR-CMS-04) -->
+      <div class="adm-card adm-cms-zone-pane" id="cms-zone-catalog">
+        <div class="adm-card-header">
+          <div>
+            <h3 class="adm-card-title">Zona 3 — Judul &amp; Template Seksi Gerai F&amp;B dan Promosi</h3>
+            <p class="adm-card-subtitle">Mengatur judul seksi, sub-judul, teks tombol kartu default, dan template pesan reservasi WhatsApp</p>
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-outlets-title">Judul Seksi Gerai F&amp;B (<code>#bs-outlets-heading</code>)</label>
+            <input type="text" id="adm-cms-outlets-title" class="adm-input" placeholder="Discover Dining">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-outlets-cta">Label Default Tombol Kartu Gerai</label>
+            <input type="text" id="adm-cms-outlets-cta" class="adm-input" placeholder="Explore &amp; Reserve →">
+          </div>
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-outlets-sub">Sub-judul Seksi Gerai F&amp;B</label>
+          <input type="text" id="adm-cms-outlets-sub" class="adm-input" placeholder="Explore our iconic F&amp;B outlets, each with its own culinary story.">
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-outlets-wa-tpl">Template Pesan WhatsApp Reservasi Gerai (Mendukung variabel <code>{outlet_name}</code>)</label>
+          <input type="text" id="adm-cms-outlets-wa-tpl" class="adm-input" placeholder="Hello Bumi Surabaya, I would like the menu and table reservation info at {outlet_name}.">
+        </div>
+
+        <div class="adm-two-col-form" style="margin-top:18px;">
+          <div class="adm-form-group">
+            <label for="adm-cms-promos-title">Judul Seksi Promosi (<code>#bs-promos-heading</code>)</label>
+            <input type="text" id="adm-cms-promos-title" class="adm-input" placeholder="Exclusive Offers">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-promos-cta">Label Default Tombol Kartu Promosi</label>
+            <input type="text" id="adm-cms-promos-cta" class="adm-input" placeholder="Discover More →">
+          </div>
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-promos-sub">Sub-judul Seksi Promosi</label>
+          <input type="text" id="adm-cms-promos-sub" class="adm-input" placeholder="Handpicked culinary experiences and special moments, just for you.">
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-promos-wa-tpl">Template Pesan WhatsApp Promosi (Mendukung <code>{promo_name}</code> &amp; <code>{outlet_name}</code>)</label>
+          <input type="text" id="adm-cms-promos-wa-tpl" class="adm-input" placeholder="Hello Bumi Surabaya, I am interested in the promotion: {promo_name} at {outlet_name}. Please share reservation details.">
+        </div>
+      </div>
+
+      <!-- ZONA 4: SEKSI WHATSAPP CONCIERGE & MODAL SALES PICKER (FR-CMS-05) -->
+      <div class="adm-card adm-cms-zone-pane" id="cms-zone-wa">
+        <div class="adm-card-header">
+          <div>
+            <h3 class="adm-card-title">Zona 4 — Seksi WhatsApp Concierge &amp; Modal WhatsApp Sales Picker</h3>
+            <p class="adm-card-subtitle">Mengatur teks pada kartu WhatsApp Concierge dan seluruh teks di dalam jendela pilih sales (Linktree-style modal)</p>
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-wa-pill">Teks Badge Status Online Concierge</label>
+            <input type="text" id="adm-cms-wa-pill" class="adm-input" placeholder="Concierge Online">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-wa-btn">Label Tombol Utama Kartu WhatsApp</label>
+            <input type="text" id="adm-cms-wa-btn" class="adm-input" placeholder="Chat on WhatsApp">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-wa-title">Judul Kartu WhatsApp Concierge (<code>#bs-wa-heading</code>)</label>
+            <input type="text" id="adm-cms-wa-title" class="adm-input" placeholder="Reservations &amp; Inquiries">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-wa-sub">Sub-judul Kartu WhatsApp Concierge</label>
+            <input type="text" id="adm-cms-wa-sub" class="adm-input" placeholder="Our team is one message away — table reservations, private events, and special requests.">
+          </div>
+        </div>
+
+        <h4 class="adm-subheading" style="margin-top:18px;">Teks Modal Pemilih Sales WhatsApp (<code>#bs-wa-picker</code>)</h4>
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-wap-badge">Teks Eyebrow Badge Modal</label>
+            <input type="text" id="adm-cms-wap-badge" class="adm-input" placeholder="CHAT WITH US">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-wap-title">Judul Modal Sales Picker</label>
+            <input type="text" id="adm-cms-wap-title" class="adm-input" placeholder="Choose who to chat with">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-wap-sub">Sub-judul Pengantar Modal Sales Picker</label>
+            <input type="text" id="adm-cms-wap-sub" class="adm-input" placeholder="Our sales team is ready to help you on WhatsApp. Pick a contact below:">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-wap-row-cta">Label Tombol Aksi di Setiap Baris Sales</label>
+            <input type="text" id="adm-cms-wap-row-cta" class="adm-input" placeholder="Chat">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-wap-empty">Pesan Saat Daftar Sales Belum Tersedia (Fallback)</label>
+            <input type="text" id="adm-cms-wap-empty" class="adm-input" placeholder="Our sales team contacts are being updated...">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-wap-fb-btn">Label Tombol Reservasi Fallback</label>
+            <input type="text" id="adm-cms-wap-fb-btn" class="adm-input" placeholder="Chat Reservation">
+          </div>
+        </div>
+      </div>
+
+      <!-- ZONA 5: MEDIA SOSIAL, FINAL CTA, FLOATING MOBILE BAR & FOOTER (FR-CMS-06) -->
+      <div class="adm-card adm-cms-zone-pane" id="cms-zone-footer">
+        <div class="adm-card-header">
+          <div>
+            <h3 class="adm-card-title">Zona 5 — Media Sosial, Final CTA, Floating Mobile Bar &amp; Footer</h3>
+            <p class="adm-card-subtitle">Mengatur tautan &amp; label sosial media, banner penutup, bilah tombol bawah ponsel, serta hak cipta footer</p>
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-title">Judul Seksi Media Sosial (<code>#bs-social-heading</code>)</label>
+            <input type="text" id="adm-cms-soc-title" class="adm-input" placeholder="Stay Connected">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-sub">Sub-judul Seksi Media Sosial</label>
+            <input type="text" id="adm-cms-soc-sub" class="adm-input" placeholder="Follow us for the latest stories and exclusive offers.">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-ig-url">URL Instagram</label>
+            <input type="url" id="adm-cms-soc-ig-url" class="adm-input" placeholder="https://www.instagram.com/bumisurabaya/">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-ig-lbl">Label Tombol Instagram</label>
+            <input type="text" id="adm-cms-soc-ig-lbl" class="adm-input" placeholder="📸 Instagram">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-fb-url">URL Facebook</label>
+            <input type="url" id="adm-cms-soc-fb-url" class="adm-input" placeholder="https://www.facebook.com/bumisurabaya/">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-fb-lbl">Label Tombol Facebook</label>
+            <input type="text" id="adm-cms-soc-fb-lbl" class="adm-input" placeholder="👍 Facebook">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-tt-url">URL TikTok (Kosongkan untuk menyembunyikan)</label>
+            <input type="url" id="adm-cms-soc-tt-url" class="adm-input" placeholder="https://www.tiktok.com/@bumisurabaya">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-tt-lbl">Label Tombol TikTok</label>
+            <input type="text" id="adm-cms-soc-tt-lbl" class="adm-input" placeholder="🎵 TikTok">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-yt-url">URL YouTube (Opsional)</label>
+            <input type="url" id="adm-cms-soc-yt-url" class="adm-input" placeholder="https://www.youtube.com/@bumisurabaya">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-yt-lbl">Label Tombol YouTube</label>
+            <input type="text" id="adm-cms-soc-yt-lbl" class="adm-input" placeholder="▶️ YouTube">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-web-url">URL Website Resmi Hotel (Opsional)</label>
+            <input type="url" id="adm-cms-soc-web-url" class="adm-input" placeholder="https://www.bumisurabaya.com">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-soc-web-lbl">Label Tombol Website Resmi</label>
+            <input type="text" id="adm-cms-soc-web-lbl" class="adm-input" placeholder="🌐 Official Website">
+          </div>
+        </div>
+
+        <h4 class="adm-subheading" style="margin-top:18px;">Seksi Final CTA &amp; Floating Mobile Action Bar</h4>
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-final-title">Judul Seksi Final CTA Penutup</label>
+            <input type="text" id="adm-cms-final-title" class="adm-input" placeholder="We Look Forward to Welcoming You Again">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-final-sub">Sub-judul Seksi Final CTA Penutup</label>
+            <input type="text" id="adm-cms-final-sub" class="adm-input" placeholder="Until your next memorable experience at Hotel Bumi Surabaya.">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-final-rev-btn">Label Tombol Review di Final CTA</label>
+            <input type="text" id="adm-cms-final-rev-btn" class="adm-input" placeholder="Share Your Experience">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-final-wa-btn">Label Tombol WhatsApp di Final CTA</label>
+            <input type="text" id="adm-cms-final-wa-btn" class="adm-input" placeholder="Contact Us">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-mob-rev-lbl">Label Tombol Review pada Floating Mobile Bar</label>
+            <input type="text" id="adm-cms-mob-rev-lbl" class="adm-input" placeholder="Review">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-mob-wa-lbl">Label Tombol WhatsApp pada Floating Mobile Bar</label>
+            <input type="text" id="adm-cms-mob-wa-lbl" class="adm-input" placeholder="WhatsApp">
+          </div>
+        </div>
+
+        <h4 class="adm-subheading" style="margin-top:18px;">Footer Halaman Tamu</h4>
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-ftr-privacy-lbl">Label Tautan Kebijakan Privasi</label>
+            <input type="text" id="adm-cms-ftr-privacy-lbl" class="adm-input" placeholder="Privacy &amp; Data Use Policy">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-ftr-admin-lbl">Label Tautan Portal Manajemen</label>
+            <input type="text" id="adm-cms-ftr-admin-lbl" class="adm-input" placeholder="Management Portal">
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-ftr-copyright">Teks Hak Cipta (Copyright) Footer</label>
+            <input type="text" id="adm-cms-ftr-copyright" class="adm-input" placeholder="© 2026 Bumi Surabaya City Resort. All rights reserved.">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-ftr-version">Teks Tag Versi di Bawah Footer</label>
+            <input type="text" id="adm-cms-ftr-version" class="adm-input" placeholder="Digital Guest Experience v6.3">
+          </div>
+        </div>
+
+        <div class="adm-form-group">
+          <label class="adm-toggle-item" style="max-width:420px;">
+            <input type="checkbox" id="adm-cms-ftr-show-admin" checked>
+            <div class="adm-toggle-label">
+              <strong>Tampilkan Tautan "Management Portal" di Footer Tamu</strong>
+              <span>Matikan jika Anda ingin menyembunyikan pintasan login admin dari footer halaman tamu</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- ZONA 6: MODAL KEBIJAKAN PRIVASI (FR-CMS-07) -->
+      <div class="adm-card adm-cms-zone-pane" id="cms-zone-privacy">
+        <div class="adm-card-header">
+          <div>
+            <h3 class="adm-card-title">Zona 6 — Isi Lengkap Modal Kebijakan Privasi Tamu (<code>#bs-privacy-modal</code>)</h3>
+            <p class="adm-card-subtitle">Mengatur seluruh judul, paragraf pembuka, 3 blok daftar poin privasi, dan label tombol tutup</p>
+          </div>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-prv-badge">Teks Badge Standar Privasi</label>
+            <input type="text" id="adm-cms-prv-badge" class="adm-input" placeholder="WORLD-CLASS RESORT PRIVACY STANDARD">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-prv-title">Judul Modal Kebijakan Privasi</label>
+            <input type="text" id="adm-cms-prv-title" class="adm-input" placeholder="Guest Privacy &amp; Data Use Policy">
+          </div>
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-prv-lead-bold">Paragraf Pembuka Cetak Tebal (Lead Text)</label>
+          <input type="text" id="adm-cms-prv-lead-bold" class="adm-input">
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-prv-lead-sub">Paragraf Pengantar Kedua</label>
+          <textarea id="adm-cms-prv-lead-sub" class="adm-input" rows="2"></textarea>
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-prv-b1-title">Judul Blok 1 (Data yang Tidak Pernah Dikumpulkan)</label>
+          <input type="text" id="adm-cms-prv-b1-title" class="adm-input">
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-cms-prv-b1-items">Daftar Poin Blok 1 (Satu poin per baris)</label>
+          <textarea id="adm-cms-prv-b1-items" class="adm-input" rows="4"></textarea>
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-prv-b2-title">Judul Blok 2 (Data Teknis &amp; Pseudonim yang Diproses)</label>
+          <input type="text" id="adm-cms-prv-b2-title" class="adm-input">
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-cms-prv-b2-items">Daftar Poin Blok 2 (Satu poin per baris; teks sebelum titik dua otomatis dicetak tebal)</label>
+          <textarea id="adm-cms-prv-b2-items" class="adm-input" rows="4"></textarea>
+        </div>
+
+        <div class="adm-form-group">
+          <label for="adm-cms-prv-b3-title">Judul Blok 3 (Tujuan &amp; Masa Retensi Data)</label>
+          <input type="text" id="adm-cms-prv-b3-title" class="adm-input">
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-cms-prv-b3-items">Daftar Poin Blok 3 (Satu poin per baris)</label>
+          <textarea id="adm-cms-prv-b3-items" class="adm-input" rows="3"></textarea>
+        </div>
+
+        <div class="adm-two-col-form">
+          <div class="adm-form-group">
+            <label for="adm-cms-prv-subtext">Kalimat Penutup Modal Privasi</label>
+            <input type="text" id="adm-cms-prv-subtext" class="adm-input">
+          </div>
+          <div class="adm-form-group">
+            <label for="adm-cms-prv-btn">Label Tombol Konfirmasi Tutup Modal</label>
+            <input type="text" id="adm-cms-prv-btn" class="adm-input" placeholder="I Understand">
+          </div>
+        </div>
+      </div>
+
     </section><!-- #tab-appearance -->
 
 
     <!-- ═══════════════════════════════════════════════════════
-         PANEL 10: KONFIGURASI BACKEND & FRAUD (YANG SUDAH ADA)
+         PANEL 10: KONFIGURASI BACKEND & FRAUD
     ═══════════════════════════════════════════════════════════ -->
     <section id="tab-config" class="adm-tab-pane" aria-label="Konfigurasi sistem" style="display:none;">
       <div class="adm-card" style="max-width:680px;margin:0 auto;">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">⚙️ Konfigurasi Backend &amp; Koneksi</h2>
-            <p class="adm-card-subtitle">Pengaturan URL endpoint Google Apps Script dan token verifikasi</p>
+            <h2 class="adm-card-title">Konfigurasi Endpoint Backend Apps Script</h2>
+            <p class="adm-card-subtitle">Pengaturan URL Web App Google Apps Script dan pengujian konektivitas</p>
           </div>
         </div>
 
         <div class="adm-form-group">
-          <label for="adm-cfg-gas-url">URL Google Apps Script</label>
+          <label for="adm-cfg-gas-url">URL Google Apps Script (<code>/exec</code>)</label>
           <input type="url" id="adm-cfg-gas-url" class="adm-input" placeholder="https://script.google.com/macros/s/…/exec">
-          <p class="adm-field-hint">Token sesi dikelola otomatis oleh modul autentikasi (BSAuth) dan tersimpan aman di sessionStorage.</p>
+          <p class="adm-field-hint">Token sesi dikelola otomatis oleh modul autentikasi dan disimpan di <code>sessionStorage</code>.</p>
         </div>
 
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
-          <button id="adm-cfg-save-btn" class="adm-btn adm-btn-primary">💾 Simpan URL Backend</button>
-          <button id="adm-cfg-test-btn" class="adm-btn adm-btn-secondary">🔗 Uji Koneksi Backend</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+          <button id="adm-cfg-save-btn" class="adm-btn adm-btn-primary">Simpan URL Backend</button>
+          <button id="adm-cfg-test-btn" class="adm-btn adm-btn-secondary">Uji Koneksi Backend</button>
         </div>
 
         <p id="adm-cfg-msg" class="adm-field-hint" style="margin-top:14px;"></p>
       </div>
 
       <!-- Konfigurasi fraud thresholds -->
-      <div class="adm-card" style="max-width:680px;margin:24px auto 0;">
+      <div class="adm-card" style="max-width:680px;margin:20px auto 0;">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">🛡️ Ambang Batas Anti-Fraud (Thresholds)</h2>
-            <p class="adm-card-subtitle">Parameter batas anomali algoritma pelindung integritas</p>
+            <h2 class="adm-card-title">Parameter Ambang Batas Anti-Fraud</h2>
+            <p class="adm-card-subtitle">Konfigurasi sensitivitas algoritma pelindung integritas skor atribusi</p>
           </div>
         </div>
 
         <div class="adm-two-col-form">
           <div class="adm-form-group">
-            <label for="adm-ft-velocity">Velocity Limit (AF-01) — kunjungan / 24 jam</label>
+            <label for="adm-ft-velocity">Batas Frekuensi Kunjungan per Sumber / 24 Jam</label>
             <input type="number" id="adm-ft-velocity" class="adm-input" value="3" min="1" max="50">
           </div>
           <div class="adm-form-group">
-            <label for="adm-ft-burst">Burst Count (AF-02) — kunjungan / 10 menit</label>
-            <input type="number" id="adm-ft-burst" class="adm-input" value="5" min="2" max="20">
+            <label for="adm-ft-burst">Batas Lonjakan Kunjungan per Sumber / 10 Menit</label>
+            <input type="number" id="adm-ft-burst" class="adm-input" value="5" min="2" max="30">
           </div>
           <div class="adm-form-group">
-            <label for="adm-ft-low-dwell">Low Dwell (AF-04) — detik minimum</label>
-            <input type="number" id="adm-ft-low-dwell" class="adm-input" value="5" min="1" max="60">
+            <label for="adm-ft-low-dwell">Durasi Baca Minimum Kunjungan Berkualitas (Detik)</label>
+            <input type="number" id="adm-ft-low-dwell" class="adm-input" value="5" min="2" max="60">
           </div>
           <div class="adm-form-group">
-            <label for="adm-ft-hopping">Hopping Sources (AF-05) — sumber / 1 jam</label>
-            <input type="number" id="adm-ft-hopping" class="adm-input" value="4" min="2" max="10">
+            <label for="adm-ft-hopping">Batas Pindai Lintas Sumber Unik / 1 Jam</label>
+            <input type="number" id="adm-ft-hopping" class="adm-input" value="4" min="2" max="15">
           </div>
         </div>
 
-        <button id="adm-ft-save-btn" class="adm-btn adm-btn-gold">💾 Simpan &amp; Sinkronkan Threshold</button>
+        <button id="adm-ft-save-btn" class="adm-btn adm-btn-gold">Simpan &amp; Sinkronkan Threshold</button>
       </div>
     </section><!-- #tab-config -->
 
 
     <!-- ═══════════════════════════════════════════════════════
-         PANEL 11: PENGATURAN AKUN & KEAMANAN (BARU)
+         PANEL 11: PENGATURAN AKUN & KEAMANAN (FR-P0-03)
     ═══════════════════════════════════════════════════════════ -->
     <section id="tab-account" class="adm-tab-pane" aria-label="Pengaturan akun admin" style="display:none;">
       <div class="adm-card" style="max-width:680px;margin:0 auto;">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">🔐 Pengaturan Akun &amp; Kredensial Admin</h2>
-            <p class="adm-card-subtitle">Perbarui kata sandi atau kunci autentikasi administrator</p>
+            <h2 class="adm-card-title">Pengaturan Akun &amp; Kredensial Administrator</h2>
+            <p class="adm-card-subtitle">Perbarui kata sandi akun yang sedang aktif</p>
           </div>
         </div>
 
-        <form id="adm-acc-pw-form">
+        <form id="adm-acc-pw-form" novalidate>
           <div class="adm-form-group">
-            <label for="adm-acc-old-pw">Password Saat Ini</label>
-            <input type="password" id="adm-acc-old-pw" class="adm-input" placeholder="Masukkan password aktif saat ini" required>
+            <label for="adm-acc-old-pw">Kata Sandi Saat Ini</label>
+            <input type="password" id="adm-acc-old-pw" class="adm-input" placeholder="Masukkan kata sandi aktif saat ini" required>
           </div>
 
           <div class="adm-form-group">
-            <label for="adm-acc-new-pw">Password Baru</label>
-            <input type="password" id="adm-acc-new-pw" class="adm-input" placeholder="Minimal 6 karakter" required>
+            <label for="adm-acc-new-pw">Kata Sandi Baru</label>
+            <input type="password" id="adm-acc-new-pw" class="adm-input" minlength="8" placeholder="Minimal 8 karakter" required>
           </div>
 
           <div class="adm-form-group">
-            <label for="adm-acc-confirm-pw">Konfirmasi Password Baru</label>
-            <input type="password" id="adm-acc-confirm-pw" class="adm-input" placeholder="Ketik ulang password baru" required>
+            <label for="adm-acc-confirm-pw">Konfirmasi Kata Sandi Baru</label>
+            <input type="password" id="adm-acc-confirm-pw" class="adm-input" minlength="8" placeholder="Ketik ulang kata sandi baru" required>
           </div>
 
           <button type="submit" id="adm-acc-submit-btn" class="adm-btn adm-btn-primary">
-            🔐 Perbarui Kata Sandi Admin
+            Perbarui Kata Sandi Admin
           </button>
         </form>
 
-        <div class="adm-account-audit-card" style="margin-top:28px;">
-          <h4 style="font-size:0.9rem;margin-bottom:8px;color:var(--deep-green);">Informasi Sesi Keamanan</h4>
-          <ul style="font-size:0.84rem;color:var(--charcoal-light);padding-left:18px;line-height:1.8;">
+        <div class="adm-account-audit-card" style="margin-top:24px;padding-top:18px;border-top:1px solid var(--border-light);">
+          <h4 style="font-size:0.88rem;margin-bottom:8px;color:var(--deep-green);">Ringkasan Keamanan Sesi</h4>
+          <ul style="font-size:0.82rem;color:var(--charcoal-light);padding-left:18px;line-height:1.8;">
             <li>Akun aktif: <strong id="adm-acc-current-user">admin</strong></li>
-            <li>Sesi terotentikasi via Session Token Kriptografis (6 Jam TTL)</li>
-            <li>Transparansi Privasi: Pencatatan event menggunakan identifier pseudonim perangkat (device_id)</li>
-            <li>Versi Platform: <strong>Digital Guest Experience v6.0</strong></li>
+            <li>Otentikasi: Session Token Kriptografis Server-Side (Masa berlaku 6 jam)</li>
+            <li>Hashing Kredensial: Salted Iterative SHA-256 (1.000 putaran per pengguna)</li>
+            <li>Versi Sistem: <strong>Digital Guest Experience v6.3</strong></li>
           </ul>
         </div>
       </div>
     </section><!-- #tab-account -->
 
     <!-- ═══════════════════════════════════════════════════════
-         PANEL 12: JEJAK AUDIT & RIWAYAT MUTASI (SEC-11, SEC-12, PRD 7.9)
+         PANEL 12: JEJAK AUDIT & RIWAYAT MUTASI (FR-P0-02)
     ═══════════════════════════════════════════════════════════ -->
     <section id="tab-audit" class="adm-tab-pane" aria-label="Jejak audit dan riwayat mutasi" style="display:none;">
       <div class="adm-card">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">📜 Jejak Audit &amp; Riwayat Mutasi Sensitif</h2>
-            <p class="adm-card-subtitle">Pencatatan setiap mutasi konfigurasi, login, recovery, dan hak akses server</p>
+            <h2 class="adm-card-title">Jejak Audit &amp; Riwayat Mutasi Server</h2>
+            <p class="adm-card-subtitle">Catatan permanen setiap aktivitas login, penyimpanan konfigurasi, perubahan kata sandi, dan penolakan akses</p>
           </div>
           <div class="adm-card-actions" style="flex-wrap:wrap;gap:8px;align-items:center;">
-            <select class="adm-select" id="adm-audit-filter-action">
+            <select class="adm-select" id="adm-audit-filter-action" style="width:auto;">
               <option value="all">Semua Tindakan</option>
               <option value="LOGIN">LOGIN</option>
-              <option value="MUTATION_SAVE_ALL">MUTASI DATA (SAVE ALL)</option>
-              <option value="CHANGE_PASSWORD">GANTI KATA SANDI</option>
-              <option value="BREAK_GLASS_RECOVERY">BREAK-GLASS RECOVERY</option>
+              <option value="MUTATION_SAVE">MUTATION_SAVE (Simpan Data)</option>
+              <option value="MUTATION_DENIED">MUTATION_DENIED (Akses Ditolak)</option>
+              <option value="CHANGE_PASSWORD">CHANGE_PASSWORD (Ganti Sandi)</option>
+              <option value="FEEDBACK_HANDLED">FEEDBACK_HANDLED</option>
+              <option value="FEEDBACK_DENIED">FEEDBACK_DENIED</option>
+              <option value="BREAK_GLASS_RESET">BREAK_GLASS_RESET</option>
+              <option value="SETUP_ADMIN">SETUP_ADMIN</option>
+              <option value="CREATE_USER">CREATE_USER</option>
+              <option value="UPDATE_USER">UPDATE_USER</option>
             </select>
-            <input type="text" id="adm-audit-search" class="adm-input" placeholder="Cari aktor / objek / detail..." style="width:200px;padding:4px 8px;font-size:0.8rem;">
-            <span id="adm-audit-count-info" style="font-size:0.78rem;color:var(--color-text-muted,#6b7280);"></span>
-            <button class="adm-btn adm-btn-secondary" id="adm-audit-refresh-btn">🔄 Perbarui Log</button>
+            <input type="text" id="adm-audit-search" class="adm-input" placeholder="Cari aktor / objek / detail..." style="width:200px;padding:6px 10px;font-size:0.8rem;">
+            <span id="adm-audit-count-info" style="font-size:0.78rem;color:var(--charcoal-muted);"></span>
+            <button class="adm-btn adm-btn-secondary" id="adm-audit-refresh-btn">Perbarui Log</button>
           </div>
         </div>
 
@@ -1135,9 +1619,9 @@
                 <th>Aktor</th>
                 <th>Peran</th>
                 <th>Tindakan</th>
-                <th>Target Objek</th>
+                <th>Objek Target</th>
                 <th>Status</th>
-                <th>Detail Mutasi</th>
+                <th>Rincian Mutasi</th>
               </tr>
             </thead>
             <tbody id="adm-audit-tbody">
@@ -1148,20 +1632,23 @@
       </div>
     </section><!-- #tab-audit -->
 
+    <!-- ═══════════════════════════════════════════════════════
+         PANEL 13: FEEDBACK LANGSUNG TAMU
+    ═══════════════════════════════════════════════════════════ -->
     <section id="tab-feedback" class="adm-tab-pane" aria-label="Feedback langsung dari tamu" style="display:none;">
       <div class="adm-card">
         <div class="adm-card-header">
           <div>
-            <h2 class="adm-card-title">💬 Feedback Langsung Tamu</h2>
-            <p class="adm-card-subtitle">Masukan tamu via tombol "Direct Feedback" di halaman tamu (REV-02)</p>
+            <h2 class="adm-card-title">Masukan Langsung Tamu (Direct Feedback)</h2>
+            <p class="adm-card-subtitle">Daftar ulasan dan masukan internal yang dikirim tamu melalui formulir di halaman tamu</p>
           </div>
           <div class="adm-card-actions" style="flex-wrap:wrap;gap:8px;align-items:center;">
-            <select class="adm-select" id="adm-feedback-filter-status" aria-label="Filter status">
+            <select class="adm-select" id="adm-feedback-filter-status" aria-label="Filter status" style="width:auto;">
               <option value="">Semua Status</option>
               <option value="unread">Belum Dibaca</option>
               <option value="handled">Sudah Ditangani</option>
             </select>
-            <select class="adm-select" id="adm-feedback-filter-rating" aria-label="Filter rating">
+            <select class="adm-select" id="adm-feedback-filter-rating" aria-label="Filter rating" style="width:auto;">
               <option value="0">Semua Rating</option>
               <option value="5">★★★★★ (5)</option>
               <option value="4">★★★★ (4)</option>
@@ -1169,11 +1656,11 @@
               <option value="2">★★ (2)</option>
               <option value="1">★ (1)</option>
             </select>
-            <select class="adm-select" id="adm-feedback-filter-outlet" aria-label="Filter outlet">
+            <select class="adm-select" id="adm-feedback-filter-outlet" aria-label="Filter outlet" style="width:auto;">
               <option value="">Semua Outlet</option>
             </select>
-            <span id="adm-feedback-count-info" style="font-size:0.78rem;color:var(--color-text-muted,#6b7280);"></span>
-            <button class="adm-btn adm-btn-secondary" id="adm-feedback-refresh-btn">🔄 Perbarui</button>
+            <span id="adm-feedback-count-info" style="font-size:0.78rem;color:var(--charcoal-muted);"></span>
+            <button class="adm-btn adm-btn-secondary" id="adm-feedback-refresh-btn">Perbarui</button>
           </div>
         </div>
 
@@ -1183,17 +1670,17 @@
               <tr>
                 <th>Waktu (WIB)</th>
                 <th>Rating</th>
-                <th>Pesan</th>
-                <th>Tamu</th>
-                <th>WA (tersamar)</th>
+                <th>Pesan Masukan</th>
+                <th>Nama Tamu</th>
+                <th>WA (Tersamar)</th>
                 <th>Sumber / Staf</th>
-                <th>Outlet</th>
+                <th>Gerai</th>
                 <th>Status</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody id="adm-feedback-tbody">
-              <tr><td colspan="9" class="bs-empty">Buka tab ini untuk memuat feedback dari server.</td></tr>
+              <tr><td colspan="9" class="bs-empty">Buka tab ini untuk memuat masukan tamu dari server.</td></tr>
             </tbody>
           </table>
         </div>
@@ -1205,7 +1692,7 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════
-     MODAL TAMBAH / EDIT SUMBER (YANG SUDAH ADA)
+     MODAL TAMBAH / EDIT SUMBER (Dengan Field Sales Hours & Template — FR-CMS-05)
 ═══════════════════════════════════════════════════════════════ -->
 <div id="adm-source-modal" class="adm-modal-overlay" role="dialog"
      aria-modal="true" aria-labelledby="adm-source-modal-title" aria-hidden="true" style="display:none;">
@@ -1216,41 +1703,55 @@
     </div>
     <form id="adm-source-form" novalidate>
       <div class="adm-form-group">
-        <label for="adm-src-name">Nama Staf / Label Meja <span class="adm-required">*</span></label>
+        <label for="adm-src-name">Nama Staf / Sales / Label Meja <span class="adm-required">*</span></label>
         <input type="text" id="adm-src-name" class="adm-input" placeholder="Contoh: Budi Santoso" required>
       </div>
+      <div class="adm-two-col-form">
+        <div class="adm-form-group">
+          <label for="adm-src-type">Tipe Sumber <span class="adm-required">*</span></label>
+          <select id="adm-src-type" class="adm-input" required>
+            <option value="staff">Staf Operasional (Staff)</option>
+            <option value="sales">Sales &amp; Marketing</option>
+            <option value="nfc">Meja / Titik NFC</option>
+            <option value="outlet">Gerai (Outlet)</option>
+          </select>
+        </div>
+        <div class="adm-form-group" id="adm-src-outlet-group">
+          <label for="adm-src-outlet">Gerai / Unit Penugasan</label>
+          <select id="adm-src-outlet" class="adm-input">
+            <option value="">— Pilih gerai / unit —</option>
+            <option value="Arumanis Restaurant">Arumanis Restaurant</option>
+            <option value="Kizahashi">Kizahashi</option>
+            <option value="Lobby Lounge">Lobby Lounge</option>
+            <option value="DeliKopi">DeliKopi</option>
+          </select>
+        </div>
+      </div>
+      <div class="adm-two-col-form">
+        <div class="adm-form-group" id="adm-src-role-group">
+          <label for="adm-src-role">Jabatan / Peran</label>
+          <input type="text" id="adm-src-role" class="adm-input" placeholder="Contoh: Head Waiter, Sales Manager">
+        </div>
+        <div class="adm-form-group" id="adm-src-wa-group">
+          <label for="adm-src-wa">Nomor WhatsApp (Format 628xx)</label>
+          <input type="tel" id="adm-src-wa" class="adm-input" placeholder="Contoh: 6281234567890">
+        </div>
+      </div>
+      <div class="adm-two-col-form">
+        <div class="adm-form-group">
+          <label for="adm-src-hours">Jam Layanan Sales (Opsional)</label>
+          <input type="text" id="adm-src-hours" class="adm-input" placeholder="Contoh: 08.00 – 21.00 WIB">
+        </div>
+        <div class="adm-form-group" id="adm-src-code-group" style="display:none;">
+          <label>Kode URL (Otomatis)</label>
+          <input type="text" id="adm-src-code-preview" class="adm-input" readonly style="background:#f5f5f5;">
+        </div>
+      </div>
       <div class="adm-form-group">
-        <label for="adm-src-type">Tipe Sumber <span class="adm-required">*</span></label>
-        <select id="adm-src-type" class="adm-input" required>
-          <option value="staff">Staf (Staff)</option>
-          <option value="sales">Sales &amp; Marketing</option>
-          <option value="nfc">Meja / Titik NFC</option>
-          <option value="outlet">Gerai (Outlet)</option>
-        </select>
+        <label for="adm-src-welcome-tmpl">Template Pesan Pembuka WA Khusus Sales Ini (Opsional, mendukung <code>{staff_name}</code>)</label>
+        <input type="text" id="adm-src-welcome-tmpl" class="adm-input" placeholder="Halo, saya tamu Bumi Surabaya. Saya ingin berkonsultasi dengan {staff_name}.">
       </div>
-      <div class="adm-form-group" id="adm-src-role-group">
-        <label for="adm-src-role">Jabatan</label>
-        <input type="text" id="adm-src-role" class="adm-input" placeholder="Contoh: Head Waiter, Captain Lounge, Sales Manager">
-      </div>
-      <div class="adm-form-group" id="adm-src-outlet-group">
-        <label for="adm-src-outlet">Gerai Penugasan</label>
-        <select id="adm-src-outlet" class="adm-input">
-          <option value="">— Pilih gerai —</option>
-          <option value="Arumanis Restaurant">Arumanis Restaurant</option>
-          <option value="Kizahashi">Kizahashi Japanese Restaurant</option>
-          <option value="Lobby Lounge">Lobby Lounge</option>
-          <option value="DeliKopi">DeliKopi</option>
-        </select>
-      </div>
-      <div class="adm-form-group" id="adm-src-wa-group">
-        <label for="adm-src-wa">Nomor WhatsApp (opsional, format 628xx)</label>
-        <input type="tel" id="adm-src-wa" class="adm-input" placeholder="Contoh: 6281234567890">
-      </div>
-      <div class="adm-form-group" id="adm-src-code-group" style="display:none;">
-        <label>Kode URL (Auto-generated)</label>
-        <input type="text" id="adm-src-code-preview" class="adm-input" readonly style="background:#f5f5f5;">
-      </div>
-      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:14px;">
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
         <button type="button" class="adm-btn adm-btn-secondary" id="adm-source-modal-cancel">Batal</button>
         <button type="submit" class="adm-btn adm-btn-primary" id="adm-source-modal-submit">Simpan Data</button>
       </div>
@@ -1274,25 +1775,26 @@
         <input type="text" id="adm-otl-name" class="adm-input" placeholder="Contoh: Arumanis Restaurant" required>
       </div>
       <div class="adm-form-group">
-        <label for="adm-otl-image">Foto / Gambar Gerai <span class="adm-required">*</span></label>
-        <select id="adm-otl-image" class="adm-input" required>
-          <option value="../assets/images/outlets/arumanis.jpg">Arumanis (/assets/images/outlets/arumanis.jpg)</option>
-          <option value="../assets/images/outlets/delikopi.svg">DeliKopi (/assets/images/outlets/delikopi.svg)</option>
-          <option value="../assets/images/outlets/kizahashi.svg">Kizahashi (/assets/images/outlets/kizahashi.svg)</option>
-          <option value="../assets/images/outlets/lobby-lounge.jpg">Lobby Lounge (/assets/images/outlets/lobby-lounge.jpg)</option>
-        </select>
+        <label for="adm-otl-image">Path / URL Foto Gerai <span class="adm-required">*</span></label>
+        <input type="text" id="adm-otl-image" class="adm-input" list="adm-otl-image-list" placeholder="assets/images/outlets/arumanis.jpg atau https://..." required>
+        <datalist id="adm-otl-image-list">
+          <option value="assets/images/outlets/arumanis.jpg">Arumanis (assets/images/outlets/arumanis.jpg)</option>
+          <option value="assets/images/outlets/delikopi.svg">DeliKopi (assets/images/outlets/delikopi.svg)</option>
+          <option value="assets/images/outlets/kizahashi.svg">Kizahashi (assets/images/outlets/kizahashi.svg)</option>
+          <option value="assets/images/outlets/lobby-lounge.jpg">Lobby Lounge (assets/images/outlets/lobby-lounge.jpg)</option>
+        </datalist>
       </div>
       <div class="adm-form-group">
         <label for="adm-otl-type">Tipe Masakan / Kategori</label>
-        <input type="text" id="adm-otl-type" class="adm-input" placeholder="Contoh: Authentic Indonesian Buffet">
+        <input type="text" id="adm-otl-type" class="adm-input" placeholder="Contoh: Authentic Indonesian &amp; International Buffet">
       </div>
       <div class="adm-two-col-form">
         <div class="adm-form-group">
-          <label for="adm-otl-emoji">Emoji Ikon</label>
-          <input type="text" id="adm-otl-emoji" class="adm-input" placeholder="Contoh: 🍛" style="max-width:120px;">
+          <label for="adm-otl-emoji">Simbol / Ikon Kartu Tamu</label>
+          <input type="text" id="adm-otl-emoji" class="adm-input" placeholder="Contoh: 🍽️" style="max-width:120px;">
         </div>
         <div class="adm-form-group">
-          <label for="adm-otl-badge">Badge / Fitur Khusus</label>
+          <label for="adm-otl-badge">Badge / Kapasitas Unggulan</label>
           <input type="text" id="adm-otl-badge" class="adm-input" placeholder="Contoh: Private Room 30 Pax">
         </div>
       </div>
@@ -1306,7 +1808,7 @@
           <input type="text" id="adm-otl-hours" class="adm-input" placeholder="Contoh: 06.00 – 22.00 WIB">
         </div>
         <div class="adm-form-group">
-          <label for="adm-otl-whatsapp">WhatsApp Reservasi</label>
+          <label for="adm-otl-whatsapp">WhatsApp Reservasi Gerai</label>
           <input type="tel" id="adm-otl-whatsapp" class="adm-input" placeholder="Contoh: 628113388523">
         </div>
       </div>
@@ -1315,11 +1817,11 @@
         <input type="url" id="adm-otl-res-url" class="adm-input" placeholder="https://...">
       </div>
       <div class="adm-form-group">
-        <label for="adm-otl-review-url">URL Google Review (Opsional)</label>
-        <input type="url" id="adm-otl-review-url" class="adm-input" placeholder="https://...">
+        <label for="adm-otl-review-url">URL Google Review Khusus Gerai Ini (Opsional)</label>
+        <input type="url" id="adm-otl-review-url" class="adm-input" placeholder="https://search.google.com/local/writereview?placeid=...">
       </div>
       <div class="adm-form-group">
-        <label class="adm-toggle-item" style="padding:0;border:none;">
+        <label class="adm-toggle-item" style="padding:0;border:none;background:transparent;">
           <input type="checkbox" id="adm-otl-active" checked>
           <div class="adm-toggle-label">
             <strong>Gerai Aktif</strong>
@@ -1327,7 +1829,7 @@
           </div>
         </label>
       </div>
-      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:14px;">
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
         <button type="button" class="adm-btn adm-btn-secondary" id="adm-outlet-modal-cancel">Batal</button>
         <button type="submit" class="adm-btn adm-btn-primary" id="adm-outlet-modal-submit">Simpan Gerai</button>
       </div>
@@ -1336,7 +1838,7 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
-     MODAL TAMBAH / EDIT PROMOSI (TERSTRUKTUR: CNT-01 s/d CNT-05)
+     MODAL TAMBAH / EDIT PROMOSI
 ═══════════════════════════════════════════════════════════════ -->
 <div id="adm-promo-modal" class="adm-modal-overlay" role="dialog"
      aria-modal="true" aria-labelledby="adm-promo-modal-title" aria-hidden="true" style="display:none;">
@@ -1355,19 +1857,19 @@
           <label for="adm-prm-outlet">Gerai Penyelenggara <span class="adm-required">*</span></label>
           <select id="adm-prm-outlet" class="adm-input" required>
             <option value="Arumanis Restaurant">Arumanis Restaurant</option>
-            <option value="Kizahashi">Kizahashi Japanese Restaurant</option>
+            <option value="Kizahashi">Kizahashi</option>
             <option value="Lobby Lounge">Lobby Lounge</option>
             <option value="DeliKopi">DeliKopi</option>
           </select>
         </div>
         <div class="adm-form-group">
-          <label for="adm-prm-emoji">Emoji Ikon</label>
+          <label for="adm-prm-emoji">Simbol / Ikon Kartu Tamu</label>
           <input type="text" id="adm-prm-emoji" class="adm-input" placeholder="Contoh: 🍽️" style="max-width:120px;">
         </div>
       </div>
       <div class="adm-form-group">
-        <label for="adm-prm-image">Foto / Gambar Promosi</label>
-        <input type="text" id="adm-prm-image" class="adm-input" placeholder="assets/images/promos/buffet.jpg atau https://...">
+        <label for="adm-prm-image">Path / URL Gambar Promosi</label>
+        <input type="text" id="adm-prm-image" class="adm-input" placeholder="assets/images/outlets/arumanis.jpg atau https://...">
       </div>
       <div class="adm-form-group">
         <label for="adm-prm-desc">Deskripsi Promosi</label>
@@ -1385,26 +1887,26 @@
       </div>
       <div class="adm-two-col-form">
         <div class="adm-form-group">
-          <label for="adm-prm-starts-at">Tanggal Mulai (Asia/Jakarta)</label>
+          <label for="adm-prm-starts-at">Tanggal Mulai Tayang (WIB)</label>
           <input type="date" id="adm-prm-starts-at" class="adm-input">
         </div>
         <div class="adm-form-group">
-          <label for="adm-prm-ends-at">Tanggal Berakhir (Asia/Jakarta)</label>
+          <label for="adm-prm-ends-at">Tanggal Berakhir Tayang (WIB)</label>
           <input type="date" id="adm-prm-ends-at" class="adm-input">
         </div>
       </div>
       <div class="adm-two-col-form">
         <div class="adm-form-group">
-          <label for="adm-prm-cta-label">Label Tombol CTA</label>
-          <input type="text" id="adm-prm-cta-label" class="adm-input" placeholder="Contoh: Reservasi Meja">
+          <label for="adm-prm-cta-label">Label Tombol CTA (Opsional)</label>
+          <input type="text" id="adm-prm-cta-label" class="adm-input" placeholder="Kosongkan untuk memakai label default">
         </div>
         <div class="adm-form-group">
-          <label for="adm-prm-cta-url">Tautan CTA (URL / WhatsApp)</label>
-          <input type="text" id="adm-prm-cta-url" class="adm-input" placeholder="https://wa.me/... atau https://...">
+          <label for="adm-prm-cta-url">Tautan CTA Khusus (Opsional)</label>
+          <input type="text" id="adm-prm-cta-url" class="adm-input" placeholder="Kosongkan untuk reservasi WhatsApp otomatis">
         </div>
       </div>
       <div class="adm-form-group">
-        <label class="adm-toggle-item" style="padding:0;border:none;">
+        <label class="adm-toggle-item" style="padding:0;border:none;background:transparent;">
           <input type="checkbox" id="adm-prm-active" checked>
           <div class="adm-toggle-label">
             <strong>Promosi Aktif</strong>
@@ -1412,7 +1914,7 @@
           </div>
         </label>
       </div>
-      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:14px;">
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
         <button type="button" class="adm-btn adm-btn-secondary" id="adm-promo-modal-cancel">Batal</button>
         <button type="submit" class="adm-btn adm-btn-primary" id="adm-promo-modal-submit">Simpan Promosi</button>
       </div>
@@ -1420,27 +1922,25 @@
   </div>
 </div>
 
-
-
 <!-- ═══════════════════════════════════════════════════════════
-     MODAL PREVIEW DRAFT KONTEN (CNT-09)
+     MODAL PRATINJAU DRAFT KONTEN HALAMAN TAMU
 ═══════════════════════════════════════════════════════════════ -->
 <div id="adm-preview-modal" class="adm-modal-overlay" role="dialog"
      aria-modal="true" aria-labelledby="adm-preview-modal-title" aria-hidden="true" style="display:none;">
-  <div class="adm-modal-box adm-preview-modal-box" style="max-width:960px;width:95vw;height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
-    <div class="adm-modal-header" style="padding:12px 18px;background:var(--color-bg,#faf8f5);border-bottom:1px solid var(--color-border,#e5e7eb);display:flex;align-items:center;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <h3 id="adm-preview-modal-title" style="margin:0;font-size:1.05rem;">👁️ Pratinjau Draft Halaman Tamu</h3>
-        <span class="adm-badge-warn" style="font-size:0.75rem;">Mode Draft</span>
+  <div class="adm-modal-box adm-preview-modal-box" style="max-width:980px;width:95vw;height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
+    <div class="adm-modal-header" style="padding:12px 18px;background:#faf9f6;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between;margin:0;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <h3 id="adm-preview-modal-title" style="margin:0;font-size:1.05rem;">Pratinjau Draft Halaman Tamu</h3>
+        <span class="adm-badge-warn" style="font-size:0.72rem;">Simulasi Live</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-preview-mode-mobile">📱 Mobile</button>
-        <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-preview-mode-desktop">💻 Desktop</button>
+        <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-preview-mode-mobile">Layar Ponsel (414px)</button>
+        <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-preview-mode-desktop">Layar Penuh</button>
         <button class="adm-modal-close" id="adm-preview-modal-close" aria-label="Tutup Pratinjau" style="position:static;margin-left:8px;">✕</button>
       </div>
     </div>
-    <div class="adm-preview-frame-wrap" style="flex:1;background:#2d3748;display:flex;justify-content:center;align-items:stretch;overflow:hidden;padding:12px;">
-      <iframe id="adm-preview-iframe" title="Pratinjau Halaman Tamu" style="width:414px;height:100%;border:none;border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.3);transition:width 0.3s ease;"></iframe>
+    <div class="adm-preview-frame-wrap" style="flex:1;background:#1c2420;display:flex;justify-content:center;align-items:stretch;overflow:hidden;padding:12px;">
+      <iframe id="adm-preview-iframe" title="Pratinjau Halaman Tamu" style="width:414px;height:100%;border:none;border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.3);transition:width 0.2s ease-out;"></iframe>
     </div>
   </div>
 </div>
@@ -1456,7 +1956,7 @@
 <script src="../assets/js/admin/anti-fraud.js"></script>
 <script src="../assets/js/admin/web-nfc.js"></script>
 
-<!-- ── Domain Modules Admin (PRD Fase 2 — Vanilla JS Modular) ── -->
+<!-- ── Domain Modules Admin (Vanilla JS Modular) ── -->
 <script src="../assets/js/admin/admin-core.js"></script>
 <script src="../assets/js/admin/admin-sources.js"></script>
 <script src="../assets/js/admin/admin-content.js"></script>

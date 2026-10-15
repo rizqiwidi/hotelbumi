@@ -1,9 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.2 (FASE 2)
- * admin-content.js — Manajemen gerai F&B, promosi, visibilitas seksi, sales WA, dan live draft preview (CNT-09)
- *
- * Mendukung kurasi gerai F&B, promosi terjadwal (CNT-01 s/d CNT-08),
- * nomor WhatsApp penjualan, dan pratinjau live sebelum publikasi ke tamu (CNT-09).
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * admin-content.js — Manajemen gerai F&B, promosi, 8 toggle visibilitas seksi, sales WA & live draft preview (FR-ADM-01, FR-ADM-05, FR-CMS-03 s/d FR-CMS-08, FR-P2-02)
  */
 
 (function (window) {
@@ -12,17 +9,62 @@
   var BSAdmin = window.BSAdmin || {};
   var $id = BSAdmin.$id;
   var esc = BSAdmin.esc;
+  var icon = BSAdmin.icon || function () { return ''; };
 
   /* ─────────────────────────────────────────────────────────────
-   * 1. Manajemen Gerai F&B (Outlets)
+   * 1. Dinamisasi Dropdown Gerai di Seluruh Modal Admin (FR-P2-02)
+   * ───────────────────────────────────────────────────────────── */
+  function populateOutletDropdowns() {
+    var outlets = BSAdmin.state.outlets || [];
+    var names = outlets.map(function (o) { return o && o.name; }).filter(Boolean);
+    if (names.length === 0) {
+      names = ['Arumanis Restaurant', 'Kizahashi', 'Lobby Lounge', 'DeliKopi'];
+    }
+
+    var srcSel = $id('adm-src-outlet');
+    if (srcSel) {
+      var curSrc = srcSel.value;
+      srcSel.innerHTML = '<option value="">— Pilih gerai / unit —</option>';
+      names.forEach(function (n) {
+        var opt = document.createElement('option');
+        opt.value = n; opt.textContent = n;
+        srcSel.appendChild(opt);
+      });
+      ['Banquet & Wedding', 'Corporate & Room Sales', 'Front Office & Concierge'].forEach(function (u) {
+        if (names.indexOf(u) === -1) {
+          var opt = document.createElement('option');
+          opt.value = u; opt.textContent = u;
+          srcSel.appendChild(opt);
+        }
+      });
+      if (curSrc) srcSel.value = curSrc;
+    }
+
+    var prmSel = $id('adm-prm-outlet');
+    if (prmSel) {
+      var curPrm = prmSel.value;
+      prmSel.innerHTML = '';
+      names.forEach(function (n) {
+        var opt = document.createElement('option');
+        opt.value = n; opt.textContent = n;
+        prmSel.appendChild(opt);
+      });
+      if (curPrm) prmSel.value = curPrm;
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * 2. Manajemen Gerai F&B (Outlets — FR-ADM-05)
    * ───────────────────────────────────────────────────────────── */
   function renderOutlets() {
     var grid = $id('adm-outlets-grid');
     if (!grid) return;
     var outlets = BSAdmin.state.outlets || [];
 
+    populateOutletDropdowns();
+
     if (outlets.length === 0) {
-      grid.innerHTML = '<p class="bs-empty">Belum ada gerai F&amp;B. Klik "+ Tambah Gerai Baru".</p>';
+      grid.innerHTML = '<p class="bs-empty" style="grid-column:1/-1;">Belum ada gerai F&amp;B terdaftar. Klik "+ Tambah Gerai Baru".</p>';
       return;
     }
 
@@ -43,12 +85,12 @@
           '<div class="adm-outlet-card-type">' + esc(o.type || 'Gerai Restoran') + '</div>' +
           '<p class="adm-outlet-card-desc">' + esc(o.description || '') + '</p>' +
           '<div class="adm-outlet-meta-row">' +
-            '<span>🕒 ' + esc(o.hours || '06.00 – 22.00 WIB') + '</span>' +
+            '<span>' + icon('clock', 13) + ' ' + esc(o.hours || '06.00 – 22.00 WIB') + '</span>' +
             activeBadge +
           '</div>' +
           '<div class="adm-outlet-card-actions">' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditOutlet(' + idx + ')">✏ Edit Detail</button>' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate"    onclick="adminDeleteOutlet(' + idx + ')">🗑 Hapus</button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditOutlet(' + idx + ')">' + icon('edit', 13) + ' <span>Edit Detail</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeleteOutlet(' + idx + ')">' + icon('trash', 13) + ' <span>Hapus</span></button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -73,20 +115,21 @@
     if (BSAdmin.state.editingOutletId !== null && outlets[BSAdmin.state.editingOutletId]) {
       var otl = outlets[BSAdmin.state.editingOutletId];
       if (title) title.textContent = 'Edit Gerai: ' + otl.name;
-      if ($id('adm-otl-name'))      $id('adm-otl-name').value      = otl.name;
-      if ($id('adm-otl-image'))     $id('adm-otl-image').value     = otl.image_url || 'assets/images/outlets/arumanis.jpg';
-      if ($id('adm-otl-type'))      $id('adm-otl-type').value      = otl.type || '';
-      if ($id('adm-otl-badge'))     $id('adm-otl-badge').value     = otl.highlight || '';
-      if ($id('adm-otl-desc'))      $id('adm-otl-desc').value      = otl.description || '';
-      if ($id('adm-otl-hours'))     $id('adm-otl-hours').value     = otl.hours || '';
-      if ($id('adm-otl-emoji'))     $id('adm-otl-emoji').value     = otl.emoji || '';
-      if ($id('adm-otl-whatsapp'))  $id('adm-otl-whatsapp').value  = otl.whatsapp || '';
-      if ($id('adm-otl-res-url'))   $id('adm-otl-res-url').value   = otl.reservation_url || '';
+      if ($id('adm-otl-name'))       $id('adm-otl-name').value       = otl.name;
+      if ($id('adm-otl-image'))      $id('adm-otl-image').value      = otl.image_url || 'assets/images/outlets/arumanis.jpg';
+      if ($id('adm-otl-type'))       $id('adm-otl-type').value       = otl.type || '';
+      if ($id('adm-otl-badge'))      $id('adm-otl-badge').value      = otl.highlight || '';
+      if ($id('adm-otl-desc'))       $id('adm-otl-desc').value       = otl.description || '';
+      if ($id('adm-otl-hours'))      $id('adm-otl-hours').value      = otl.hours || '';
+      if ($id('adm-otl-emoji'))      $id('adm-otl-emoji').value      = otl.emoji || '';
+      if ($id('adm-otl-whatsapp'))   $id('adm-otl-whatsapp').value   = otl.whatsapp || '';
+      if ($id('adm-otl-res-url'))    $id('adm-otl-res-url').value    = otl.reservation_url || '';
       if ($id('adm-otl-review-url')) $id('adm-otl-review-url').value = otl.review_url || '';
-      if ($id('adm-otl-active'))    $id('adm-otl-active').checked  = otl.active !== false;
+      if ($id('adm-otl-active'))     $id('adm-otl-active').checked   = otl.active !== false;
     } else {
       if (title) title.textContent = 'Tambah Gerai F&B Baru';
       if ($id('adm-outlet-form')) $id('adm-outlet-form').reset();
+      if ($id('adm-otl-image'))   $id('adm-otl-image').value   = 'assets/images/outlets/arumanis.jpg';
       if ($id('adm-otl-active'))  $id('adm-otl-active').checked = true;
     }
 
@@ -136,7 +179,7 @@
   };
 
   /* ─────────────────────────────────────────────────────────────
-   * 2. Manajemen Promosi (Promotions)
+   * 3. Manajemen Promosi (Promotions)
    * ───────────────────────────────────────────────────────────── */
   function renderPromos() {
     var tbody = $id('adm-promos-tbody');
@@ -160,8 +203,8 @@
         '<td>' + esc(p.period || '—') + '</td>' +
         '<td>' + actBadge + '</td>' +
         '<td class="adm-actions">' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditPromo(' + idx + ')">✏ Edit</button>' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate"    onclick="adminDeletePromo(' + idx + ')">🗑 Hapus</button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditPromo(' + idx + ')">' + icon('edit', 13) + ' <span>Edit</span></button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeletePromo(' + idx + ')">' + icon('trash', 13) + ' <span>Hapus</span></button>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -174,6 +217,8 @@
       BSAdmin.showToast('Peran Anda tidak memiliki izin untuk mengedit promosi.', 'warning');
       return;
     }
+
+    populateOutletDropdowns();
 
     BSAdmin.state.lastFocusedTrigger = document.activeElement;
     BSAdmin.state.editingPromoIdx = (idx !== null && idx !== undefined) ? idx : null;
@@ -249,18 +294,21 @@
   };
 
   /* ─────────────────────────────────────────────────────────────
-   * 3. Visibilitas Seksi Halaman Tamu & WhatsApp Settings
+   * 4. Visibilitas 8 Seksi Halaman Tamu & WhatsApp Settings (FR-CMS-03 s/d FR-CMS-06)
    * ───────────────────────────────────────────────────────────── */
   function populateSections() {
     var sec = (BSAdmin.state.configData && BSAdmin.state.configData.guest_sections)
       ? BSAdmin.state.configData.guest_sections
       : ((window.BSConfig && BSConfig.DEFAULTS && BSConfig.DEFAULTS.guest_sections) || {});
 
-    if ($id('adm-sec-review'))  $id('adm-sec-review').checked  = sec.show_review !== false;
-    if ($id('adm-sec-wa'))      $id('adm-sec-wa').checked      = sec.show_wa !== false;
-    if ($id('adm-sec-outlets')) $id('adm-sec-outlets').checked = sec.show_outlets !== false;
-    if ($id('adm-sec-promos'))  $id('adm-sec-promos').checked  = sec.show_promotions !== false;
-    if ($id('adm-sec-social'))  $id('adm-sec-social').checked  = sec.show_social !== false;
+    if ($id('adm-sec-review'))     $id('adm-sec-review').checked     = sec.show_review !== false;
+    if ($id('adm-sec-feedback'))   $id('adm-sec-feedback').checked   = sec.show_direct_feedback !== false;
+    if ($id('adm-sec-wa'))         $id('adm-sec-wa').checked         = sec.show_wa !== false;
+    if ($id('adm-sec-outlets'))    $id('adm-sec-outlets').checked    = sec.show_outlets !== false;
+    if ($id('adm-sec-promos'))     $id('adm-sec-promos').checked     = sec.show_promotions !== false;
+    if ($id('adm-sec-social'))     $id('adm-sec-social').checked     = sec.show_social !== false;
+    if ($id('adm-sec-final-cta'))  $id('adm-sec-final-cta').checked  = sec.show_final_cta !== false;
+    if ($id('adm-sec-mobile-bar')) $id('adm-sec-mobile-bar').checked = sec.show_mobile_bar !== false;
   }
 
   function renderSalesWa() {
@@ -279,18 +327,21 @@
           ? '<span class="adm-badge-ok">Aktif</span>'
           : '<span class="adm-badge-err">Nonaktif</span>';
         var waNum = s.whatsapp ? ('<code>' + esc(s.whatsapp) + '</code>') : '<span class="adm-badge-warn">Belum diisi</span>';
-        var tmpl = 'Halo, saya tamu Bumi Surabaya. Saya dilayani oleh ' + esc(s.name) + '.';
+        var tmpl  = s.welcome_template
+          ? esc(s.welcome_template)
+          : ('Halo, saya tamu Bumi Surabaya. Saya dilayani oleh ' + esc(s.name) + '.');
+        var hours = esc(s.service_hours || '08.00 – 21.00 WIB');
 
         return '<tr>' +
-          '<td><strong>' + esc(s.outlet || s.role || 'Sales General') + '</strong></td>' +
+          '<td><strong>' + esc(s.outlet || s.role || 'Sales & Reservasi') + '</strong></td>' +
           '<td>' + esc(s.name) + '</td>' +
           '<td>' + waNum + '</td>' +
           '<td style="font-size:0.78rem;max-width:240px;">' + tmpl + '</td>' +
-          '<td>08.00 – 21.00 WIB</td>' +
+          '<td>' + hours + '</td>' +
           '<td>' + statusBadge + '</td>' +
           '<td class="adm-actions">' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditSource(\'' + esc(s.code) + '\')">✏ Edit</button>' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate"    onclick="adminDeleteSource(\'' + esc(s.code) + '\')">🗑 Hapus</button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditSource(\'' + esc(s.code) + '\')">' + icon('edit', 13) + ' <span>Edit</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeleteSource(\'' + esc(s.code) + '\')">' + icon('trash', 13) + ' <span>Hapus</span></button>' +
           '</td>' +
         '</tr>';
       }).join('');
@@ -308,10 +359,14 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-   * 4. Pratinjau Konten Live Sebelum Publikasi (CNT-09)
+   * 5. Pratinjau Konten Live Sebelum Publikasi (?preview=1 — FR-CMS-08)
    * ───────────────────────────────────────────────────────────── */
   function openDraftPreview() {
-    // Siapkan draft configuration ke sessionStorage
+    // Jika modul CMS appearance aktif, kumpulkan nilai draft terkini dari form CMS
+    if (BSAdmin.appearance && typeof BSAdmin.appearance.collectDraftToState === 'function') {
+      BSAdmin.appearance.collectDraftToState();
+    }
+
     var draftConfig = Object.assign({}, BSAdmin.state.configData, {
       promotions: BSAdmin.state.promos,
       outlets:    BSAdmin.state.outlets
@@ -328,7 +383,6 @@
     var modal = $id('adm-preview-modal');
     var iframe = $id('adm-preview-iframe');
     if (!modal || !iframe) {
-      // Jika modal belum tersedia di markup, buka di tab baru dengan parameter preview
       window.open('../index.html?preview=1', '_blank');
       return;
     }
@@ -347,11 +401,9 @@
     if (iframe) iframe.src = 'about:blank';
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 5. Inisialisasi Event Listener Modul Content
-   * ───────────────────────────────────────────────────────────── */
   function init() {
-    // Outlets
+    populateOutletDropdowns();
+
     if ($id('adm-add-outlet-btn')) {
       $id('adm-add-outlet-btn').addEventListener('click', function () { openOutletModal(null); });
     }
@@ -364,7 +416,7 @@
       outletForm.addEventListener('submit', function (e) {
         e.preventDefault();
         var name  = ($id('adm-otl-name').value || '').trim();
-        var img   = $id('adm-otl-image') ? $id('adm-otl-image').value : '';
+        var img   = ($id('adm-otl-image') ? $id('adm-otl-image').value : '').trim() || 'assets/images/outlets/arumanis.jpg';
         var type  = ($id('adm-otl-type') ? $id('adm-otl-type').value : '').trim();
         var badge = ($id('adm-otl-badge') ? $id('adm-otl-badge').value : '').trim();
         var desc  = ($id('adm-otl-desc') ? $id('adm-otl-desc').value : '').trim();
@@ -380,7 +432,7 @@
         var record = {
           id:              name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
           name:            name,
-          image_url:       img,
+          image_url:       img.replace(/^\.\.\//, ''),
           type:            type,
           highlight:       badge,
           description:     desc,
@@ -393,7 +445,6 @@
         };
 
         if (BSAdmin.state.editingOutletId !== null && BSAdmin.state.outlets[BSAdmin.state.editingOutletId]) {
-          // PERTAHANKAN field lain yang tidak diubah (CNT-01, CNT-02)
           BSAdmin.state.outlets[BSAdmin.state.editingOutletId] = Object.assign({}, BSAdmin.state.outlets[BSAdmin.state.editingOutletId], record);
         } else {
           BSAdmin.state.outlets.push(record);
@@ -417,7 +468,6 @@
       });
     }
 
-    // Promos
     if ($id('adm-add-promo-btn')) {
       $id('adm-add-promo-btn').addEventListener('click', function () { openPromoModal(null); });
     }
@@ -484,7 +534,6 @@
       });
     }
 
-    // Seksi Tamu
     if ($id('adm-save-sections-btn')) {
       $id('adm-save-sections-btn').addEventListener('click', function () {
         if (!BSAdmin.checkPermission('save_content')) {
@@ -492,31 +541,32 @@
           return;
         }
         var sections = {
-          show_review:     $id('adm-sec-review') ? $id('adm-sec-review').checked : true,
-          show_wa:         $id('adm-sec-wa') ? $id('adm-sec-wa').checked : true,
-          show_outlets:    $id('adm-sec-outlets') ? $id('adm-sec-outlets').checked : true,
-          show_promotions: $id('adm-sec-promos') ? $id('adm-sec-promos').checked : true,
-          show_social:     $id('adm-sec-social') ? $id('adm-sec-social').checked : true,
-          show_final_cta:  true
+          show_review:          $id('adm-sec-review') ? $id('adm-sec-review').checked : true,
+          show_direct_feedback: $id('adm-sec-feedback') ? $id('adm-sec-feedback').checked : true,
+          show_wa:              $id('adm-sec-wa') ? $id('adm-sec-wa').checked : true,
+          show_outlets:         $id('adm-sec-outlets') ? $id('adm-sec-outlets').checked : true,
+          show_promotions:      $id('adm-sec-promos') ? $id('adm-sec-promos').checked : true,
+          show_social:          $id('adm-sec-social') ? $id('adm-sec-social').checked : true,
+          show_final_cta:       $id('adm-sec-final-cta') ? $id('adm-sec-final-cta').checked : true,
+          show_mobile_bar:      $id('adm-sec-mobile-bar') ? $id('adm-sec-mobile-bar').checked : true
         };
         BSAdmin.state.configData.guest_sections = sections;
 
         var btn = this;
         btn.disabled = true;
-        btn.textContent = '⏳ Menyimpan…';
+        btn.textContent = 'Menyimpan…';
         window.BSApi && BSApi.saveAllAdminData({ config: { guest_sections: sections } }).then(function () {
           if (window.BSConfig) BSConfig.clearCache();
-          BSAdmin.showToast('Visibilitas seksi tamu berhasil diperbarui.', 'success');
+          BSAdmin.showToast('Visibilitas 8 seksi halaman tamu berhasil diperbarui.', 'success');
         }).catch(function (err) {
           BSAdmin.showToast('Gagal menyimpan seksi: ' + err.message, 'error');
         }).finally(function () {
           btn.disabled = false;
-          btn.textContent = '💾 Simpan Visibilitas Seksi';
+          btn.innerHTML = icon('save', 14) + ' <span>Simpan Visibilitas Seksi</span>';
         });
       });
     }
 
-    // Global WhatsApp
     if ($id('adm-add-sales-wa-btn')) {
       $id('adm-add-sales-wa-btn').addEventListener('click', function () {
         if (BSAdmin.sources && typeof BSAdmin.sources.openModal === 'function') {
@@ -549,7 +599,7 @@
 
         var btn = this;
         btn.disabled = true;
-        btn.textContent = '⏳ Menyimpan…';
+        btn.textContent = 'Menyimpan…';
         window.BSApi && BSApi.saveAllAdminData({ config: { whatsapp_settings: waSettings } }).then(function () {
           if (window.BSConfig) BSConfig.clearCache();
           BSAdmin.showToast('Pengaturan WhatsApp global berhasil disimpan.', 'success');
@@ -557,18 +607,16 @@
           BSAdmin.showToast('Gagal: ' + err.message, 'error');
         }).finally(function () {
           btn.disabled = false;
-          btn.textContent = '💾 Simpan Pengaturan WhatsApp Global';
+          btn.innerHTML = icon('save', 14) + ' <span>Simpan Pengaturan WhatsApp Global</span>';
         });
       });
     }
 
-    // Pratinjau Live Draft (CNT-09)
-    if ($id('adm-preview-draft-btn')) {
-      $id('adm-preview-draft-btn').addEventListener('click', openDraftPreview);
-    }
-    if ($id('adm-preview-draft-btn-outlets')) {
-      $id('adm-preview-draft-btn-outlets').addEventListener('click', openDraftPreview);
-    }
+    ['adm-preview-draft-btn', 'adm-preview-draft-btn-outlets', 'adm-cms-preview-btn'].forEach(function (id) {
+      var b = $id(id);
+      if (b) b.addEventListener('click', openDraftPreview);
+    });
+
     if ($id('adm-preview-mode-mobile')) {
       $id('adm-preview-mode-mobile').addEventListener('click', function () {
         var iframe = $id('adm-preview-iframe');
@@ -587,19 +635,19 @@
     BSAdmin.setupAccessibleModal('adm-preview-modal', closeDraftPreview);
   }
 
-  // Ekspor API modul
   BSAdmin.content = {
-    renderOutlets:    renderOutlets,
-    openOutletModal:  openOutletModal,
-    closeOutletModal: closeOutletModal,
-    renderPromos:     renderPromos,
-    openPromoModal:   openPromoModal,
-    closePromoModal:  closePromoModal,
-    populateSections: populateSections,
-    renderSalesWa:    renderSalesWa,
-    openDraftPreview: openDraftPreview,
-    closeDraftPreview:closeDraftPreview,
-    init:             init
+    populateOutletDropdowns: populateOutletDropdowns,
+    renderOutlets:           renderOutlets,
+    openOutletModal:         openOutletModal,
+    closeOutletModal:        closeOutletModal,
+    renderPromos:            renderPromos,
+    openPromoModal:          openPromoModal,
+    closePromoModal:         closePromoModal,
+    populateSections:        populateSections,
+    renderSalesWa:           renderSalesWa,
+    openDraftPreview:        openDraftPreview,
+    closeDraftPreview:       closeDraftPreview,
+    init:                    init
   };
 
   window.BSAdmin = BSAdmin;

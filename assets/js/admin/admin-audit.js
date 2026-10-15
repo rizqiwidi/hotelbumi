@@ -1,9 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.2 (FASE 2)
- * admin-audit.js — Jejak Audit & Riwayat Mutasi Sensitif (SEC-11, SEC-12, PRD 7.9)
- *
- * Mengelola pembacaan dan visualisasi log audit dari lembar AuditLog backend Apps Script:
- * mencatat aktor, peran, waktu server, tindakan, objek mutasi, status, detail, dan IP masked.
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * admin-audit.js — Jejak Audit & Riwayat Mutasi Sensitif (FR-P0-02, FR-ADM-01)
  */
 
 (function (window) {
@@ -18,39 +15,38 @@
     if (parts.length === 4) { parts[2] = 'x'; parts[3] = 'x'; return parts.join('.'); }
     return ip || '—';
   };
+  var icon = BSAdmin.icon || function () { return ''; };
 
-  /* ─────────────────────────────────────────────────────────────
-   * 1. Pemuatan Data Audit Log dari Server
-   * ───────────────────────────────────────────────────────────── */
   function loadAuditLogs(limit) {
     var tbody = $id('adm-audit-tbody');
     var refreshBtn = $id('adm-audit-refresh-btn');
 
     if (!BSAdmin.checkPermission('view_audit')) {
       if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="7" class="bs-empty">Peran Anda (' + (state.userRole || 'editor') + ') tidak memiliki izin untuk melihat log audit.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="bs-empty">Peran Anda (' + esc(state.userRole || 'editor') + ') tidak memiliki izin untuk melihat log audit.</td></tr>';
       }
       return;
     }
 
     if (refreshBtn) {
       refreshBtn.disabled = true;
-      refreshBtn.textContent = '🔄 Memuat…';
+      refreshBtn.innerHTML = icon('rotate', 14) + ' <span>Memuat…</span>';
     }
 
     if (tbody) {
-      tbody.innerHTML = '<tr><td colspan="7" class="bs-empty">⏳ Memuat riwayat jejak audit dari server…</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="bs-empty">Memuat riwayat jejak audit dari server…</td></tr>';
     }
 
     if (!window.BSApi || typeof BSApi.getAuditLogs !== 'function') {
       if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="bs-empty">API Audit tidak tersedia.</td></tr>';
-      if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '🔄 Perbarui Log'; }
+      if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.innerHTML = icon('rotate', 14) + ' <span>Perbarui Log</span>'; }
       return;
     }
 
     BSApi.getAuditLogs(limit || 150).then(function (resp) {
       if (resp && resp.ok) {
-        state.auditLogs = resp.audit_logs || [];
+        // Mendukung resp.audit_logs maupun resp.logs (FR-P0-02)
+        state.auditLogs = resp.audit_logs || resp.logs || [];
         renderAuditTable();
         BSAdmin.showToast('Memuat ' + state.auditLogs.length + ' catatan audit.', 'info');
       } else {
@@ -58,20 +54,17 @@
       }
     }).catch(function (err) {
       if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="7" class="bs-empty" style="color:var(--color-danger,#c0392b);">❌ Gagal memuat audit log: ' + esc(err.message) + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="bs-empty" style="color:var(--danger,#dc2626);">Gagal memuat audit log: ' + esc(err.message) + '</td></tr>';
       }
       BSAdmin.showToast('Gagal memuat audit log: ' + err.message, 'error');
     }).finally(function () {
       if (refreshBtn) {
         refreshBtn.disabled = false;
-        refreshBtn.textContent = '🔄 Perbarui Log';
+        refreshBtn.innerHTML = icon('rotate', 14) + ' <span>Perbarui Log</span>';
       }
     });
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 2. Render Tabel Audit Log
-   * ───────────────────────────────────────────────────────────── */
   function renderAuditTable() {
     var tbody = $id('adm-audit-tbody');
     if (!tbody) return;
@@ -91,7 +84,6 @@
       return true;
     });
 
-    // Update info hitungan log
     var countEl = $id('adm-audit-count-info');
     if (countEl) {
       countEl.textContent = 'Menampilkan ' + logs.length + ' dari ' + (state.auditLogs || []).length + ' catatan.';
@@ -103,36 +95,33 @@
     }
 
     tbody.innerHTML = logs.map(function (log) {
-      var ts = log.ts_server ? new Date(log.ts_server).toLocaleString('id-ID') : '—';
+      var tsVal = log.ts_server || log.timestamp;
+      var ts = tsVal ? new Date(tsVal).toLocaleString('id-ID') : '—';
       var statusBadge = '';
       if (log.status === 'SUCCESS') {
         statusBadge = '<span class="adm-badge-ok">SUCCESS</span>';
       } else if (log.status === 'FAILED') {
         statusBadge = '<span class="adm-badge-err">FAILED</span>';
-      } else if (log.status === 'DENIED') {
-        statusBadge = '<span class="adm-badge-warn">DENIED</span>';
+      } else if (log.status === 'DENIED' || log.status === 'REJECTED') {
+        statusBadge = '<span class="adm-badge-warn">' + esc(log.status) + '</span>';
       } else {
         statusBadge = '<span class="adm-badge-secondary">' + esc(log.status || 'INFO') + '</span>';
       }
 
       var roleBadge = '<span class="adm-role-tag adm-role-' + esc(log.role || 'user') + '">' + esc(log.role || '—') + '</span>';
-      var ipDisp = maskIp(log.ip || '');
 
       return '<tr>' +
-        '<td style="font-size:0.75rem;white-space:nowrap;">' + esc(ts) + '</td>' +
+        '<td class="bs-num" style="font-size:0.78rem;white-space:nowrap;text-align:left;">' + esc(ts) + '</td>' +
         '<td><strong>' + esc(log.actor || 'system') + '</strong></td>' +
         '<td>' + roleBadge + '</td>' +
         '<td><code>' + esc(log.action || '—') + '</code></td>' +
         '<td>' + esc(log.target_object || '—') + '</td>' +
         '<td>' + statusBadge + '</td>' +
-        '<td style="font-size:0.75rem;max-width:240px;word-break:break-word;">' + esc(log.details || '—') + '</td>' +
+        '<td style="font-size:0.78rem;max-width:260px;word-break:break-word;">' + esc(log.details || '—') + '</td>' +
       '</tr>';
     }).join('');
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 3. Binding Event Listener Modul Audit
-   * ───────────────────────────────────────────────────────────── */
   function init() {
     var refreshBtn = $id('adm-audit-refresh-btn');
     if (refreshBtn) {
@@ -152,7 +141,6 @@
     }
   }
 
-  // Ekspor API modul
   BSAdmin.audit = {
     load:        loadAuditLogs,
     renderTable: renderAuditTable,

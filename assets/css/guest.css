@@ -14,6 +14,8 @@
   --charcoal: #2c2c2c;
   --charcoal-light: #4a4a4a;
   --white: #ffffff;
+  --gold: var(--champagne-gold);
+  --ink: var(--charcoal);
   --shadow-soft: 0 4px 24px rgba(26, 60, 42, 0.08);
   --shadow-medium: 0 8px 32px rgba(26, 60, 42, 0.12);
   --radius-sm: 12px;

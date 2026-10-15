@@ -1,9 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.2 (FASE 2)
- * admin-fraud-ops.js — Audit Anomali, Perangkat Staf, Konfigurasi Backend & Akun
- *
- * Mengelola deteksi fraud (8 aturan), pendaftaran HP Staf (StaffDevices — SRC-08, AF-03),
- * ambang batas fraud, koneksi backend Apps Script, dan perubahan kata sandi admin.
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * admin-fraud-ops.js — Audit Anomali, Perangkat Staf, Konfigurasi Backend & Akun (FR-P0-03, FR-P0-06, FR-ADM-01)
  */
 
 (function (window) {
@@ -18,10 +15,8 @@
     if (parts.length === 4) { parts[2] = 'x'; parts[3] = 'x'; return parts.join('.'); }
     return ip || '—';
   };
+  var icon = BSAdmin.icon || function () { return ''; };
 
-  /* ─────────────────────────────────────────────────────────────
-   * 1. Evaluasi Ulang & Tabel Anomali Fraud
-   * ───────────────────────────────────────────────────────────── */
   function reEvaluateFraud() {
     if (!state.events || state.events.length === 0) return;
     var srcList = (window.BSStaffManager && typeof BSStaffManager.getSources === 'function')
@@ -76,7 +71,7 @@
     }
 
     if (summary) {
-      summary.innerHTML = '<div class="adm-fraud-summary-pill">Total event anomali terdeteksi: <strong>' + flagged.length + '</strong></div>';
+      summary.innerHTML = '<div class="adm-fraud-summary-pill">Total event anomali terdeteksi: <strong class="bs-num">' + flagged.length + '</strong></div>';
     }
 
     if (!tbody) return;
@@ -91,21 +86,18 @@
       var ts = ev.ts_server ? new Date(ev.ts_server).toLocaleString('id-ID') : '—';
       var flags = (ev._flags || []).join(', ');
       return '<tr>' +
-        '<td style="font-size:0.78rem;">' + esc(ts) + '</td>' +
+        '<td class="bs-num" style="font-size:0.78rem;text-align:left;">' + esc(ts) + '</td>' +
         '<td><strong>' + esc(ev.source || '—') + '</strong></td>' +
         '<td><code style="font-size:0.75rem;">' + esc(mDev) + '</code></td>' +
         '<td><code style="font-size:0.75rem;">' + esc(mIp) + '</code></td>' +
         '<td><span class="adm-badge-err">' + esc(flags) + '</span></td>' +
         '<td>' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" onclick="adminMarkDevice(\'' + esc(ev.device_id || '') + '\',\'' + esc(ev.source || '') + '\')">📌 Daftarkan HP Staf</button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminMarkDevice(\'' + esc(ev.device_id || '') + '\',\'' + esc(ev.source || '') + '\')">' + icon('shield', 13) + ' <span>Tandai HP Staf</span></button>' +
         '</td>' +
       '</tr>';
     }).join('');
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 2. Manajemen Perangkat Staf (StaffDevices — SRC-08, AF-03)
-   * ───────────────────────────────────────────────────────────── */
   function renderStaffDevicesTable() {
     var tbody = $id('adm-staff-devices-tbody');
     if (!tbody) return;
@@ -121,8 +113,8 @@
         '<td><code style="font-size:0.75rem;" title="' + esc(dev.device_id || '') + '">' + esc(devSub) + '</code></td>' +
         '<td><strong>' + esc(dev.staff_code || '—') + '</strong></td>' +
         '<td>' + esc(dev.label || '—') + '</td>' +
-        '<td style="font-size:0.78rem;">' + esc(regTs) + '</td>' +
-        '<td><button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminRemoveStaffDevice(' + idx + ')">🗑 Hapus</button></td>' +
+        '<td class="bs-num" style="font-size:0.78rem;text-align:left;">' + esc(regTs) + '</td>' +
+        '<td><button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminRemoveStaffDevice(' + idx + ')">' + icon('trash', 13) + ' <span>Hapus</span></button></td>' +
       '</tr>';
     }).join('');
 
@@ -136,7 +128,7 @@
     }
     if (idx < 0 || idx >= state.staffDevices.length) return;
     var dev = state.staffDevices[idx];
-    if (!confirm('Hapus perangkat staf "' + (dev.label || dev.device_id) + '" dari StaffDevices?')) return;
+    if (!confirm('Hapus perangkat staf "' + (dev.label || dev.device_id) + '" dari daftar perangkat staf?')) return;
 
     var removed = state.staffDevices.splice(idx, 1)[0];
     BSAdmin.showToast('Menghapus perangkat dari server…', 'info');
@@ -162,7 +154,7 @@
     if (!confirm('Daftarkan perangkat ' + deviceId.substring(0, 8) + '… sebagai HP staf untuk sumber "' + sourceCode + '"?')) return;
     var exists = state.staffDevices.some(function (d) { return d.device_id === deviceId; });
     if (exists) {
-      BSAdmin.showToast('Perangkat sudah terdaftar di StaffDevices.', 'warning');
+      BSAdmin.showToast('Perangkat sudah terdaftar.', 'warning');
       return;
     }
 
@@ -174,21 +166,18 @@
     };
     state.staffDevices.push(newDev);
 
-    BSAdmin.showToast('Menyimpan perangkat ke server (StaffDevices)…', 'info');
+    BSAdmin.showToast('Menyimpan perangkat ke server…', 'info');
     BSApi.saveAllAdminData({ staff_devices: state.staffDevices }).then(function () {
-      BSAdmin.showToast('✅ Perangkat HP staf berhasil disimpan ke server!', 'success');
+      BSAdmin.showToast('Perangkat HP staf berhasil disimpan ke server.', 'success');
       renderStaffDevicesTable();
       reEvaluateFraud();
     }).catch(function (err) {
       var idx = state.staffDevices.indexOf(newDev);
       if (idx !== -1) state.staffDevices.splice(idx, 1);
-      BSAdmin.showToast('❌ Gagal menyimpan perangkat ke server: ' + err.message, 'error');
+      BSAdmin.showToast('Gagal menyimpan perangkat ke server: ' + err.message, 'error');
     });
   };
 
-  /* ─────────────────────────────────────────────────────────────
-   * 3. Form Pendaftaran Manual HP Staf
-   * ───────────────────────────────────────────────────────────── */
   function handleStaffDeviceSubmit(e) {
     e.preventDefault();
     if (!BSAdmin.checkPermission('save_staff_devices')) {
@@ -220,25 +209,22 @@
     state.staffDevices.push(newDev);
 
     var btn = $id('adm-sd-submit-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Menyimpan…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
 
     BSApi.saveAllAdminData({ staff_devices: state.staffDevices }).then(function () {
-      BSAdmin.showToast('✅ Perangkat staf berhasil disimpan ke server.', 'success');
+      BSAdmin.showToast('Perangkat staf berhasil disimpan ke server.', 'success');
       $id('adm-staff-device-form').reset();
       renderStaffDevicesTable();
       reEvaluateFraud();
     }).catch(function (err) {
       var idx = state.staffDevices.indexOf(newDev);
       if (idx !== -1) state.staffDevices.splice(idx, 1);
-      BSAdmin.showToast('❌ Gagal menyimpan perangkat: ' + err.message, 'error');
+      BSAdmin.showToast('Gagal menyimpan perangkat: ' + err.message, 'error');
     }).finally(function () {
-      if (btn) { btn.disabled = false; btn.textContent = '➕ Daftarkan Perangkat'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = icon('plus', 14) + ' <span>Daftarkan Perangkat</span>'; }
     });
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 4. Ambang Batas Anti-Fraud & Konfigurasi Backend GAS
-   * ───────────────────────────────────────────────────────────── */
   function populateFraudThresholds() {
     var ft = (state.configData && state.configData.fraud_thresholds)
       ? state.configData.fraud_thresholds : BSConfig.DEFAULTS.fraud_thresholds;
@@ -254,24 +240,27 @@
       return;
     }
 
-    var ft = {
+    var existingFt = (state.configData && state.configData.fraud_thresholds) || BSConfig.DEFAULTS.fraud_thresholds || {};
+    var ft = Object.assign({}, existingFt, {
       velocity_limit:   parseInt($id('adm-ft-velocity').value, 10)  || 3,
       burst_count:      parseInt($id('adm-ft-burst').value, 10)     || 5,
       low_dwell_ms:     (parseInt($id('adm-ft-low-dwell').value, 10) || 5) * 1000,
-      hopping_sources:  parseInt($id('adm-ft-hopping').value, 10)   || 4
-    };
+      hopping_sources:  parseInt($id('adm-ft-hopping').value, 10)   || 4,
+      odd_hour_start:   6,
+      odd_hour_end:     23
+    });
 
     state.configData.fraud_thresholds = ft;
     var btn = $id('adm-ft-save-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Menyimpan…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
 
     BSApi.saveAllAdminData({ fraud_settings: ft }).then(function () {
-      BSAdmin.showToast('Threshold anti-fraud berhasil disimpan ke server.', 'success');
+      BSAdmin.showToast('Ambang batas anti-fraud berhasil disimpan ke server.', 'success');
       reEvaluateFraud();
     }).catch(function (err) {
       BSAdmin.showToast('Gagal: ' + err.message, 'error');
     }).finally(function () {
-      if (btn) { btn.disabled = false; btn.textContent = '💾 Simpan & Sinkronkan Threshold'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = icon('save', 14) + ' <span>Simpan &amp; Sinkronkan Threshold</span>'; }
     });
   }
 
@@ -282,7 +271,7 @@
         BSConfig.setGasUrl(url);
       }
       var msgEl = $id('adm-cfg-msg');
-      if (msgEl) msgEl.textContent = '✅ URL backend tersimpan di LocalStorage.';
+      if (msgEl) msgEl.textContent = 'URL backend berhasil disimpan di penyimpanan lokal.';
       BSAdmin.showToast('URL backend disimpan.', 'success');
     } else {
       BSAdmin.showToast('URL backend tidak boleh kosong.', 'error');
@@ -292,28 +281,25 @@
   function handleTestGasUrl() {
     var btn = $id('adm-cfg-test-btn');
     var msgEl = $id('adm-cfg-msg');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Menguji…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Menguji…'; }
 
     BSApi.getPublicConfig().then(function (resp) {
       if (msgEl) {
         msgEl.textContent = resp.ok
-          ? '✅ Koneksi berhasil! Versi config: ' + (resp.version || '?')
-          : '❌ Backend merespons tapi gagal: ' + (resp.error || '?');
+          ? 'Koneksi berhasil. Versi konfigurasi: ' + (resp.version || 'aktif')
+          : 'Backend merespons tetapi gagal: ' + (resp.error || 'tidak diketahui');
       }
       if (resp.system_health) {
         BSAdmin.updateHealthSignals(resp.system_health);
       }
     }).catch(function (err) {
-      if (msgEl) msgEl.textContent = '❌ Tidak dapat terhubung: ' + err.message;
+      if (msgEl) msgEl.textContent = 'Tidak dapat terhubung ke backend: ' + err.message;
       BSAdmin.updateHealthSignals(null);
     }).finally(function () {
-      if (btn) { btn.disabled = false; btn.textContent = '🔗 Uji Koneksi Backend'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = icon('link', 14) + ' <span>Uji Koneksi Backend</span>'; }
     });
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 5. Tab Akun & Ganti Kata Sandi (SEC-11)
-   * ───────────────────────────────────────────────────────────── */
   function populateAccount() {
     var u = (window.BSAuth && BSAuth.getUsername()) || 'admin';
     var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
@@ -321,11 +307,20 @@
     if (userEl) userEl.textContent = u + ' (' + r + ')';
   }
 
+  /**
+   * Perbaikan BUG-03 (FR-P0-03):
+   * - Mendukung #adm-acc-confirm-pw (serta fallback #adm-acc-cfm-pw)
+   * - Validasi panjang minimum 8 karakter sesuai backend Code.gs
+   */
   function handleAccountPasswordChange(e) {
     e.preventDefault();
-    var oldPw = ($id('adm-acc-old-pw').value || '').trim();
-    var newPw = ($id('adm-acc-new-pw').value || '').trim();
-    var cfmPw = ($id('adm-acc-cfm-pw').value || '').trim();
+    var oldEl = $id('adm-acc-old-pw');
+    var newEl = $id('adm-acc-new-pw');
+    var cfmEl = $id('adm-acc-confirm-pw') || $id('adm-acc-cfm-pw');
+
+    var oldPw = (oldEl ? oldEl.value : '').trim();
+    var newPw = (newEl ? newEl.value : '').trim();
+    var cfmPw = (cfmEl ? cfmEl.value : '').trim();
 
     if (!oldPw || !newPw || !cfmPw) {
       BSAdmin.showToast('Semua kolom kata sandi wajib diisi.', 'error');
@@ -335,8 +330,8 @@
       BSAdmin.showToast('Konfirmasi kata sandi baru tidak cocok.', 'error');
       return;
     }
-    if (newPw.length < 6) {
-      BSAdmin.showToast('Kata sandi baru minimal 6 karakter.', 'error');
+    if (newPw.length < 8) {
+      BSAdmin.showToast('Kata sandi baru wajib minimal 8 karakter.', 'error');
       return;
     }
 
@@ -345,7 +340,7 @@
 
     BSAuth.changePassword(oldPw, newPw).then(function (res) {
       if (res.ok) {
-        BSAdmin.showToast('Kata sandi administrator berhasil diubah!', 'success');
+        BSAdmin.showToast('Kata sandi administrator berhasil diperbarui.', 'success');
         $id('adm-acc-pw-form').reset();
       } else {
         BSAdmin.showToast(res.error || 'Gagal mengubah kata sandi.', 'error');
@@ -353,13 +348,10 @@
     }).catch(function (err) {
       BSAdmin.showToast('Gagal: ' + err.message, 'error');
     }).finally(function () {
-      if (btn) { btn.disabled = false; btn.textContent = '🔐 Perbarui Kata Sandi Admin'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = icon('lock', 14) + ' <span>Perbarui Kata Sandi Admin</span>'; }
     });
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 6. Binding Event Listener Modul Fraud & Config
-   * ───────────────────────────────────────────────────────────── */
   function init() {
     var sdForm = $id('adm-staff-device-form');
     if (sdForm) sdForm.addEventListener('submit', handleStaffDeviceSubmit);
@@ -377,7 +369,6 @@
     if (accForm) accForm.addEventListener('submit', handleAccountPasswordChange);
   }
 
-  // Ekspor API modul
   BSAdmin.fraud = {
     renderTable:        renderFraudTable,
     renderStaffDevices: renderStaffDevicesTable,

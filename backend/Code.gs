@@ -531,7 +531,7 @@ function _handleGetConfig() {
     }
   }
 
-  // Allowlist sections & fields publik (API-04, SEC-08)
+  // Allowlist sections & fields publik (API-04, SEC-08, FR-CMS-01 s/d FR-CMS-07)
   var publicConfig = {
     general: {
       hotel_name:        (rawConfig.general && rawConfig.general.hotel_name) || 'Bumi Surabaya City Resort',
@@ -542,26 +542,35 @@ function _handleGetConfig() {
       google_review_url: (rawConfig.general && rawConfig.general.google_review_url) || '',
       instagram:         (rawConfig.general && rawConfig.general.instagram) || '',
       facebook:          (rawConfig.general && rawConfig.general.facebook) || '',
-      tiktok:            (rawConfig.general && rawConfig.general.tiktok) || ''
+      tiktok:            (rawConfig.general && rawConfig.general.tiktok) || '',
+      youtube:           (rawConfig.general && rawConfig.general.youtube) || '',
+      website:           (rawConfig.general && rawConfig.general.website) || '',
+      logo_url:          (rawConfig.general && rawConfig.general.logo_url) || ''
     },
     appearance: {
       accent_color:        (rawConfig.appearance && rawConfig.appearance.accent_color) || '#c9a96e',
       hero_text:           (rawConfig.appearance && rawConfig.appearance.hero_text) || '',
       hero_subtitle:       (rawConfig.appearance && rawConfig.appearance.hero_subtitle) || '',
       welcome_msg_staff:   (rawConfig.appearance && rawConfig.appearance.welcome_msg_staff) || '',
+      welcome_msg_sales:   (rawConfig.appearance && rawConfig.appearance.welcome_msg_sales) || '',
       welcome_msg_outlet:  (rawConfig.appearance && rawConfig.appearance.welcome_msg_outlet) || '',
+      welcome_msg_nfc:     (rawConfig.appearance && rawConfig.appearance.welcome_msg_nfc) || '',
       welcome_msg_general: (rawConfig.appearance && rawConfig.appearance.welcome_msg_general) || '',
       hero_bg_url:         (rawConfig.appearance && rawConfig.appearance.hero_bg_url) || ''
     },
     guest_sections: rawConfig.guest_sections || {
-      show_review: true, show_wa: true, show_promotions: true, show_outlets: true, show_social: true, show_final_cta: true
+      show_review: true, show_direct_feedback: true, show_wa: true, show_promotions: true,
+      show_outlets: true, show_social: true, show_final_cta: true, show_mobile_bar: true
     },
     review_settings: rawConfig.review_settings || {
-      review_url: 'https://search.google.com/local/writereview?placeid=ChIJl9S7eN771y0Rpp7V9x6GXoU', button_text: 'Berikan Ulasan di Google ⭐', review_prompt: ''
+      review_url: 'https://search.google.com/local/writereview?placeid=ChIJl9S7eN771y0Rpp7V9x6GXoU',
+      button_text: 'Share Your Experience',
+      review_prompt: ''
     },
     whatsapp_settings: rawConfig.whatsapp_settings || {
       number: '628113388523', template_staff: '', template_general: ''
     },
+    guest_content: (rawConfig.guest_content && typeof rawConfig.guest_content === 'object') ? rawConfig.guest_content : {},
     promotions: Array.isArray(rawConfig.promotions) ? rawConfig.promotions.filter(function(p) {
       if (!p || p.active === false) return false;
       // Filter periode tanggal Asia/Jakarta (CNT-03, GUE-08)
@@ -607,26 +616,34 @@ function _handleGetConfig() {
     }) : []
   };
 
-  // Hanya sumber AKTIF dengan field publik saja (API-04, SRC-02)
+  // Hanya sumber AKTIF dengan field publik + masa tenggang migrasi jika aktif (API-04, SRC-02, FR-P0-05)
   var activeSources = [];
   if (srcSheet && srcSheet.getLastRow() > 1) {
-    var maxCol = Math.max(srcSheet.getLastColumn(), 11);
+    var maxCol = Math.max(srcSheet.getLastColumn(), 17);
     var sRows = srcSheet.getRange(2, 1, srcSheet.getLastRow() - 1, maxCol).getValues();
     for (var j = 0; j < sRows.length; j++) {
       var isActive = sRows[j][5] === true || sRows[j][5] === 'TRUE';
-      if (!isActive) continue; // Jangan sertakan sumber nonaktif
+      if (!isActive) continue;
       var sType = String(sRows[j][2] || 'staff');
-      activeSources.push({
-        code:     String(sRows[j][0] || ''),
-        name:     String(sRows[j][1] || ''),
-        type:     sType,
-        outlet:   String(sRows[j][3] || ''),
-        role:     String(sRows[j][4] || ''),
-        active:   true,
-        // SLS-01: nomor WhatsApp hanya diekspos ke tamu untuk role sales;
-        // waiter/staf/meja tidak ikut terkirim dalam config publik.
-        whatsapp: sType === 'sales' ? String(sRows[j][10] || '') : ''
-      });
+      var migMode = sRows[j][12] === true || sRows[j][12] === 'TRUE';
+      var migUntil = String(sRows[j][13] || '');
+      var pubSrc = {
+        code:             String(sRows[j][0] || ''),
+        name:             String(sRows[j][1] || ''),
+        type:             sType,
+        outlet:           String(sRows[j][3] || ''),
+        role:             String(sRows[j][4] || ''),
+        active:           true,
+        whatsapp:         sType === 'sales' ? String(sRows[j][10] || '') : '',
+        service_hours:    sType === 'sales' ? String(sRows[j][15] || '') : '',
+        welcome_template: sType === 'sales' ? String(sRows[j][16] || '') : ''
+      };
+      if (migMode && migUntil) {
+        pubSrc.migration_mode  = true;
+        pubSrc.migration_until = migUntil;
+        pubSrc.legacy_codes    = sRows[j][7] ? (function(){ try{ return JSON.parse(sRows[j][7]); }catch(e){ return []; } })() : [];
+      }
+      activeSources.push(pubSrc);
     }
   }
 
@@ -634,7 +651,7 @@ function _handleGetConfig() {
     ok:      true,
     version: Date.now(),
     system_health: {
-      backend_version: 'v6.2.0-phase2',
+      backend_version: 'v6.3.0-phase3',
       server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
       timezone:        'Asia/Jakarta'
     },
@@ -762,29 +779,35 @@ function _handleSubmitFeedback(data) {
     return _jsonOut({ ok: false, error: 'Batas pengiriman harian tercapai. Coba lagi besok.' });
   }
 
-  var tsServer = Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-  var sheet = getOrCreateSheet('Feedback', [
-    'timestamp', 'source', 'source_name', 'outlet',
-    'guest_name', 'guest_wa', 'rating', 'message', 'status', 'device_hash'
-  ]);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var tsServer = Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+    var sheet = getOrCreateSheet('Feedback', [
+      'timestamp', 'source', 'source_name', 'outlet',
+      'guest_name', 'guest_wa', 'rating', 'message', 'status', 'device_hash'
+    ]);
 
-  var devHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, devId)
-    .map(function(b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
+    var devHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, devId)
+      .map(function(b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
 
-  sheet.appendRow([
-    tsServer,
-    String(data.source || 'general').substring(0, 60),
-    _stripFeedbackHtml(data.source_name).substring(0, 80),
-    _stripFeedbackHtml(data.outlet).substring(0, 80),
-    guestName,
-    guestWa,
-    rating,
-    message,
-    'unread',
-    devHash
-  ]);
+    sheet.appendRow([
+      tsServer,
+      String(data.source || 'general').substring(0, 60),
+      _stripFeedbackHtml(data.source_name).substring(0, 80),
+      _stripFeedbackHtml(data.outlet).substring(0, 80),
+      guestName,
+      guestWa,
+      rating,
+      message,
+      'unread',
+      devHash
+    ]);
 
-  return _jsonOut({ ok: true });
+    return _jsonOut({ ok: true });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -860,14 +883,20 @@ function _handleMarkFeedbackHandled(data, session) {
   var row = parseInt(data.row, 10);
   if (!row || row < 2) return _jsonOut({ ok: false, error: 'Baris tidak valid' });
 
-  var ss = getSpreadsheet();
-  var sheet = ss.getSheetByName('Feedback');
-  if (!sheet || row > sheet.getLastRow()) {
-    return _jsonOut({ ok: false, error: 'Data tidak ditemukan' });
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var ss = getSpreadsheet();
+    var sheet = ss.getSheetByName('Feedback');
+    if (!sheet || row > sheet.getLastRow()) {
+      return _jsonOut({ ok: false, error: 'Data tidak ditemukan' });
+    }
+    sheet.getRange(row, 9).setValue('handled');
+    _recordAudit(session.username, role, 'FEEDBACK_HANDLED', 'feedback:row' + row, 'SUCCESS', '', '');
+    return _jsonOut({ ok: true });
+  } finally {
+    lock.releaseLock();
   }
-  sheet.getRange(row, 9).setValue('handled');
-  _recordAudit(session.username, role, 'FEEDBACK_HANDLED', 'feedback:row' + row, 'SUCCESS', '', '');
-  return _jsonOut({ ok: true });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -990,8 +1019,38 @@ function _handleChangePassword(data) {
    API-03 (idempotensi via event_id), SEC-05 (abaikan IP klien)
 ══════════════════════════════════════════════════════════════ */
 
+function _readSourcesSheetAll(srcSheet) {
+  var allSources = [];
+  if (srcSheet && srcSheet.getLastRow() > 1) {
+    var maxCol = Math.max(srcSheet.getLastColumn(), 17);
+    var sRows = srcSheet.getRange(2, 1, srcSheet.getLastRow() - 1, maxCol).getValues();
+    for (var j = 0; j < sRows.length; j++) {
+      if (!sRows[j][0]) continue;
+      allSources.push({
+        code:             String(sRows[j][0] || ''),
+        name:             String(sRows[j][1] || ''),
+        type:             String(sRows[j][2] || 'staff'),
+        outlet:           String(sRows[j][3] || ''),
+        role:             String(sRows[j][4] || ''),
+        active:           sRows[j][5] === true || sRows[j][5] === 'TRUE',
+        kartu_diprogram:  sRows[j][6] === true || sRows[j][6] === 'TRUE',
+        legacy_codes:     sRows[j][7] ? (function(){ try{ return JSON.parse(sRows[j][7]); }catch(e){ return []; } })() : [],
+        created_at:       sRows[j][8] || '',
+        updated_at:       sRows[j][9] || '',
+        whatsapp:         String(sRows[j][10] || ''),
+        revoked_codes:    sRows[j][11] ? (function(){ try{ return JSON.parse(sRows[j][11]); }catch(e){ return []; } })() : [],
+        migration_mode:   sRows[j][12] === true || sRows[j][12] === 'TRUE',
+        migration_until:  String(sRows[j][13] || ''),
+        needs_reprint:    sRows[j][14] === true || sRows[j][14] === 'TRUE',
+        service_hours:    String(sRows[j][15] || ''),
+        welcome_template: String(sRows[j][16] || '')
+      });
+    }
+  }
+  return allSources;
+}
+
 function _handleLogEvent(data) {
-  // Validasi field wajib (API-01)
   if (!data || !data.event || !data.device_id) {
     return _jsonOut({ ok: false, error: 'Field wajib tidak ada: event dan device_id diperlukan' });
   }
@@ -1001,79 +1060,86 @@ function _handleLogEvent(data) {
     return _jsonOut({ ok: false, error: 'Format device_id tidak valid' });
   }
 
-  // Rate limiting per device_id (SEC-05: tidak menggunakan IP klien)
   if (!_checkRateLimit('event_dev_' + devId, 60, 60)) {
     _log('WARN', 'log_event', 'Rate limit exceeded — device: ' + devId.substring(0, 30), '');
     return _jsonOut({ ok: false, error: 'Rate limit exceeded' });
   }
 
-  var sheet    = getOrCreateMonthlyEventsSheet();
-  // Server timestamp adalah sumber waktu tepercaya (API-02)
-  var tsServer = Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-  var botFlag  = (data.hp && String(data.hp).trim() !== '') ? true : false;
-  var eventId  = String(data.event_id || '').trim() || Utilities.getUuid();
+  var botFlag = (data.hp && String(data.hp).trim() !== '') ? true : false;
+  if (botFlag) {
+    _log('WARN', 'log_event', 'Honeypot terisi (AF-06 reject_event) — device: ' + devId.substring(0, 30), '');
+    return _jsonOut({ ok: false, error: 'Event rejected (AF-06)' });
+  }
 
-  // Rekonsiliasi dwell_update: cari baris sesi yang cocok dan perbarui kolom dwell (API-05)
-  if (data.event === 'dwell_update' && data.session_id) {
-    var lastRow = sheet.getLastRow();
-    if (lastRow > 1) {
-      // Scan kolom session_id (kolom 2) untuk seluruh baris aktif (API-05: bukan hanya 200 baris terakhir)
-      var sessionCol = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
-      for (var i = sessionCol.length - 1; i >= 0; i--) {
-        if (String(sessionCol[i][0]) === String(data.session_id)) {
-          var targetRow = i + 2;
-          sheet.getRange(targetRow, 12).setValue(Number(data.dwell_ms)     || 0);
-          sheet.getRange(targetRow, 13).setValue(Number(data.interactions) || 0);
-          sheet.getRange(targetRow, 14).setValue(Number(data.scroll_max)   || 0);
-          var matchedEventId = sheet.getRange(targetRow, 1).getValue();
-          return _jsonOut({ ok: true, action: 'reconciled', event_id: matchedEventId });
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet    = getOrCreateMonthlyEventsSheet();
+    var tsServer = Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+    var eventId  = String(data.event_id || '').trim() || Utilities.getUuid();
+
+    // Rekonsiliasi dwell_update khusus pada baris event === 'visit' (FR-P1-02)
+    if (data.event === 'dwell_update' && data.session_id) {
+      var lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        var scanData = sheet.getRange(2, 1, lastRow - 1, 14).getValues();
+        for (var i = scanData.length - 1; i >= 0; i--) {
+          if (String(scanData[i][1]) === String(data.session_id) && String(scanData[i][5]) === 'visit') {
+            var targetRow = i + 2;
+            var newDwell  = Math.max(Number(scanData[i][11]) || 0, Number(data.dwell_ms)     || 0);
+            var newInter  = Math.max(Number(scanData[i][12]) || 0, Number(data.interactions) || 0);
+            var newScroll = Math.max(Number(scanData[i][13]) || 0, Number(data.scroll_max)   || 0);
+            sheet.getRange(targetRow, 12, 1, 3).setValues([[newDwell, newInter, newScroll]]);
+            var matchedEventId = scanData[i][0];
+            return _jsonOut({ ok: true, action: 'reconciled', event_id: matchedEventId });
+          }
+        }
+      }
+      return _jsonOut({ ok: true, action: 'no_matching_visit' });
+    }
+
+    // Idempotensi (API-03, GUE-11)
+    var curLastRow = sheet.getLastRow();
+    if (curLastRow > 1) {
+      var checkRows = Math.min(200, curLastRow - 1);
+      var existingIds = sheet.getRange(curLastRow - checkRows + 1, 1, checkRows, 1).getValues();
+      for (var r = existingIds.length - 1; r >= 0; r--) {
+        if (String(existingIds[r][0]) === eventId) {
+          return _jsonOut({ ok: true, event_id: eventId, duplicate: true });
         }
       }
     }
+
+    var row = [
+      eventId,
+      String(data.session_id  || '').substring(0, 100),
+      devId,
+      tsServer,
+      String(data.ts_client   || tsServer).substring(0, 50),
+      String(data.event       || 'unknown').substring(0, 50),
+      String(data.source      || 'general').substring(0, 100),
+      String(data.source_type || 'general').substring(0, 50),
+      '',
+      String(data.ua          || '').substring(0, 150),
+      String(data.screen      || '').substring(0, 30),
+      Number(data.dwell_ms)     || 0,
+      Number(data.interactions) || 0,
+      Number(data.scroll_max)   || 0,
+      String(data.fp          || '').substring(0, 64),
+      false,
+      JSON.stringify(data.extra || {})
+    ];
+    sheet.appendRow(row);
+
+    return _jsonOut({ ok: true, event_id: eventId });
+  } finally {
+    lock.releaseLock();
   }
-
-  // Idempotensi (API-03, GUE-11): Cek apakah event_id sudah pernah dicatat di 200 baris terakhir
-  var curLastRow = sheet.getLastRow();
-  if (curLastRow > 1) {
-    var checkRows = Math.min(200, curLastRow - 1);
-    var existingIds = sheet.getRange(curLastRow - checkRows + 1, 1, checkRows, 1).getValues();
-    for (var r = existingIds.length - 1; r >= 0; r--) {
-      if (String(existingIds[r][0]) === eventId) {
-        // Event telah tercatat sebelumnya: kembalikan sukses tanpa duplikasi baris
-        return _jsonOut({ ok: true, event_id: eventId, duplicate: true });
-      }
-    }
-  }
-
-  // Append baris event baru (SEC-05: tidak menyimpan IP palsu dari klien)
-  var row = [
-    eventId,
-    String(data.session_id  || '').substring(0, 100),
-    devId,
-    tsServer,
-    String(data.ts_client   || tsServer).substring(0, 50),
-    String(data.event       || 'unknown').substring(0, 50),
-    String(data.source      || 'general').substring(0, 100),
-    String(data.source_type || 'general').substring(0, 50),
-    '', // IP tidak disediakan oleh GAS runtime; jangan simpan placeholder klien
-    String(data.ua          || '').substring(0, 150),
-    String(data.screen      || '').substring(0, 30),
-    Number(data.dwell_ms)     || 0,
-    Number(data.interactions) || 0,
-    Number(data.scroll_max)   || 0,
-    String(data.fp          || '').substring(0, 64),
-    botFlag,
-    JSON.stringify(data.extra || {})
-  ];
-  sheet.appendRow(row);
-
-  return _jsonOut({ ok: true, event_id: eventId });
 }
 
 /* ══════════════════════════════════════════════════════════════
    Handler: get_admin_data (token-protected)
-   SEC-01, SEC-08: Ambil seluruh konfigurasi internal, sumber,
-   dan staff devices hanya untuk sesi admin terotentikasi.
+   SEC-01, SEC-08, FR-P0-05, FR-P1-04
 ══════════════════════════════════════════════════════════════ */
 
 function _handleGetAdminData(data, session) {
@@ -1081,6 +1147,7 @@ function _handleGetAdminData(data, session) {
   var cfgSheet = ss.getSheetByName('Config');
   var srcSheet = ss.getSheetByName('Sources');
   var devSheet = ss.getSheetByName('StaffDevices');
+  var role     = session ? session.role : 'super_admin';
 
   var fullConfig = {};
   if (cfgSheet && cfgSheet.getLastRow() > 1) {
@@ -1091,29 +1158,14 @@ function _handleGetAdminData(data, session) {
     }
   }
 
-  var allSources = [];
-  if (srcSheet && srcSheet.getLastRow() > 1) {
-    var maxCol = Math.max(srcSheet.getLastColumn(), 11);
-    var sRows = srcSheet.getRange(2, 1, srcSheet.getLastRow() - 1, maxCol).getValues();
-    for (var j = 0; j < sRows.length; j++) {
-      allSources.push({
-        code:            String(sRows[j][0] || ''),
-        name:            String(sRows[j][1] || ''),
-        type:            String(sRows[j][2] || 'staff'),
-        outlet:          String(sRows[j][3] || ''),
-        role:            String(sRows[j][4] || ''),
-        active:          sRows[j][5] === true || sRows[j][5] === 'TRUE',
-        kartu_diprogram: sRows[j][6] === true || sRows[j][6] === 'TRUE',
-        legacy_codes:    sRows[j][7] ? (function(){ try{ return JSON.parse(sRows[j][7]); }catch(e){ return []; } })() : [],
-        created_at:      sRows[j][8] || '',
-        updated_at:      sRows[j][9] || '',
-        whatsapp:        String(sRows[j][10] || '')
-      });
-    }
+  if (role === 'content_editor') {
+    delete fullConfig.fraud_thresholds;
   }
 
+  var allSources = (role === 'content_editor') ? [] : _readSourcesSheetAll(srcSheet);
+
   var staffDevices = [];
-  if (devSheet && devSheet.getLastRow() > 1) {
+  if (role !== 'content_editor' && devSheet && devSheet.getLastRow() > 1) {
     var dRows = devSheet.getRange(2, 1, devSheet.getLastRow() - 1, 4).getValues();
     staffDevices = dRows.map(function(r) {
       return {
@@ -1132,149 +1184,161 @@ function _handleGetAdminData(data, session) {
     staff_devices: staffDevices,
     timestamp:     new Date().toISOString(),
     system_health: {
-      backend_version: 'v6.2.0-phase2',
+      backend_version: 'v6.3.0-phase3',
       server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
       timezone:        'Asia/Jakarta',
       current_user:    session ? session.username : '',
-      current_role:    session ? session.role : 'super_admin'
+      current_role:    role
     }
   });
 }
 
 /* ══════════════════════════════════════════════════════════════
    Handler: save_all_admin_data (token-protected)
-   SRC-08: Persistensi StaffDevices
-   SEC-11: Enforce izin mutasi berbasis role (super_admin, manager, content_editor, analyst_readonly)
-   SEC-12, SRC-09: Audit trail lengkap per mutasi sensitif
+   SRC-08, SEC-11, SEC-12, FR-P0-05, FR-P1-04, FR-CMS-01
 ══════════════════════════════════════════════════════════════ */
 
 function _handleSaveAllAdminData(data, session) {
-  var ss    = getSpreadsheet();
   var actor = session ? session.username : 'system';
   var role  = session ? session.role : 'super_admin';
 
-  /* ── 1. Penegakan Izin Role (SEC-11) ── */
   if (role === 'analyst_readonly') {
     _recordAudit(actor, role, 'MUTATION_DENIED', 'all', 'REJECTED', 'Ditolak: analyst_readonly tidak boleh menyimpan data', '');
     return _jsonOut({ ok: false, error: 'Akses ditolak: Peran analyst_readonly bersifat baca-saja dan tidak diizinkan melakukan mutasi data.' });
   }
 
   if (role === 'content_editor') {
-    // Content editor hanya berhak mengubah promotions, outlets, appearance, guest_sections
-    if (data.sources || data.staff_devices || data.fraud_settings || (data.config && (data.config.fraud_thresholds || data.config.general || data.config.whatsapp_settings))) {
-      _recordAudit(actor, role, 'MUTATION_DENIED', 'sources/fraud/config', 'REJECTED', 'Ditolak: content_editor tidak berhak mengubah sumber, perangkat staf, atau konfigurasi sistem', '');
-      return _jsonOut({ ok: false, error: 'Akses ditolak: Peran content_editor hanya berhak mengubah promosi, outlet, dan tema tampilan.' });
+    if (data.sources || data.staff_devices || data.fraud_settings || (data.config && data.config.fraud_thresholds)) {
+      _recordAudit(actor, role, 'MUTATION_DENIED', 'sources/fraud/config', 'REJECTED', 'Ditolak: content_editor tidak berhak mengubah sumber, perangkat staf, atau konfigurasi anti-fraud', '');
+      return _jsonOut({ ok: false, error: 'Akses ditolak: Peran content_editor hanya berhak mengubah promosi, outlet, dan konten halaman tamu.' });
     }
   }
 
   if (role === 'manager') {
-    // Manager berhak kelola staf, gerai, promo, sales, tapi TIDAK boleh ubah fraud_settings / config.fraud_thresholds
     if (data.fraud_settings || (data.config && data.config.fraud_thresholds)) {
       _recordAudit(actor, role, 'MUTATION_DENIED', 'fraud_settings', 'REJECTED', 'Ditolak: manager tidak berhak mengubah parameter anti-fraud', '');
       return _jsonOut({ ok: false, error: 'Akses ditolak: Peran manager tidak diizinkan mengubah konfigurasi anti-fraud sistem.' });
     }
   }
 
-  var auditParts = [];
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var auditParts = [];
 
-  /* ── Simpan tab Config ── */
-  var cfgSheet = getOrCreateSheet('Config', ['key', 'value_json', 'updated_at']);
-  if (data.config || data.fraud_settings) {
-    var existingMap = {};
-    if (cfgSheet.getLastRow() > 1) {
-      var existingRows = cfgSheet.getRange(2, 1, cfgSheet.getLastRow() - 1, 2).getValues();
-      for (var er = 0; er < existingRows.length; er++) {
-        if (existingRows[er][0]) {
-          existingMap[existingRows[er][0]] = existingRows[er][1];
+    /* ── Simpan tab Config ── */
+    var cfgSheet = getOrCreateSheet('Config', ['key', 'value_json', 'updated_at']);
+    if (data.config || data.fraud_settings) {
+      var existingMap = {};
+      if (cfgSheet.getLastRow() > 1) {
+        var existingRows = cfgSheet.getRange(2, 1, cfgSheet.getLastRow() - 1, 2).getValues();
+        for (var er = 0; er < existingRows.length; er++) {
+          if (existingRows[er][0]) {
+            existingMap[existingRows[er][0]] = existingRows[er][1];
+          }
         }
       }
-    }
-    var mergedConfig = data.config || {};
-    var knownKeys = ['general', 'appearance', 'guest_sections', 'review_settings', 'whatsapp_settings', 'promotions', 'outlets', 'fraud_thresholds'];
-    for (var k = 0; k < knownKeys.length; k++) {
-      var key = knownKeys[k];
-      if (key === 'fraud_thresholds' && data.fraud_settings) {
-        existingMap['fraud_thresholds'] = JSON.stringify(data.fraud_settings);
-      } else if (mergedConfig[key] !== undefined) {
-        existingMap[key] = JSON.stringify(mergedConfig[key]);
+      var mergedConfig = data.config || {};
+      var knownKeys = [
+        'general', 'appearance', 'guest_sections', 'review_settings',
+        'whatsapp_settings', 'guest_content', 'promotions', 'outlets', 'fraud_thresholds'
+      ];
+      for (var k = 0; k < knownKeys.length; k++) {
+        var key = knownKeys[k];
+        if (key === 'fraud_thresholds' && data.fraud_settings) {
+          existingMap['fraud_thresholds'] = JSON.stringify(data.fraud_settings);
+        } else if (mergedConfig[key] !== undefined) {
+          existingMap[key] = JSON.stringify(mergedConfig[key]);
+        }
       }
-    }
-    for (var ck in mergedConfig) {
-      if (mergedConfig.hasOwnProperty(ck) && !existingMap[ck]) {
-        existingMap[ck] = JSON.stringify(mergedConfig[ck]);
+      for (var ck in mergedConfig) {
+        if (mergedConfig.hasOwnProperty(ck) && !existingMap[ck]) {
+          existingMap[ck] = JSON.stringify(mergedConfig[ck]);
+        }
       }
-    }
-    var cfgRows = Object.keys(existingMap).map(function (k) {
-      return [k, existingMap[k], new Date()];
-    });
-    if (cfgSheet.getLastRow() > 1) {
-      cfgSheet.getRange(2, 1, cfgSheet.getLastRow() - 1, 3).clearContent();
-    }
-    if (cfgRows.length > 0) {
-      cfgSheet.getRange(2, 1, cfgRows.length, 3).setValues(cfgRows);
-    }
-    if (data.config) auditParts.push('config: ' + Object.keys(data.config).join(','));
-    if (data.fraud_settings) auditParts.push('fraud_thresholds updated');
-  }
-
-  /* ── Simpan tab Sources ── */
-  var srcSheet = getOrCreateSheet('Sources', [
-    'code', 'name', 'type', 'outlet', 'role', 'active', 'kartu_diprogram', 'legacy_codes', 'created_at', 'updated_at', 'whatsapp'
-  ]);
-  if (srcSheet.getLastColumn() < 11) {
-    srcSheet.getRange(1, 11).setValue('whatsapp').setFontWeight('bold').setBackground('#f0ece4');
-  }
-  if (Array.isArray(data.sources)) {
-    var lastSrc = srcSheet.getLastRow();
-    if (lastSrc > 1) srcSheet.getRange(2, 1, lastSrc - 1, 11).clearContent();
-    if (data.sources.length > 0) {
-      var srcRows = data.sources.map(function (s) {
-        return [
-          s.code,
-          s.name,
-          s.type,
-          s.outlet       || '',
-          s.role         || '',
-          s.active !== false,
-          !!s.kartu_diprogram,
-          JSON.stringify(s.legacy_codes || []),
-          s.created_at   || new Date(),
-          new Date(),
-          s.whatsapp     || ''
-        ];
+      var cfgRows = Object.keys(existingMap).map(function (k) {
+        return [k, existingMap[k], new Date()];
       });
-      srcSheet.getRange(2, 1, srcRows.length, 11).setValues(srcRows);
+      if (cfgSheet.getLastRow() > 1) {
+        cfgSheet.getRange(2, 1, cfgSheet.getLastRow() - 1, 3).clearContent();
+      }
+      if (cfgRows.length > 0) {
+        cfgSheet.getRange(2, 1, cfgRows.length, 3).setValues(cfgRows);
+      }
+      if (data.config) auditParts.push('config: ' + Object.keys(data.config).join(','));
+      if (data.fraud_settings) auditParts.push('fraud_thresholds updated');
     }
-    auditParts.push('sources count: ' + data.sources.length);
-  }
 
-  /* ── Simpan tab StaffDevices (SRC-08) ── */
-  var devSheet = getOrCreateSheet('StaffDevices', ['device_id', 'staff_code', 'label', 'registered_at']);
-  if (Array.isArray(data.staff_devices)) {
-    var lastDev = devSheet.getLastRow();
-    if (lastDev > 1) devSheet.getRange(2, 1, lastDev - 1, 4).clearContent();
-    if (data.staff_devices.length > 0) {
-      var devRows = data.staff_devices.map(function (d) {
-        return [d.device_id, d.staff_code, d.label || '', d.registered_at || new Date()];
-      });
-      devSheet.getRange(2, 1, devRows.length, 4).setValues(devRows);
+    /* ── Simpan tab Sources (17 kolom termasuk metadata rotasi & sales — FR-P0-05) ── */
+    var srcHeaders = [
+      'code', 'name', 'type', 'outlet', 'role', 'active', 'kartu_diprogram',
+      'legacy_codes', 'created_at', 'updated_at', 'whatsapp',
+      'revoked_codes', 'migration_mode', 'migration_until', 'needs_reprint',
+      'service_hours', 'welcome_template'
+    ];
+    var srcSheet = getOrCreateSheet('Sources', srcHeaders);
+    if (srcSheet.getLastColumn() < 17) {
+      srcSheet.getRange(1, 1, 1, srcHeaders.length).setValues([srcHeaders]).setFontWeight('bold').setBackground('#f0ece4');
     }
-    auditParts.push('staff_devices count: ' + data.staff_devices.length);
-  }
+    if (Array.isArray(data.sources)) {
+      var lastSrc = srcSheet.getLastRow();
+      if (lastSrc > 1) srcSheet.getRange(2, 1, lastSrc - 1, 17).clearContent();
+      if (data.sources.length > 0) {
+        var srcRows = data.sources.map(function (s) {
+          return [
+            s.code             || '',
+            s.name             || '',
+            s.type             || 'staff',
+            s.outlet           || '',
+            s.role             || '',
+            s.active !== false,
+            !!s.kartu_diprogram,
+            JSON.stringify(s.legacy_codes  || []),
+            s.created_at       || new Date(),
+            new Date(),
+            s.whatsapp         || '',
+            JSON.stringify(s.revoked_codes || []),
+            !!s.migration_mode,
+            s.migration_until  || '',
+            !!s.needs_reprint,
+            s.service_hours    || '',
+            s.welcome_template || ''
+          ];
+        });
+        srcSheet.getRange(2, 1, srcRows.length, 17).setValues(srcRows);
+      }
+      auditParts.push('sources count: ' + data.sources.length);
+    }
 
-  var details = auditParts.join('; ') || 'Penyimpanan data admin';
-  _recordAudit(actor, role, 'MUTATION_SAVE', 'admin_data', 'SUCCESS', details, '');
-  _log('INFO', 'save_all_admin_data', 'Data admin disimpan oleh ' + actor + ' (' + role + '). ' + details, '');
-  return _jsonOut({ ok: true, updated_at: new Date().toISOString() });
+    /* ── Simpan tab StaffDevices (SRC-08) ── */
+    var devSheet = getOrCreateSheet('StaffDevices', ['device_id', 'staff_code', 'label', 'registered_at']);
+    if (Array.isArray(data.staff_devices)) {
+      var lastDev = devSheet.getLastRow();
+      if (lastDev > 1) devSheet.getRange(2, 1, lastDev - 1, 4).clearContent();
+      if (data.staff_devices.length > 0) {
+        var devRows = data.staff_devices.map(function (d) {
+          return [d.device_id, d.staff_code, d.label || '', d.registered_at || new Date()];
+        });
+        devSheet.getRange(2, 1, devRows.length, 4).setValues(devRows);
+      }
+      auditParts.push('staff_devices count: ' + data.staff_devices.length);
+    }
+
+    var details = auditParts.join('; ') || 'Penyimpanan data admin';
+    _recordAudit(actor, role, 'MUTATION_SAVE', 'admin_data', 'SUCCESS', details, '');
+    _log('INFO', 'save_all_admin_data', 'Data admin disimpan oleh ' + actor + ' (' + role + '). ' + details, '');
+    return _jsonOut({ ok: true, updated_at: new Date().toISOString() });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
    Handler: get_audit_logs (token-protected)
-   SEC-11, SEC-12, SRC-09: Mengembalikan log audit terbaru
+   SEC-11, SEC-12, SRC-09, FR-P0-02
 ══════════════════════════════════════════════════════════════ */
 
 function _handleGetAuditLogs(data, session) {
-  // Hanya super_admin, manager, analyst_readonly yang berhak melihat audit log
   if (session && session.role === 'content_editor') {
     return _jsonOut({ ok: false, error: 'Akses ditolak: content_editor tidak memiliki izin melihat jejak audit.' });
   }
@@ -1293,6 +1357,7 @@ function _handleGetAuditLogs(data, session) {
     for (var i = rows.length - 1; i >= 0; i--) {
       logsList.push({
         timestamp:     rows[i][0],
+        ts_server:     rows[i][0],
         actor:         rows[i][1],
         role:          rows[i][2],
         action:        rows[i][3],
@@ -1305,30 +1370,38 @@ function _handleGetAuditLogs(data, session) {
   }
 
   return _jsonOut({
-    ok:    true,
-    logs:  logsList,
-    total: logsList.length
+    ok:         true,
+    logs:       logsList,
+    audit_logs: logsList,
+    total:      logsList.length
   });
 }
 
 /* ══════════════════════════════════════════════════════════════
    Handler: get_events_data (token-protected)
-   Mengembalikan data events beserta data konfigurasi dan staff_devices
+   FR-P1-04 (RBAC), FR-P0-05 (17 kolom Sources), FR-P2-03 (Lintas Bulan)
 ══════════════════════════════════════════════════════════════ */
 
-function _handleGetEventsData(data) {
+function _handleGetEventsData(data, session) {
+  if (session && session.role === 'content_editor') {
+    return _jsonOut({ ok: false, error: 'Akses ditolak: content_editor tidak memiliki izin melihat data analitik event.' });
+  }
+
   var ss          = getSpreadsheet();
-  var targetMonth = data.month || ('Events_' + Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy_MM'));
+  var now         = new Date();
+  var curMonthTab = 'Events_' + Utilities.formatDate(now, 'Asia/Jakarta', 'yyyy_MM');
+  var targetMonth = data.month || curMonthTab;
   var evSheet     = ss.getSheetByName(targetMonth);
   var eventsList  = [];
   var limit       = Math.min(Number(data.limit) || 10000, 50000);
 
-  if (evSheet && evSheet.getLastRow() > 1) {
-    var totalRows = evSheet.getLastRow() - 1;
-    var readRows  = Math.min(totalRows, limit);
+  function readSheetEvents(sh, maxItems) {
+    if (!sh || sh.getLastRow() <= 1) return [];
+    var totalRows = sh.getLastRow() - 1;
+    var readRows  = Math.min(totalRows, maxItems);
     var startRow  = totalRows - readRows + 2;
-    var rawRows   = evSheet.getRange(startRow, 1, readRows, 17).getValues();
-    eventsList = rawRows.map(function (r) {
+    var rawRows   = sh.getRange(startRow, 1, readRows, 17).getValues();
+    return rawRows.map(function (r) {
       return {
         event_id:    r[0],  session_id: r[1],  device_id:   r[2],
         ts_server:   r[3],  ts_client:  r[4],  event:       r[5],
@@ -1340,7 +1413,22 @@ function _handleGetEventsData(data) {
     });
   }
 
-  // Daftar seluruh tab Events_*
+  // Jika membaca bulan berjalan, sertakan juga tab bulan sebelumnya agar tren 30 hari utuh (FR-P2-03)
+  if (targetMonth === curMonthTab && data.include_prev_month !== false) {
+    var prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    var prevTab  = 'Events_' + Utilities.formatDate(prevDate, 'Asia/Jakarta', 'yyyy_MM');
+    if (prevTab !== targetMonth) {
+      var prevSheet = ss.getSheetByName(prevTab);
+      if (prevSheet) {
+        eventsList = eventsList.concat(readSheetEvents(prevSheet, Math.floor(limit / 2)));
+      }
+    }
+  }
+
+  if (evSheet) {
+    eventsList = eventsList.concat(readSheetEvents(evSheet, limit));
+  }
+
   var allSheets   = ss.getSheets();
   var archiveTabs = [];
   for (var s = 0; s < allSheets.length; s++) {
@@ -1349,7 +1437,6 @@ function _handleGetEventsData(data) {
     }
   }
 
-  // Ambil staff_devices untuk anti-fraud self-tap (SRC-08)
   var staffDevices = [];
   var devSheet     = ss.getSheetByName('StaffDevices');
   if (devSheet && devSheet.getLastRow() > 1) {
@@ -1364,7 +1451,6 @@ function _handleGetEventsData(data) {
     });
   }
 
-  // Ambil juga config dan sources untuk kebutuhan sinkronisasi admin
   var cfgSheet = ss.getSheetByName('Config');
   var srcSheet = ss.getSheetByName('Sources');
   var fullConfig = {};
@@ -1377,26 +1463,7 @@ function _handleGetEventsData(data) {
     }
   }
 
-  var allSources = [];
-  if (srcSheet && srcSheet.getLastRow() > 1) {
-    var maxCol = Math.max(srcSheet.getLastColumn(), 11);
-    var sRows = srcSheet.getRange(2, 1, srcSheet.getLastRow() - 1, maxCol).getValues();
-    for (var sj = 0; sj < sRows.length; sj++) {
-      allSources.push({
-        code:            String(sRows[sj][0] || ''),
-        name:            String(sRows[sj][1] || ''),
-        type:            String(sRows[sj][2] || 'staff'),
-        outlet:          String(sRows[sj][3] || ''),
-        role:            String(sRows[sj][4] || ''),
-        active:          sRows[sj][5] === true || sRows[sj][5] === 'TRUE',
-        kartu_diprogram: sRows[sj][6] === true || sRows[sj][6] === 'TRUE',
-        legacy_codes:    sRows[sj][7] ? (function(){ try{ return JSON.parse(sRows[sj][7]); }catch(e){ return []; } })() : [],
-        created_at:      sRows[sj][8] || '',
-        updated_at:      sRows[sj][9] || '',
-        whatsapp:        String(sRows[sj][10] || '')
-      });
-    }
-  }
+  var allSources = _readSourcesSheetAll(srcSheet);
 
   _log('INFO', 'get_events_data', 'Kirim ' + eventsList.length + ' events dari ' + targetMonth, '');
   return _jsonOut({

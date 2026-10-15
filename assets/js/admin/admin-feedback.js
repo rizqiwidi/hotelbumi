@@ -1,10 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.2 (REV-02)
- * admin-feedback.js — Feedback Langsung Tamu
- *
- * Menampilkan daftar feedback dari tombol "Direct Feedback" di halaman tamu:
- * filter status/rating/outlet, badge belum dibaca, tandai handled.
- * Akses baca & mutasi hanya untuk super_admin & manager (ditegakkan di backend).
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * admin-feedback.js — Feedback Langsung Tamu (Anti-Slop Edition — FR-ADM-01, FR-ADM-02)
  */
 
 (function (window) {
@@ -18,12 +14,10 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   };
+  var icon = BSAdmin.icon || function () { return ''; };
 
   var items = [];
 
-  /* ─────────────────────────────────────────────────────────────
-   * 1. Pemuatan data dari server
-   * ───────────────────────────────────────────────────────────── */
   function load() {
     var tbody = $id('adm-feedback-tbody');
     var refreshBtn = $id('adm-feedback-refresh-btn');
@@ -31,16 +25,16 @@
     if (!BSAdmin.checkPermission || !BSAdmin.checkPermission('view_feedback')) {
       if (tbody) {
         tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">Peran Anda (' +
-          esc(state.userRole || BSAuth && BSAuth.getRole()) +
+          esc(state.userRole || (window.BSAuth && BSAuth.getRole())) +
           ') tidak memiliki izin untuk melihat feedback tamu.</td></tr>';
       }
       updateBadge(0);
       return;
     }
 
-    if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.textContent = '🔄 Memuat…'; }
+    if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.innerHTML = icon('rotate', 14) + ' <span>Memuat…</span>'; }
     if (tbody) {
-      tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">⏳ Memuat feedback dari server…</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">Memuat daftar masukan tamu dari server…</td></tr>';
     }
 
     var filters = {
@@ -51,7 +45,7 @@
 
     if (!window.BSApi || typeof BSApi.getFeedbackData !== 'function') {
       if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">API feedback tidak tersedia.</td></tr>';
-      if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '🔄 Perbarui'; }
+      if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.innerHTML = icon('rotate', 14) + ' <span>Perbarui</span>'; }
       return;
     }
 
@@ -68,11 +62,11 @@
       }
     }).catch(function (err) {
       if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">❌ ' + esc(err.message) + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="bs-empty" style="color:var(--danger,#dc2626);">Gagal memuat feedback: ' + esc(err.message) + '</td></tr>';
       }
       if (BSAdmin.showToast) BSAdmin.showToast('Gagal memuat feedback: ' + err.message, 'error');
     }).then(function () {
-      if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '🔄 Perbarui'; }
+      if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.innerHTML = icon('rotate', 14) + ' <span>Perbarui</span>'; }
     });
   }
 
@@ -82,7 +76,7 @@
     if (unread > 0) {
       badge.style.display = '';
       badge.textContent = unread > 99 ? '99+' : String(unread);
-      badge.title = unread + ' feedback belum dibaca';
+      badge.title = unread + ' masukan belum dibaca';
     } else {
       badge.style.display = 'none';
     }
@@ -92,6 +86,9 @@
     var sel = $id('adm-feedback-filter-outlet');
     if (!sel) return;
     var seen = {};
+    (state.outlets || []).forEach(function (o) {
+      if (o && o.name) seen[o.name] = true;
+    });
     items.forEach(function (it) {
       if (it.outlet) seen[it.outlet] = true;
     });
@@ -105,9 +102,6 @@
     if (cur && seen[cur]) sel.value = cur;
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 2. Render tabel
-   * ───────────────────────────────────────────────────────────── */
   function starText(n) {
     n = Math.max(0, Math.min(5, parseInt(n, 10) || 0));
     var s = '';
@@ -119,7 +113,7 @@
     var tbody = $id('adm-feedback-tbody');
     if (!tbody) return;
     if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">Belum ada feedback tamu.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">Belum ada masukan langsung dari tamu.</td></tr>';
       return;
     }
     var html = items.map(function (it) {
@@ -128,13 +122,13 @@
         : '<span class="adm-badge-warn">Belum dibaca</span>';
       var actionBtn = it.status === 'handled'
         ? '—'
-        : '<button class="adm-btn adm-btn-secondary adm-btn-mutate" data-fb-row="' + it.row + '">✓ Tandai ditangani</button>';
+        : '<button class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-fb-row="' + it.row + '">' + icon('check', 13) + ' <span>Tandai Selesai</span></button>';
       return '<tr>' +
-        '<td style="white-space:nowrap;">' + esc(it.timestamp) + '</td>' +
-        '<td style="white-space:nowrap;color:#b08f51;" title="' + it.rating + '/5">' + starText(it.rating) + '</td>' +
+        '<td class="bs-num" style="white-space:nowrap;text-align:left;font-size:0.78rem;">' + esc(it.timestamp) + '</td>' +
+        '<td style="white-space:nowrap;color:#b08f51;letter-spacing:1px;" title="' + it.rating + '/5">' + starText(it.rating) + '</td>' +
         '<td style="max-width:320px;white-space:normal;">' + esc(it.message) + '</td>' +
         '<td>' + (esc(it.guest_name) || '—') + '</td>' +
-        '<td style="font-family:monospace;">' + (esc(it.guest_wa) || '—') + '</td>' +
+        '<td style="font-family:monospace;font-size:0.78rem;">' + (esc(it.guest_wa) || '—') + '</td>' +
         '<td>' + (esc(it.source_name || it.source) || '—') + '</td>' +
         '<td>' + (esc(it.outlet) || '—') + '</td>' +
         '<td>' + statusBadge + '</td>' +
@@ -149,15 +143,11 @@
       });
     });
 
-    // Terapkan kembali pembatasan role untuk tombol mutasi
     if (BSAdmin.applyRoleRestrictions && state.userRole === 'analyst_readonly') {
       tbody.querySelectorAll('.adm-btn-mutate').forEach(function (b) { b.disabled = true; });
     }
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 3. Tandai handled
-   * ───────────────────────────────────────────────────────────── */
   function markHandled(row, btn) {
     if (!row) return;
     if (!BSAdmin.checkPermission || !BSAdmin.checkPermission('handle_feedback')) {
@@ -167,20 +157,17 @@
     if (btn) { btn.disabled = true; btn.textContent = '…'; }
     BSApi.markFeedbackHandled(row).then(function (resp) {
       if (resp && resp.ok) {
-        if (BSAdmin.showToast) BSAdmin.showToast('Feedback ditandai sudah ditangani.', 'success');
+        if (BSAdmin.showToast) BSAdmin.showToast('Masukan tamu ditandai selesai ditangani.', 'success');
         load();
       } else {
         throw new Error((resp && resp.error) || 'Gagal memperbarui status');
       }
     }).catch(function (err) {
       if (BSAdmin.showToast) BSAdmin.showToast('Gagal: ' + err.message, 'error');
-      if (btn) { btn.disabled = false; btn.textContent = '✓ Tandai ditangani'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = icon('check', 13) + ' <span>Tandai Selesai</span>'; }
     });
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 4. Inisialisasi filter
-   * ───────────────────────────────────────────────────────────── */
   function init() {
     ['adm-feedback-filter-status', 'adm-feedback-filter-rating', 'adm-feedback-filter-outlet'].forEach(function (id) {
       var el = $id(id);
@@ -191,9 +178,9 @@
   }
 
   BSAdmin.feedback = {
-    load:   load,
+    load:        load,
     renderTable: renderTable,
-    init:   init
+    init:        init
   };
 
   window.BSAdmin = BSAdmin;

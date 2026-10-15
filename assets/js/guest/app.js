@@ -1,13 +1,9 @@
 /**
- * BUMI SURABAYA v5.0
- * app.js — Logika presentasi tampilan tamu
+ * BUMI SURABAYA v6.3
+ * app.js — Logika presentasi tampilan tamu & Full Guest Page CMS Renderer (FR-CMS-01 s/d FR-CMS-07, FR-P2-01)
  *
- * Bertanggung jawab untuk:
- * 1. Inisialisasi konfigurasi dari backend (atau fallback ke defaults)
- * 2. Sapaan personal berdasarkan ?source= (FR-GUE-01)
- * 3. Render promosi, outlet, tombol CTA (FR-GUE-02, FR-GUE-03)
- * 4. Modal privasi (FR-GUE-04)
- * 5. Koordinasi dengan BSTracker & BSConfig
+ * KONTRAK KERAS: Tidak mengubah tone warna ataupun tata letak halaman tamu (guest.css).
+ * Hanya menyuntikkan teks, tautan, gambar, dan visibilitas seksi secara aman ke DOM yang sudah ada.
  */
 
 (function(window, document) {
@@ -16,16 +12,11 @@
   // ── Utilitas DOM & Sanitasi ──────────────────────────────
   function $(sel) { return document.querySelector(sel); }
   function $$(sel){ return document.querySelectorAll(sel); }
-  function setText(el, txt) { if (el) el.textContent = txt; }
+  function setText(el, txt) { if (el && txt !== undefined && txt !== null) el.textContent = txt; }
   function setHTML(el, html){ if (el) el.innerHTML   = html; }
   function show(el)  { if (el) el.classList.remove('bs-hidden'); }
   function hide(el)  { if (el) el.classList.add('bs-hidden'); }
 
-  /**
-   * Escape HTML string untuk mencegah injeksi XSS (GUE-04).
-   * @param {*} str
-   * @returns {string}
-   */
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -36,11 +27,6 @@
       .replace(/'/g, '&#39;');
   }
 
-  /**
-   * Validasi dan sanitasi URL untuk mencegah javascript: dan skema berbahaya lainnya (GUE-04).
-   * @param {string} url
-   * @returns {string}
-   */
   function sanitizeUrl(url) {
     if (!url) return '#';
     var u = String(url).trim();
@@ -50,11 +36,6 @@
     return u;
   }
 
-  /**
-   * Normalisasi nomor telepon ke format internasional 62xxx (GUE-06).
-   * @param {*} num
-   * @returns {string}
-   */
   function cleanPhone(num) {
     if (!num) return '';
     var clean = String(num).replace(/[^0-9]/g, '');
@@ -63,27 +44,28 @@
   }
 
   // ── State ─────────────────────────────────────────────────
-  var _config  = null;
-  var _sources = [];
-  var _sourceObj = null;  // Objek sumber aktif {code, name, type, role, outlet}
+  var _config    = null;
+  var _sources   = [];
+  var _sourceObj = null;
 
-  /**
-   * Ambil sumber aktif dari cache Sources berdasarkan kode URL (GUE-03, SRC-02, SRC-04).
-   * Rotasi kode mencabut kode lama secara default. Kode lama hanya berlaku bila
-   * mode migrasi aktif dengan masa tenggang berlabel yang belum habis.
-   */
+  function getMergedSection(secName) {
+    var def = (window.BSConfig && BSConfig.DEFAULTS && BSConfig.DEFAULTS[secName]) || {};
+    var act = (_config && _config[secName]) || {};
+    if (Array.isArray(def) || Array.isArray(act)) {
+      return (_config && Array.isArray(_config[secName])) ? _config[secName] : def;
+    }
+    return Object.assign({}, def, act);
+  }
+
   function findSource(code) {
     if (!code || code === 'general') return null;
     var lc = code.toLowerCase().trim();
     for (var i = 0; i < _sources.length; i++) {
       var s = _sources[i];
-      // Hanya sumber aktif yang dapat diatribusikan (GUE-03, SRC-02)
       if (s.active === false) continue;
 
-      // Kode utama aktif
       if ((s.code || '').toLowerCase().trim() === lc) return s;
 
-      // Cek kode lama (legacy_codes) — hanya jika mode migrasi aktif dan belum kedaluwarsa (SRC-04)
       if (s.migration_mode === true && s.migration_until) {
         var migTime = new Date(s.migration_until).getTime();
         if (!isNaN(migTime) && Date.now() < migTime) {
@@ -103,18 +85,14 @@
     return null;
   }
 
-  // REV-01: URL review mengikuti outlet pada halaman tamu.
-  // REV-03: link g.page lama mati (redirect ke google.com) — default diganti
-  // URL Google Review Arumanis yang terverifikasi aktif.
-  // Urutan: review_url outlet sumber > review_settings.review_url > general.google_review_url > default Arumanis
   var ARUMANIS_REVIEW_URL = 'https://search.google.com/local/writereview?placeid=ChIJl9S7eN771y0Rpp7V9x6GXoU';
   function resolveReviewUrl() {
-    var gen = (_config && _config.general)         || BSConfig.DEFAULTS.general;
-    var rev = (_config && _config.review_settings) || BSConfig.DEFAULTS.review_settings;
+    var gen = getMergedSection('general');
+    var rev = getMergedSection('review_settings');
     var outletUrl = '';
     if (_sourceObj && _sourceObj.outlet) {
       var ol = String(_sourceObj.outlet).toLowerCase().trim();
-      var outlets = (_config && _config.outlets) || [];
+      var outlets = getMergedSection('outlets');
       for (var i = 0; i < outlets.length; i++) {
         var o = outlets[i];
         if (o && o.active !== false &&
@@ -128,207 +106,314 @@
     return sanitizeUrl(outletUrl || (rev && rev.review_url) || gen.google_review_url || ARUMANIS_REVIEW_URL);
   }
 
-  // ── Render hero & sapaan ──────────────────────────────────
-  function renderHero() {
-    var gen = (_config && _config.general)    || BSConfig.DEFAULTS.general;
-    var app = (_config && _config.appearance) || BSConfig.DEFAULTS.appearance;
-    var rev = (_config && _config.review_settings) || BSConfig.DEFAULTS.review_settings;
-    var ws  = (_config && _config.whatsapp_settings) || BSConfig.DEFAULTS.whatsapp_settings;
-    var sec = (_config && _config.guest_sections) || BSConfig.DEFAULTS.guest_sections;
+  // ── Helper render sapaan kontekstual dengan dukungan variabel ──
+  function renderWelcomeGreeting(welcomeEl, template, sourceObj, hotelName) {
+    if (!welcomeEl) return;
+    welcomeEl.textContent = '';
+    var sName   = (sourceObj && sourceObj.name)   || 'our team';
+    var sRole   = (sourceObj && sourceObj.role)   || '';
+    var sOutlet = (sourceObj && sourceObj.outlet) || (sourceObj && sourceObj.name) || hotelName;
 
-    // Nama hotel & judul hero dinamis (CNT-06)
+    var tpl = String(template || '');
+    if (tpl.indexOf('{staff_name}') !== -1) {
+      var parts = tpl.split('{staff_name}');
+      welcomeEl.appendChild(document.createTextNode(
+        parts[0]
+          .replace(/\{role\}/g, sRole)
+          .replace(/\{outlet\}/g, sOutlet)
+          .replace(/\{outlet_name\}/g, sOutlet)
+          .replace(/\{hotel_name\}/g, hotelName)
+      ));
+      var strongName = document.createElement('strong');
+      strongName.textContent = sName;
+      welcomeEl.appendChild(strongName);
+      var rest = (parts.slice(1).join(sName) || '')
+        .replace(/\(\s*\{role\}\s*\)/g, sRole ? ('(' + sRole + ')') : '')
+        .replace(/\{role\}/g, sRole)
+        .replace(/\{outlet\}/g, sOutlet)
+        .replace(/\{outlet_name\}/g, sOutlet)
+        .replace(/\{hotel_name\}/g, hotelName)
+        .replace(/\s+from\s+\./g, '.')
+        .replace(/\s{2,}/g, ' ');
+      welcomeEl.appendChild(document.createTextNode(rest));
+    } else if (tpl.indexOf('{outlet_name}') !== -1 || tpl.indexOf('{outlet}') !== -1) {
+      var token = tpl.indexOf('{outlet_name}') !== -1 ? '{outlet_name}' : '{outlet}';
+      var oParts = tpl.split(token);
+      welcomeEl.appendChild(document.createTextNode(oParts[0].replace(/\{hotel_name\}/g, hotelName)));
+      var strongOut = document.createElement('strong');
+      strongOut.textContent = sOutlet;
+      welcomeEl.appendChild(strongOut);
+      welcomeEl.appendChild(document.createTextNode((oParts.slice(1).join(sOutlet) || '').replace(/\{hotel_name\}/g, hotelName)));
+    } else if (sourceObj && (sourceObj.type === 'staff' || sourceObj.type === 'sales')) {
+      var prefix = tpl ? (tpl.replace(/\.$/, '') + ' ') : 'Hello! You are currently being served wholeheartedly by ';
+      welcomeEl.appendChild(document.createTextNode(prefix));
+      var strongStaff = document.createElement('strong');
+      strongStaff.textContent = sName;
+      welcomeEl.appendChild(strongStaff);
+      if (sRole) welcomeEl.appendChild(document.createTextNode(' (' + sRole + ')'));
+      if (sourceObj.outlet) {
+        welcomeEl.appendChild(document.createTextNode(' from '));
+        var emOutlet = document.createElement('em');
+        emOutlet.textContent = sourceObj.outlet;
+        welcomeEl.appendChild(emOutlet);
+      }
+      welcomeEl.appendChild(document.createTextNode('.'));
+    } else {
+      welcomeEl.textContent = tpl.replace(/\{hotel_name\}/g, hotelName);
+    }
+  }
+
+  // ── Render hero, loading screen & sapaan (FR-CMS-02) ──────────
+  function renderHero() {
+    var gen = getMergedSection('general');
+    var app = getMergedSection('appearance');
+    var rev = getMergedSection('review_settings');
+    var ws  = getMergedSection('whatsapp_settings');
+    var sec = getMergedSection('guest_sections');
+    var gc  = getMergedSection('guest_content');
+
+    // Meta description & Document title
+    if (gen.hotel_name) {
+      document.title = gen.hotel_name + ' — Digital Guest Experience';
+    }
+    var metaDesc = $('#bs-meta-desc');
+    if (metaDesc && gen.description) {
+      metaDesc.setAttribute('content', gen.description);
+    }
+
+    // Loading screen texts
+    setText($('#bs-loading-title'), gc.loading_title || gen.hotel_name || 'Bumi Surabaya City Resort');
+    setText($('#bs-loading-sub'),   gc.loading_subtitle || 'Preparing your experience…');
+
+    // Logo hotel (Hero & Footer)
+    var logoPath = gen.logo_url || 'assets/images/logo-hotel.png';
+    var resolvedLogo = (window.BSConfig && BSConfig.resolveAsset) ? BSConfig.resolveAsset(logoPath) : logoPath;
+    var safeLogo = sanitizeUrl(resolvedLogo);
+    if (safeLogo && safeLogo !== '#') {
+      var heroLogo   = $('#bs-hero-logo') || $('.bs-hotel-logo');
+      var footerLogo = $('#bs-footer-logo') || $('.bs-footer-logo');
+      if (heroLogo)   { heroLogo.src = safeLogo;   heroLogo.alt = gen.hotel_name || 'Bumi Surabaya City Resort'; }
+      if (footerLogo) { footerLogo.src = safeLogo; footerLogo.alt = gen.hotel_name || 'Bumi Surabaya City Resort'; }
+    }
+
+    // Nama hotel & judul hero dinamis
     var heroTitle = app.hero_text || gen.hotel_name || 'Bumi Surabaya City Resort';
     setText($('#bs-hotel-name'), heroTitle);
     setText($('#bs-subtitle'), app.hero_subtitle || '');
+    setText($('#bs-scroll-hint-text'), gc.hero_scroll_hint || 'Scroll to explore');
 
     // Sapaan personal berdasarkan source
-    var src = BSTracker.getSource();
+    var src = window.BSTracker ? BSTracker.getSource() : 'general';
     _sourceObj = findSource(src);
 
-    var welcomeEl = $('#bs-welcome-msg');
+    var welcomeEl    = $('#bs-welcome-msg');
     var staffBadgeEl = $('#bs-staff-badge');
+    var hotelName    = gen.hotel_name || 'Bumi Surabaya City Resort';
 
     if (_sourceObj) {
-      // Sumber aktif dikenali — render secara aman via DOM API (GUE-04)
       var st = _sourceObj.type || 'staff';
       if (st === 'staff' || st === 'sales') {
-        if (welcomeEl) {
-          welcomeEl.textContent = '';
-          var prefixText = (app.welcome_msg_staff && app.welcome_msg_staff.indexOf('{staff_name}') !== -1)
-            ? ''
-            : 'Hello! You are currently being served wholeheartedly by ';
-          if (prefixText) welcomeEl.appendChild(document.createTextNode(prefixText));
-
-          if (app.welcome_msg_staff && app.welcome_msg_staff.indexOf('{staff_name}') !== -1) {
-            var parts = app.welcome_msg_staff.split('{staff_name}');
-            welcomeEl.appendChild(document.createTextNode(parts[0]));
-            var strongName = document.createElement('strong');
-            strongName.textContent = _sourceObj.name || 'our team';
-            welcomeEl.appendChild(strongName);
-            var rest = (parts[1] || '')
-              .replace('{role}', _sourceObj.role || '')
-              .replace('{outlet}', _sourceObj.outlet || '');
-            welcomeEl.appendChild(document.createTextNode(rest));
-          } else {
-            var strongName = document.createElement('strong');
-            strongName.textContent = _sourceObj.name || 'our team';
-            welcomeEl.appendChild(strongName);
-            if (_sourceObj.role) {
-              welcomeEl.appendChild(document.createTextNode(' (' + _sourceObj.role + ')'));
-            }
-            if (_sourceObj.outlet) {
-              welcomeEl.appendChild(document.createTextNode(' from '));
-              var emOutlet = document.createElement('em');
-              emOutlet.textContent = _sourceObj.outlet;
-              welcomeEl.appendChild(emOutlet);
-            }
-            welcomeEl.appendChild(document.createTextNode('.'));
-          }
-        }
+        var staffTpl = (st === 'sales' && app.welcome_msg_sales)
+          ? app.welcome_msg_sales
+          : (app.welcome_msg_staff || 'Hello! You are currently being served wholeheartedly by {staff_name} ({role}) from {outlet}.');
+        renderWelcomeGreeting(welcomeEl, staffTpl, _sourceObj, hotelName);
         if (staffBadgeEl) {
           staffBadgeEl.textContent = '';
           var dot = document.createElement('span');
           dot.className = 'bs-dot';
           staffBadgeEl.appendChild(dot);
-          staffBadgeEl.appendChild(document.createTextNode('Served by ' + (_sourceObj.name || '-')));
+          staffBadgeEl.appendChild(document.createTextNode((gc.staff_badge_prefix || 'Served by ') + (_sourceObj.name || '-')));
           show(staffBadgeEl);
         }
       } else if (st === 'outlet') {
-        if (welcomeEl) {
-          var baseMsg = app.welcome_msg_outlet || 'Enjoy an exclusive culinary experience at {outlet_name}.';
-          welcomeEl.textContent = baseMsg.replace('{outlet_name}', _sourceObj.name || '');
-        }
+        var outletTpl = app.welcome_msg_outlet || 'Enjoy an exclusive culinary experience at {outlet_name}.';
+        renderWelcomeGreeting(welcomeEl, outletTpl, _sourceObj, hotelName);
         hide(staffBadgeEl);
       } else if (st === 'nfc') {
-        if (welcomeEl) {
-          welcomeEl.textContent = '';
-          welcomeEl.appendChild(document.createTextNode('Welcome to '));
-          var strongOutlet = document.createElement('strong');
-          strongOutlet.textContent = _sourceObj.outlet || _sourceObj.name || gen.hotel_name || 'Bumi Surabaya City Resort';
-          welcomeEl.appendChild(strongOutlet);
-          welcomeEl.appendChild(document.createTextNode('! Enjoy an unforgettable experience with us.'));
-        }
+        var nfcTpl = app.welcome_msg_nfc || 'Welcome to {outlet_name}! Enjoy an unforgettable experience with us.';
+        renderWelcomeGreeting(welcomeEl, nfcTpl, _sourceObj, hotelName);
         hide(staffBadgeEl);
       }
     } else {
-      // Sumber nonaktif / tidak dikenali / default (GUE-03)
-      if (welcomeEl) welcomeEl.textContent = app.welcome_msg_general || BSConfig.DEFAULTS.appearance.welcome_msg_general;
+      if (welcomeEl) {
+        welcomeEl.textContent = (app.welcome_msg_general || BSConfig.DEFAULTS.appearance.welcome_msg_general).replace(/\{hotel_name\}/g, hotelName);
+      }
       hide(staffBadgeEl);
     }
 
     // Hero background
-    if (app.hero_bg_url) {
-      var safeBg = sanitizeUrl(app.hero_bg_url);
-      if (safeBg && safeBg !== '#') {
-        var hero = $('.bs-hero');
-        if (hero) {
+    var hero = $('.bs-hero');
+    if (hero) {
+      if (app.hero_bg_url) {
+        var resolvedBg = (window.BSConfig && BSConfig.resolveAsset) ? BSConfig.resolveAsset(app.hero_bg_url) : app.hero_bg_url;
+        var safeBg = sanitizeUrl(resolvedBg);
+        if (safeBg && safeBg !== '#') {
           hero.style.backgroundImage = 'url("' + encodeURI(safeBg) + '")';
           hero.classList.add('has-bg');
         }
+      } else {
+        hero.style.backgroundImage = '';
+        hero.classList.remove('has-bg');
       }
     }
 
-    // Tombol Google Review (GUE-05: label jelas, mengarah ke URL benar)
-    var reviewBtn = $('#bs-btn-review');
-    var reviewLink = $('#bs-review-link');
-    var mobReview = $('.bs-mob-review');
-    // REV-01: URL review mengikuti outlet pada halaman tamu (lihat resolveReviewUrl)
-    var reviewUrl = resolveReviewUrl();
-    var reviewTxt = (rev && rev.button_text) || 'Share Your Experience';
+    // Tombol Google Review
+    var reviewBtn   = $('#bs-btn-review');
+    var mobReview   = $('.bs-mob-review');
     var finalReview = $('#bs-final-review');
+    var reviewUrl   = resolveReviewUrl();
+    var heroRevTxt  = gc.hero_review_btn_label || (rev && rev.button_text) || 'Share Your Experience';
 
     if (reviewBtn) {
       reviewBtn.href = reviewUrl;
-      // Teks tombol memakai <span> agar ikon FA tidak tertimpa
       var reviewLabel = reviewBtn.querySelector('span');
-      if (reviewLabel) reviewLabel.textContent = reviewTxt; else reviewBtn.textContent = reviewTxt;
-      if (sec && sec.show_review === false) hide(reviewBtn);
+      if (reviewLabel) reviewLabel.textContent = heroRevTxt; else reviewBtn.textContent = heroRevTxt;
+      if (sec && sec.show_review === false) hide(reviewBtn); else show(reviewBtn);
     }
-    if (finalReview) finalReview.href = reviewUrl;
-    if (mobReview) mobReview.href = reviewUrl;
+    if (finalReview) {
+      finalReview.href = reviewUrl;
+      var finalRevSpan = finalReview.querySelector('span');
+      if (finalRevSpan) finalRevSpan.textContent = gc.final_review_btn_label || heroRevTxt;
+      if (sec && sec.show_review === false) hide(finalReview); else show(finalReview);
+    }
+    if (mobReview) {
+      mobReview.href = reviewUrl;
+      var mobRevSpan = mobReview.querySelector('span');
+      if (mobRevSpan) mobRevSpan.textContent = gc.mobile_bar_review_label || 'Review';
+      if (sec && sec.show_review === false) hide(mobReview); else show(mobReview);
+    }
 
-    // Tombol WhatsApp (GUE-06: dinormalisasi dan divalidasi)
+    // Tombol WhatsApp
     var waNum = '';
     var waMsg = '';
-
-    // SLS-01: nomor WhatsApp sumber hanya dipakai bila rolenya sales;
-    // waiter/staf/meja jatuh ke nomor umum agar nomor pribadinya tidak diketahui tamu.
     if (_sourceObj && _sourceObj.type === 'sales' && _sourceObj.whatsapp && cleanPhone(_sourceObj.whatsapp)) {
       waNum = cleanPhone(_sourceObj.whatsapp);
-      waMsg = 'Hello, I am a Bumi Surabaya guest. I am being served by ' + (_sourceObj.name || 'staff') + '.';
+      waMsg = (_sourceObj.welcome_template || 'Hello, I am a Bumi Surabaya guest. I am being served by {staff_name}.')
+        .replace(/\{staff_name\}/g, _sourceObj.name || 'staff');
     } else {
       waNum = cleanPhone((ws && ws.number) || gen.whatsapp || '628113388523');
       if (_sourceObj && (_sourceObj.type === 'staff' || _sourceObj.type === 'sales')) {
         waMsg = ((ws && ws.template_staff) || 'Hello, I am a Bumi Surabaya guest. I was just served by {staff_name} and would like to make a reservation.')
-                .replace('{staff_name}', _sourceObj.name || 'tim kami');
+                .replace(/\{staff_name\}/g, _sourceObj.name || 'our team');
       } else {
         waMsg = (ws && ws.template_general) || 'Hello Bumi Surabaya, I would like information about hotel reservations and services.';
       }
     }
 
-    // REV-04: tombol WA utama TIDAK lagi langsung ke satu nomor — klik membuka
-    // pemilih sales ala Linktree (openWaPicker). href tetap diisi sebagai fallback.
-    var waUrl = sanitizeUrl('https://wa.me/' + waNum + '?text=' + encodeURIComponent(waMsg));
-
-    var waBtn  = $('#bs-btn-wa');
-    var waLink = $('#bs-wa-link');
-    var mobWa  = $('.bs-mob-wa');
+    var waUrl   = sanitizeUrl('https://wa.me/' + waNum + '?text=' + encodeURIComponent(waMsg));
+    var waBtn   = $('#bs-btn-wa');
+    var waLink  = $('#bs-wa-link');
+    var mobWa   = $('.bs-mob-wa');
     var finalWa = $('#bs-final-wa');
+
+    if (waBtn) {
+      var heroWaSpan = waBtn.querySelector('span');
+      if (heroWaSpan) heroWaSpan.textContent = gc.hero_wa_btn_label || 'Chat with Us';
+    }
+    if (finalWa) {
+      var finalWaSpan = finalWa.querySelector('span');
+      if (finalWaSpan) finalWaSpan.textContent = gc.final_wa_btn_label || 'Contact Us';
+    }
+    if (mobWa) {
+      var mobWaSpan = mobWa.querySelector('span');
+      if (mobWaSpan) mobWaSpan.textContent = gc.mobile_bar_wa_label || 'WhatsApp';
+    }
+
     [waBtn, waLink, mobWa, finalWa].forEach(function(btn) {
       if (!btn) return;
       btn.href = waUrl;
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        openWaPicker();
-      });
+      if (!btn.getAttribute('data-wa-bound')) {
+        btn.setAttribute('data-wa-bound', '1');
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          openWaPicker();
+        });
+      }
     });
   }
 
-  // ── Render seksi Google Review ────────────────────────────
+  // ── Render seksi Google Review & Direct Feedback (FR-CMS-03) ──
   function renderReviewSection() {
-    var cfg = (_config && _config.review_settings) || BSConfig.DEFAULTS.review_settings;
-    var sec = (_config && _config.guest_sections) || BSConfig.DEFAULTS.guest_sections;
+    var cfg = getMergedSection('review_settings');
+    var sec = getMergedSection('guest_sections');
+    var gc  = getMergedSection('guest_content');
     var el  = $('#bs-review-section');
     if (!el) return;
     if (sec && sec.show_review === false) { hide(el); return; }
 
+    setText($('#bs-review-heading'),    gc.review_section_title    || "We'd Love to Hear From You");
+    setText($('#bs-review-sub'),        gc.review_section_subtitle || 'Your feedback helps our team keep improving every day.');
+    setText($('#bs-review-card-title'), gc.review_card_title       || 'Share Your Experience');
+
     var promptEl = el.querySelector('#bs-review-prompt');
-    if (promptEl) promptEl.textContent = cfg.review_prompt || BSConfig.DEFAULTS.review_settings.review_prompt;
+    if (promptEl) {
+      promptEl.textContent = cfg.review_prompt || gc.review_card_prompt || BSConfig.DEFAULTS.review_settings.review_prompt;
+    }
 
     var reviewLink = el.querySelector('#bs-review-link');
     if (reviewLink) {
-      // REV-01: samakan dengan tombol utama — URL mengikuti outlet halaman tamu
       reviewLink.href = resolveReviewUrl();
       var linkLabel = reviewLink.querySelector('span');
-      var linkText = cfg.button_text || BSConfig.DEFAULTS.review_settings.button_text;
+      var linkText = gc.review_card_btn_label || cfg.button_text || 'Review Us on Google';
       if (linkLabel) linkLabel.textContent = linkText; else reviewLink.textContent = linkText;
     }
+
+    // Direct Feedback visibility & labels
+    var fbToggle = $('#bs-feedback-toggle');
+    var fbWrap   = $('#bs-feedback-form-wrap');
+    if (sec && sec.show_direct_feedback === false) {
+      hide(fbToggle);
+      hide(fbWrap);
+    } else {
+      show(fbToggle);
+      if (fbToggle) {
+        var fbToggleSpan = fbToggle.querySelector('span');
+        if (fbToggleSpan) fbToggleSpan.textContent = gc.feedback_toggle_label || 'Direct Feedback';
+      }
+      setText($('#bs-feedback-rating-label'), gc.feedback_rating_label || 'How would you rate your experience?');
+      var msgInput  = $('#bs-feedback-msg');
+      var nameInput = $('#bs-feedback-name');
+      var waInput   = $('#bs-feedback-wa');
+      if (msgInput  && gc.feedback_msg_placeholder)  msgInput.setAttribute('placeholder',  gc.feedback_msg_placeholder);
+      if (nameInput && gc.feedback_name_placeholder) nameInput.setAttribute('placeholder', gc.feedback_name_placeholder);
+      if (waInput   && gc.feedback_wa_placeholder)   waInput.setAttribute('placeholder',   gc.feedback_wa_placeholder);
+      var submitBtn = $('#bs-feedback-submit');
+      if (submitBtn) {
+        var subSpan = submitBtn.querySelector('span');
+        if (subSpan) subSpan.textContent = gc.feedback_submit_label || 'Send Feedback';
+      }
+      setText($('#bs-feedback-thanks-text'), gc.feedback_thanks_text || 'Thank you! Your feedback means a lot to us.');
+    }
+
     show(el);
   }
 
-  // ── Render promosi (GUE-08, GUE-09, GUE-10, CNT-02 s/d CNT-05) ──
+  // ── Render promosi (FR-CMS-04) ────────────────────────────────
   function renderPromotions() {
-    var promos = (_config && _config.promotions) || BSConfig.DEFAULTS.promotions;
-    var sec    = (_config && _config.guest_sections) || BSConfig.DEFAULTS.guest_sections;
-    var ws     = (_config && _config.whatsapp_settings) || BSConfig.DEFAULTS.whatsapp_settings;
-    var gen    = (_config && _config.general) || BSConfig.DEFAULTS.general;
+    var promos = getMergedSection('promotions');
+    var sec    = getMergedSection('guest_sections');
+    var ws     = getMergedSection('whatsapp_settings');
+    var gen    = getMergedSection('general');
+    var gc     = getMergedSection('guest_content');
     var container = $('#bs-promos-grid');
     var section   = $('#bs-promos-section');
     if (!container) return;
+
+    setText($('#bs-promos-heading'), gc.promos_section_title    || 'Exclusive Offers');
+    setText($('#bs-promos-sub'),     gc.promos_section_subtitle || 'Handpicked culinary experiences and special moments, just for you.');
 
     if (sec && sec.show_promotions === false) { if (section) hide(section); return; }
 
     var now = Date.now();
     var active = (promos || []).filter(function(p) {
       if (!p || p.active === false) return false;
-      // Validasi tanggal starts_at & ends_at (Asia/Jakarta / WIB) (GUE-08, CNT-03)
       if (p.starts_at) {
         var startMs = new Date(p.starts_at).getTime();
         if (!isNaN(startMs) && now < startMs) return false;
       }
       var endStr = p.ends_at || p.expires_at;
       if (endStr) {
-        var endMs = new Date(endStr).getTime();
+        var endMs = new Date(endStr + (String(endStr).length === 10 ? 'T23:59:59+07:00' : '')).getTime();
         if (!isNaN(endMs) && now > endMs) return false;
       }
       return true;
@@ -337,6 +422,8 @@
     if (!active.length) { if (section) hide(section); return; }
 
     var defaultWaNum = cleanPhone((ws && ws.number) || gen.whatsapp || '628113388523');
+    var defaultCta   = gc.promos_card_cta_label || 'Discover More →';
+    var promoWaTpl   = gc.promos_wa_template    || 'Hello Bumi Surabaya, I am interested in the promotion: {promo_name} at {outlet_name}. Please share reservation details.';
 
     var html = active.map(function(p) {
       var pId = escapeHtml(p.id || '');
@@ -352,15 +439,17 @@
         ? '<img src="' + escapeHtml(safeImg) + '" alt="' + pName + '" loading="lazy" onerror="this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';"><div class="bs-promo-img-placeholder" style="display:none;">' + pEmoji + '</div>'
         : '<div class="bs-promo-img-placeholder">' + pEmoji + '</div>';
 
-      // Tujuan CTA promo tervalidasi (GUE-10, CNT-04)
       var targetUrl = '';
       if (p.cta_url && sanitizeUrl(p.cta_url) !== '#') {
         targetUrl = sanitizeUrl(p.cta_url);
       } else {
-        var promoMsg = 'Hello Bumi Surabaya, I am interested in the promotion: ' + (p.name || 'Special Offer') + ' at ' + (p.outlet || 'Bumi Surabaya') + '. Please share reservation details.';
+        var promoMsg = promoWaTpl
+          .replace(/\{promo_name\}/g, p.name || 'Special Offer')
+          .replace(/\{outlet_name\}/g, p.outlet || 'Bumi Surabaya')
+          .replace(/\{outlet\}/g, p.outlet || 'Bumi Surabaya');
         targetUrl = 'https://wa.me/' + defaultWaNum + '?text=' + encodeURIComponent(promoMsg);
       }
-      var ctaLabel = escapeHtml(p.cta_label || 'Discover More →');
+      var ctaLabel = escapeHtml(p.cta_label || defaultCta);
 
       return '<div class="bs-promo-card" data-promo-id="' + pId + '">' +
         '<div class="bs-promo-img-wrap">' + imgHtml + '</div>' +
@@ -381,7 +470,6 @@
 
     setHTML(container, html);
 
-    // Track klik promosi pada CTA nyata
     $$('.bs-promo-action-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var promoId = btn.getAttribute('data-promo-id');
@@ -394,19 +482,22 @@
     if (section) show(section);
   }
 
-  // ── Render outlet (GUE-07, GUE-10, CNT-01, CNT-04, CNT-05) ──
+  // ── Render outlet (FR-CMS-04) ─────────────────────────────────
   function renderOutlets() {
-    var outlets = (_config && _config.outlets) || BSConfig.DEFAULTS.outlets;
-    var sec     = (_config && _config.guest_sections) || BSConfig.DEFAULTS.guest_sections;
-    var ws      = (_config && _config.whatsapp_settings) || BSConfig.DEFAULTS.whatsapp_settings;
-    var gen     = (_config && _config.general) || BSConfig.DEFAULTS.general;
+    var outlets = getMergedSection('outlets');
+    var sec     = getMergedSection('guest_sections');
+    var ws      = getMergedSection('whatsapp_settings');
+    var gen     = getMergedSection('general');
+    var gc      = getMergedSection('guest_content');
     var container = $('#bs-outlets-grid');
     var section   = $('#bs-outlets-section');
     if (!container) return;
 
+    setText($('#bs-outlets-heading'), gc.outlets_section_title    || 'Discover Dining');
+    setText($('#bs-outlets-sub'),     gc.outlets_section_subtitle || 'Explore our iconic F&B outlets, each with its own culinary story.');
+
     if (sec && sec.show_outlets === false) { if (section) hide(section); return; }
 
-    // Hanya outlet AKTIF yang dirender ke tamu (GUE-07, CNT-05)
     var activeOutlets = (outlets || []).filter(function(o) {
       return o && o.active !== false;
     });
@@ -414,6 +505,8 @@
     if (!activeOutlets.length) { if (section) hide(section); return; }
 
     var defaultWaNum = cleanPhone((ws && ws.number) || gen.whatsapp || '628113388523');
+    var outletCtaLbl = gc.outlets_card_cta_label || 'Explore & Reserve →';
+    var outletWaTpl  = gc.outlets_wa_template    || 'Hello Bumi Surabaya, I would like the menu and table reservation info at {outlet_name}.';
 
     var html = activeOutlets.map(function(o) {
       var oId = escapeHtml(o.id || '');
@@ -429,7 +522,6 @@
         ? '<img src="' + escapeHtml(safeImg) + '" alt="' + oName + '" loading="lazy" onerror="this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';"><div class="bs-outlet-img-placeholder" style="display:none;">' + oEmoji + '</div>'
         : '<div class="bs-outlet-img-placeholder">' + oEmoji + '</div>';
 
-      // Tujuan CTA tervalidasi: URL reservasi khusus / WhatsApp reservasi (GUE-07, GUE-10, CNT-01)
       var targetUrl = '';
       if (o.reservation_url && sanitizeUrl(o.reservation_url) !== '#') {
         targetUrl = sanitizeUrl(o.reservation_url);
@@ -437,7 +529,9 @@
         targetUrl = sanitizeUrl(o.url);
       } else {
         var outletWa = cleanPhone(o.whatsapp) || defaultWaNum;
-        var outletMsg = 'Hello Bumi Surabaya, I would like the menu and table reservation info at ' + (o.name || 'the restaurant') + '.';
+        var outletMsg = outletWaTpl
+          .replace(/\{outlet_name\}/g, o.name || 'the restaurant')
+          .replace(/\{outlet\}/g, o.name || 'the restaurant');
         targetUrl = 'https://wa.me/' + outletWa + '?text=' + encodeURIComponent(outletMsg);
       }
 
@@ -456,7 +550,7 @@
           (oHours ? '<div class="bs-outlet-hours"><span class="bs-time-icon">🕒</span> ' + oHours + '</div>' : '') +
           '<div class="bs-outlet-footer">' +
             '<a href="' + escapeHtml(targetUrl) + '" target="_blank" rel="noopener noreferrer" class="bs-outlet-action-btn" data-outlet-id="' + oId + '" aria-label="Explore outlet and reservations ' + oName + '">' +
-              'Explore &amp; Reserve →' +
+              escapeHtml(o.cta_label || outletCtaLbl) +
             '</a>' +
           '</div>' +
         '</div>' +
@@ -465,7 +559,6 @@
 
     setHTML(container, html);
 
-    // Track klik tombol outlet yang benar-benar bernavigasi (GUE-10)
     $$('.bs-outlet-action-btn').forEach(function(link) {
       link.addEventListener('click', function() {
         var outletId = link.getAttribute('data-outlet-id');
@@ -478,27 +571,50 @@
     if (section) show(section);
   }
 
-  // ── Render WhatsApp section ───────────────────────────────
+  // ── Render WhatsApp Concierge & WA Picker Modal texts (FR-CMS-05) ──
   function renderWaSection() {
-    var sec = (_config && _config.guest_sections) || BSConfig.DEFAULTS.guest_sections;
+    var sec = getMergedSection('guest_sections');
+    var gc  = getMergedSection('guest_content');
     var el  = $('#bs-wa-section');
+
+    setText($('#bs-wa-status-text'), gc.wa_status_pill      || 'Concierge Online');
+    setText($('#bs-wa-heading'),     gc.wa_section_title    || 'Reservations & Inquiries');
+    setText($('#bs-wa-sub'),         gc.wa_section_subtitle || 'Our team is one message away — table reservations, private events, and special requests.');
+    var waLink = $('#bs-wa-link');
+    if (waLink) {
+      var waLinkSpan = waLink.querySelector('span');
+      if (waLinkSpan) waLinkSpan.textContent = gc.wa_btn_label || 'Chat on WhatsApp';
+    }
+
+    // Update WA Sales Picker Modal headings
+    setText($('#bs-wa-picker-badge'), gc.wa_picker_badge    || 'CHAT WITH US');
+    setText($('#bs-wa-picker-title'), gc.wa_picker_title    || 'Choose who to chat with');
+    setText($('#bs-wa-picker-sub'),   gc.wa_picker_subtitle || 'Our sales team is ready to help you on WhatsApp. Pick a contact below:');
+
     if (!el) return;
     if (sec && sec.show_wa === false) { hide(el); return; }
     show(el);
   }
 
-  // ── Render sosial media ───────────────────────────────────
+  // ── Render sosial media (FR-CMS-06) ───────────────────────────
   function renderSocial() {
-    var gen = (_config && _config.general) || BSConfig.DEFAULTS.general;
-    var sec = (_config && _config.guest_sections) || BSConfig.DEFAULTS.guest_sections;
+    var gen = getMergedSection('general');
+    var sec = getMergedSection('guest_sections');
+    var gc  = getMergedSection('guest_content');
     var el  = $('#bs-social-section');
     if (!el) return;
+
+    setText($('#bs-social-heading'), gc.social_section_title    || 'Stay Connected');
+    setText($('#bs-social-sub'),     gc.social_section_subtitle || 'Follow us for the latest stories and exclusive offers.');
+
     if (sec && sec.show_social === false) { hide(el); return; }
 
     var links = [];
-    if (gen.instagram) links.push({ href: sanitizeUrl(gen.instagram), label: '📸 Instagram', cls: 'instagram' });
-    if (gen.facebook)  links.push({ href: sanitizeUrl(gen.facebook),  label: '👍 Facebook',  cls: 'facebook'  });
-    if (gen.tiktok)    links.push({ href: sanitizeUrl(gen.tiktok),    label: '🎵 TikTok',    cls: 'tiktok'    });
+    if (gen.instagram) links.push({ href: sanitizeUrl(gen.instagram), label: gc.social_label_instagram || '📸 Instagram', cls: 'instagram' });
+    if (gen.facebook)  links.push({ href: sanitizeUrl(gen.facebook),  label: gc.social_label_facebook  || '👍 Facebook',  cls: 'facebook'  });
+    if (gen.tiktok)    links.push({ href: sanitizeUrl(gen.tiktok),    label: gc.social_label_tiktok    || '🎵 TikTok',    cls: 'tiktok'    });
+    if (gen.youtube)   links.push({ href: sanitizeUrl(gen.youtube),   label: gc.social_label_youtube   || '▶️ YouTube',   cls: 'youtube'   });
+    if (gen.website)   links.push({ href: sanitizeUrl(gen.website),   label: gc.social_label_website   || '🌐 Official Website', cls: 'website' });
 
     var validLinks = links.filter(function(l) { return l.href && l.href !== '#'; });
 
@@ -513,17 +629,84 @@
     }
   }
 
-  // ── Render footer ─────────────────────────────────────────
-  function renderFooter() {
-    var gen = (_config && _config.general) || BSConfig.DEFAULTS.general;
-    var el  = $('#bs-hotel-name-footer');
-    if (el) el.textContent = gen.hotel_name || 'Bumi Surabaya City Resort';
-    var addr = $('#bs-address-footer');
-    if (addr) addr.textContent = gen.address || '';
+  // ── Render Final CTA, Mobile Bar, Footer & Privacy Modal (FR-CMS-06 & FR-CMS-07) ──
+  function renderFooterAndModals() {
+    var gen = getMergedSection('general');
+    var sec = getMergedSection('guest_sections');
+    var gc  = getMergedSection('guest_content');
+
+    // Final CTA section
+    var finalSec = $('#bs-final-section') || $('.bs-final');
+    if (finalSec) {
+      setText($('#bs-final-heading'), gc.final_cta_title    || 'We Look Forward to Welcoming You Again');
+      setText($('#bs-final-sub'),     gc.final_cta_subtitle || 'Until your next memorable experience at Hotel Bumi Surabaya.');
+      if (sec && sec.show_final_cta === false) hide(finalSec); else show(finalSec);
+    }
+
+    // Floating Mobile Action Bar
+    var mobBar = $('#bs-mobile-bar') || $('.bs-mobile-action-bar');
+    if (mobBar) {
+      if (sec && sec.show_mobile_bar === false) hide(mobBar); else show(mobBar);
+    }
+
+    // Footer
+    setText($('#bs-hotel-name-footer'),     gen.hotel_name || 'Bumi Surabaya City Resort');
+    setText($('#bs-address-footer'),        gen.address    || '');
+    setText($('#bs-privacy-link'),          gc.footer_privacy_label   || 'Privacy & Data Use Policy');
+    setText($('#bs-footer-admin-link'),     gc.footer_admin_label     || 'Management Portal');
+    setText($('#bs-footer-copyright-text'), gc.footer_copyright       || '© 2026 Bumi Surabaya City Resort. All rights reserved.');
+    setText($('#bs-footer-version-tag'),    gc.footer_version_tag     || 'Digital Guest Experience v6.3');
+
+    var adminLink = $('#bs-footer-admin-link') || $('.bs-footer-admin');
+    var footerSep = $('#bs-footer-sep')        || $('.bs-footer-sep');
+    if (gc.footer_show_admin_link === false) {
+      hide(adminLink);
+      hide(footerSep);
+    } else {
+      show(adminLink);
+      show(footerSep);
+    }
+
+    // Privacy Policy Modal (FR-CMS-07)
+    setText($('#bs-privacy-badge'),          gc.privacy_badge        || 'WORLD-CLASS RESORT PRIVACY STANDARD');
+    setText($('#bs-privacy-title'),          gc.privacy_title        || 'Guest Privacy & Data Use Policy');
+    setText($('#bs-privacy-lead-bold'),      gc.privacy_lead_bold    || 'Bumi Surabaya City Resort is committed to transparent, secure, and ethical privacy.');
+    setText($('#bs-privacy-lead-sub'),       gc.privacy_lead_sub     || 'Your comfort and peace of mind are our absolute priority. We are fully transparent about the data processed when you use this digital service portal.');
+    setText($('#bs-privacy-b1-title'),       gc.privacy_block1_title || 'Personal data we NEVER collect:');
+    setText($('#bs-privacy-b2-title'),       gc.privacy_block2_title || 'Pseudonymous & technical data we process:');
+    setText($('#bs-privacy-b3-title'),       gc.privacy_block3_title || 'Purpose & data retention:');
+    setText($('#bs-privacy-subtext'),        gc.privacy_subtext      || 'By using this service, you help us build a finer, more transparent, and more trusted five-star hospitality standard together.');
+    setText($('#bs-privacy-understand-btn'), gc.privacy_btn_label    || 'I Understand');
+
+    function renderPrivacyList(listEl, items) {
+      if (!listEl || !Array.isArray(items) || !items.length) return;
+      listEl.innerHTML = '';
+      items.forEach(function(itemText) {
+        var txt = String(itemText || '').trim();
+        if (!txt) return;
+        var li = document.createElement('li');
+        var colonIdx = txt.indexOf(':');
+        if (colonIdx > 0 && colonIdx < 45) {
+          var st = document.createElement('strong');
+          st.textContent = txt.substring(0, colonIdx + 1);
+          li.appendChild(st);
+          li.appendChild(document.createTextNode(txt.substring(colonIdx + 1)));
+        } else {
+          li.textContent = txt;
+        }
+        listEl.appendChild(li);
+      });
+    }
+
+    renderPrivacyList($('#bs-privacy-b1-list'), gc.privacy_block1_items);
+    renderPrivacyList($('#bs-privacy-b2-list'), gc.privacy_block2_items);
+    renderPrivacyList($('#bs-privacy-b3-list'), gc.privacy_block3_items);
   }
 
-  // ── Direct Feedback (REV-02) ──────────────────────────────
+  // ── Direct Feedback (REV-02, FR-P2-01) ───────────────────────
+  var _feedbackInitialized = false;
   function initDirectFeedback() {
+    if (_feedbackInitialized) return;
     var toggle  = $('#bs-feedback-toggle');
     var wrap    = $('#bs-feedback-form-wrap');
     var form    = $('#bs-feedback-form');
@@ -531,6 +714,7 @@
     var errEl   = $('#bs-feedback-error');
     var stars   = $$('.bs-star');
     if (!toggle || !wrap || !form) return;
+    _feedbackInitialized = true;
 
     var rating = 0;
 
@@ -597,6 +781,7 @@
       if (submitBtn) submitBtn.disabled = true;
 
       var srcObj = (typeof _sourceObj !== 'undefined') ? _sourceObj : null;
+      var hpValue = (window._bsHpValue || ($('#bs-hp-website') ? $('#bs-hp-website').value : '') || '').substring(0, 100);
       var payload = {
         action:      'submit_feedback',
         rating:      rating,
@@ -609,6 +794,7 @@
         outlet:      (srcObj && srcObj.outlet) || '',
         device_id:   (window.BSTracker && BSTracker.getDeviceId) ? BSTracker.getDeviceId() : '',
         session_id:  (window.BSTracker ? BSTracker.getSessionId() : ''),
+        hp:          hpValue,
         ts_client:   new Date().toISOString()
       };
 
@@ -632,43 +818,42 @@
     });
   }
 
-  // ── Modal Privasi (GUE-14, PRD 6.4: Escape, Focus Trap & Return) ──
+  // ── Modal Privasi (Escape, Focus Trap & Return) ──────────────
+  var _privacyInitialized = false;
   function initPrivacyModal() {
+    if (_privacyInitialized) return;
     var overlay = $('#bs-privacy-modal');
     var openBtn = $('#bs-privacy-link');
     var closeBtn = $('#bs-privacy-close');
     var understandBtn = $('#bs-privacy-understand-btn');
+    if (!overlay) return;
+    _privacyInitialized = true;
     var _previousActiveElement = null;
 
     function openModal() {
-      if (!overlay) return;
       _previousActiveElement = document.activeElement;
       overlay.classList.add('active');
       overlay.setAttribute('aria-hidden', 'false');
-      // Berikan fokus ke tombol tutup pertama
       if (closeBtn) closeBtn.focus();
     }
 
     function closeModal() {
-      if (!overlay) return;
       overlay.classList.remove('active');
       overlay.setAttribute('aria-hidden', 'true');
-      // Kembalikan fokus ke elemen pembuka
       if (_previousActiveElement && typeof _previousActiveElement.focus === 'function') {
         _previousActiveElement.focus();
       }
     }
 
-    if (openBtn)  openBtn.addEventListener('click', function(e) { e.preventDefault(); openModal(); });
-    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (openBtn)       openBtn.addEventListener('click', function(e) { e.preventDefault(); openModal(); });
+    if (closeBtn)      closeBtn.addEventListener('click', closeModal);
     if (understandBtn) understandBtn.addEventListener('click', closeModal);
-    if (overlay)  overlay.addEventListener('click', function(e) {
+    overlay.addEventListener('click', function(e) {
       if (e.target === overlay) closeModal();
     });
 
-    // Keyboard support: Escape untuk menutup & focus trap
     document.addEventListener('keydown', function(e) {
-      if (!overlay || !overlay.classList.contains('active')) return;
+      if (!overlay.classList.contains('active')) return;
       if (e.key === 'Escape' || e.key === 'Esc') {
         e.preventDefault();
         closeModal();
@@ -680,22 +865,15 @@
         var first = focusables[0];
         var last = focusables[focusables.length - 1];
         if (e.shiftKey) {
-          if (document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-          }
+          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
         } else {
-          if (document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-          }
+          if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
         }
       }
     });
   }
 
-  // ── Pemilih Sales WhatsApp ala Linktree (REV-04) ────────────────────
-  // SLS-01: hanya sumber bertipe 'sales' yang nomornya boleh tampil ke tamu.
+  // ── Pemilih Sales WhatsApp ala Linktree (REV-04, FR-P2-01, FR-CMS-05) ──
   function getSalesList() {
     var out = [];
     for (var i = 0; i < _sources.length; i++) {
@@ -704,14 +882,22 @@
       if ((s.type || '') !== 'sales') continue;
       var phone = cleanPhone(s.whatsapp || '');
       if (!phone) continue;
-      out.push({ code: s.code || '', name: s.name || 'Sales', phone: phone });
+      var roleLabel = [s.role, s.outlet].filter(Boolean).join(' · ') || 'Sales & Reservation';
+      out.push({
+        code:             s.code || '',
+        name:             s.name || 'Sales',
+        role:             roleLabel,
+        phone:            phone,
+        service_hours:    s.service_hours || '',
+        welcome_template: s.welcome_template || ''
+      });
     }
     return out;
   }
 
   function waPickerDefault() {
-    var gen = (_config && _config.general) || BSConfig.DEFAULTS.general;
-    var ws  = (_config && _config.whatsapp_settings) || BSConfig.DEFAULTS.whatsapp_settings;
+    var gen = getMergedSection('general');
+    var ws  = getMergedSection('whatsapp_settings');
     var num = cleanPhone((ws && ws.number) || (gen && gen.whatsapp) || '628113388523');
     var msg = (ws && ws.template_general) || 'Hello Bumi Surabaya, I would like information about hotel reservations and services.';
     return { num: num, msg: msg };
@@ -722,14 +908,16 @@
     if (!listEl) return;
     listEl.innerHTML = '';
     var sales = getSalesList();
-    var gen = (_config && _config.general) || BSConfig.DEFAULTS.general;
-    var ws  = (_config && _config.whatsapp_settings) || BSConfig.DEFAULTS.whatsapp_settings;
+    var ws    = getMergedSection('whatsapp_settings');
+    var gc    = getMergedSection('guest_content');
     var tplGeneral = (ws && ws.template_general) || 'Hello Bumi Surabaya, I would like information about hotel reservations and services.';
+    var rowCtaLbl  = gc.wa_picker_row_cta || 'Chat';
 
-    function salesRow(name, code, phone, msg) {
+    function salesRow(s) {
+      var msg = (s.welcome_template || tplGeneral).replace(/\{staff_name\}/g, s.name);
       var a = document.createElement('a');
       a.className = 'bs-wa-sales-row';
-      a.href = sanitizeUrl('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg));
+      a.href = sanitizeUrl('https://wa.me/' + s.phone + '?text=' + encodeURIComponent(msg));
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       var info = document.createElement('span');
@@ -740,10 +928,10 @@
       var txt = document.createElement('span');
       var nm = document.createElement('span');
       nm.className = 'bs-wa-sales-name';
-      nm.textContent = name;
+      nm.textContent = s.name;
       var rl = document.createElement('span');
       rl.className = 'bs-wa-sales-role';
-      rl.textContent = 'Sales';
+      rl.textContent = s.role + (s.service_hours ? (' (' + s.service_hours + ')') : '');
       txt.appendChild(nm);
       txt.appendChild(document.createElement('br'));
       txt.appendChild(rl);
@@ -751,32 +939,31 @@
       info.appendChild(txt);
       var cta = document.createElement('span');
       cta.className = 'bs-wa-sales-cta';
-      cta.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i> Chat';
+      cta.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i> ' + escapeHtml(rowCtaLbl);
       a.appendChild(info);
       a.appendChild(cta);
       a.addEventListener('click', function() {
-        if (window.BSTracker) BSTracker.track('whatsapp_click', { sales_code: code || 'default' });
+        if (window.BSTracker) BSTracker.track('whatsapp_click', { sales_code: s.code || 'default' });
       });
       return a;
     }
 
     if (sales.length) {
       sales.forEach(function(s) {
-        listEl.appendChild(salesRow(s.name, s.code, s.phone, tplGeneral));
+        listEl.appendChild(salesRow(s));
       });
     } else {
-      // Fallback ramah bila belum ada sales terdaftar (PRD 17.2 poin 5)
       var wrap = document.createElement('div');
       wrap.className = 'bs-wa-picker-empty';
       var p = document.createElement('p');
-      p.textContent = 'Our sales team contacts are being updated. Meanwhile, you can reach our main reservation line below:';
+      p.textContent = gc.wa_picker_empty_text || 'Our sales team contacts are being updated. Meanwhile, you can reach our main reservation line below:';
       var def = waPickerDefault();
       var fb = document.createElement('a');
       fb.className = 'bs-btn bs-btn-gold';
       fb.href = sanitizeUrl('https://wa.me/' + def.num + '?text=' + encodeURIComponent(def.msg));
       fb.target = '_blank';
       fb.rel = 'noopener noreferrer';
-      fb.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i> Chat Reservation';
+      fb.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i> ' + escapeHtml(gc.wa_picker_fallback_btn || 'Chat Reservation');
       fb.addEventListener('click', function() {
         if (window.BSTracker) BSTracker.track('whatsapp_click', { sales_code: 'default' });
       });
@@ -785,6 +972,8 @@
       listEl.appendChild(wrap);
     }
   }
+
+  var _waPickerPreviousActive = null;
 
   function openWaPicker() {
     var overlay = $('#bs-wa-picker');
@@ -807,17 +996,19 @@
     }
   }
 
-  var _waPickerPreviousActive = null;
-
+  var _waPickerInitialized = false;
   function initWaPicker() {
+    if (_waPickerInitialized) return;
     var overlay = $('#bs-wa-picker');
     var closeBtn = $('#bs-wa-picker-close');
+    if (!overlay) return;
+    _waPickerInitialized = true;
     if (closeBtn) closeBtn.addEventListener('click', closeWaPicker);
-    if (overlay) overlay.addEventListener('click', function(e) {
+    overlay.addEventListener('click', function(e) {
       if (e.target === overlay) closeWaPicker();
     });
     document.addEventListener('keydown', function(e) {
-      if (!overlay || !overlay.classList.contains('active')) return;
+      if (!overlay.classList.contains('active')) return;
       if (e.key === 'Escape' || e.key === 'Esc') {
         e.preventDefault();
         closeWaPicker();
@@ -839,21 +1030,18 @@
 
   // ── Binding CTA event tracking ────────────────────────────
   function bindCtaTracking() {
-    var reviewBtn = $('#bs-btn-review');
-    var reviewLink = $('#bs-review-link');
-    var mobReview = $('.bs-mob-review');
+    var reviewBtn   = $('#bs-btn-review');
+    var reviewLink  = $('#bs-review-link');
+    var mobReview   = $('.bs-mob-review');
     var finalReview = $('#bs-final-review');
     [reviewBtn, reviewLink, mobReview, finalReview].forEach(function(btn) {
-      if (btn) {
+      if (btn && !btn.getAttribute('data-rev-bound')) {
+        btn.setAttribute('data-rev-bound', '1');
         btn.addEventListener('click', function() {
           if (window.BSTracker) BSTracker.track('google_review_click', {});
         });
       }
     });
-
-    // REV-04: tombol WA utama kini membuka pemilih sales (bukan langsung ke wa.me),
-    // sehingga event whatsapp_click dicatat saat tamu memilih salah satu sales
-    // di dalam picker (lihat openWaPicker), bukan saat tombol diklik.
   }
 
   // ── Render semua ─────────────────────────────────────────
@@ -864,14 +1052,14 @@
     renderOutlets();
     renderWaSection();
     renderSocial();
-    renderFooter();
+    renderFooterAndModals();
     bindCtaTracking();
     initPrivacyModal();
     initWaPicker();
     initDirectFeedback();
   }
 
-  // ── Pratinjau Draft Admin (CNT-09) ──────────────────────
+  // ── Pratinjau Draft Admin (?preview=1) ──────────────────
   function checkPreviewDraft() {
     var isPreview = (new URLSearchParams(window.location.search).get('preview') === '1');
     if (!isPreview) return;
@@ -882,7 +1070,10 @@
         if (draft) {
           _config = Object.assign({}, _config || BSConfig.DEFAULTS, draft);
           if (Array.isArray(draft.promotions)) _config.promotions = draft.promotions;
-          if (Array.isArray(draft.outlets)) _config.outlets = draft.outlets;
+          if (Array.isArray(draft.outlets))    _config.outlets    = draft.outlets;
+          if (draft.guest_content && typeof draft.guest_content === 'object') {
+            _config.guest_content = Object.assign({}, BSConfig.DEFAULTS.guest_content, draft.guest_content);
+          }
         }
       }
       var sRaw = sessionStorage.getItem('bs_preview_sources');
@@ -894,7 +1085,7 @@
         var banner = document.createElement('div');
         banner.id = 'bs-draft-preview-banner';
         banner.style.cssText = 'position:sticky;top:0;z-index:9999;background:#1a3c2a;color:#c9a96e;padding:10px 16px;text-align:center;font-size:0.84rem;font-weight:600;border-bottom:2px solid #c9a96e;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
-        banner.innerHTML = '👁️ <strong>Mode Pratinjau Draft Admin (CNT-09)</strong> — Menampilkan simulasi konten sebelum dipublikasikan ke tamu.';
+        banner.innerHTML = '<strong>Mode Pratinjau Draft Admin</strong> — Menampilkan simulasi konten sebelum dipublikasikan ke tamu.';
         document.body.insertBefore(banner, document.body.firstChild);
       }
     } catch (e) {
@@ -906,19 +1097,16 @@
   function init() {
     var gasUrl = window.BSConfig ? BSConfig.getGasUrl() : '';
 
-    // Inisialisasi tracker dulu
     if (window.BSTracker) {
       BSTracker.init({ gasUrl: gasUrl });
     }
 
-    // Muat konfigurasi
     if (window.BSConfig) {
       BSConfig.loadConfig(gasUrl, function(cfg, sources) {
         _config  = cfg;
         _sources = sources || [];
         checkPreviewDraft();
         renderAll();
-        // Sembunyikan loading screen
         var loading = $('#bs-loading');
         var main    = $('#bs-main');
         if (loading) loading.classList.add('bs-hidden');
@@ -938,14 +1126,15 @@
     }
   }
 
-  // ── Tunggu DOM ready ──────────────────────────────────────
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
 
-  // Ekspos minimal ke global (untuk debugging)
-  window.BSApp = { getSourceObj: function() { return _sourceObj; } };
+  window.BSApp = {
+    getSourceObj: function() { return _sourceObj; },
+    renderAll:    renderAll
+  };
 
 })(window, document);

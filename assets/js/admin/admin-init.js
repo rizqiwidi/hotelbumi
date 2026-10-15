@@ -1,9 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.2 (FASE 2)
- * admin-init.js — Bootstrapper, Lifecycle & Koordinasi Event Portal Admin
- *
- * Menginisialisasi modul-modul admin, mengelola alur login/logout,
- * pengingat perubahan yang belum disimpan (beforeunload), dan bootstrap DOM.
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * admin-init.js — Bootstrapper, Lifecycle & Koordinasi Event Portal Admin (FR-P0-03, FR-ADM-01)
  */
 
 (function (window) {
@@ -12,6 +9,7 @@
   var BSAdmin = window.BSAdmin || {};
   var state = BSAdmin.state;
   var $id = BSAdmin.$id || function (id) { return document.getElementById(id); };
+  var icon = BSAdmin.icon || function () { return ''; };
 
   function initApp() {
     var sidebar       = $id('adm-sidebar');
@@ -44,13 +42,13 @@
       });
     }
 
-    /* ── 2. Password Toggle Helper ── */
+    /* ── 2. Password Toggle Helper (SVG Monoline — FR-ADM-01) ── */
     function togglePw(inputId, btn) {
       var inp = $id(inputId);
       if (!inp) return;
       var isPassword = (inp.type === 'password');
       inp.type = isPassword ? 'text' : 'password';
-      btn.textContent = isPassword ? '🙈' : '👁';
+      btn.innerHTML = icon(isPassword ? 'eye-off' : 'eye', 16);
     }
 
     var togglePwBtn = $id('adm-toggle-pw');
@@ -60,7 +58,7 @@
       });
     }
 
-    /* ── 3. Modal Ganti Kata Sandi Wajib (First Login / Break-Glass) ── */
+    /* ── 3. Modal Ganti Kata Sandi Wajib (First Login / Break-Glass — FR-P0-03) ── */
     BSAdmin.setupAccessibleModal('adm-must-change-modal');
 
     var mustChangeForm = $id('adm-must-change-form');
@@ -80,8 +78,8 @@
           if (errEl) { errEl.textContent = 'Konfirmasi kata sandi baru tidak sesuai.'; errEl.style.display = ''; }
           return;
         }
-        if (newPw.length < 6) {
-          if (errEl) { errEl.textContent = 'Kata sandi baru minimal 6 karakter.'; errEl.style.display = ''; }
+        if (newPw.length < 8) {
+          if (errEl) { errEl.textContent = 'Kata sandi baru wajib minimal 8 karakter.'; errEl.style.display = ''; }
           return;
         }
 
@@ -92,7 +90,7 @@
         window.BSAuth.changePassword(oldPw, newPw).then(function (res) {
           if (res.ok) {
             $id('adm-must-change-modal').style.display = 'none';
-            BSAdmin.showToast('Kata sandi berhasil diperbarui. Selamat datang di portal!', 'success');
+            BSAdmin.showToast('Kata sandi berhasil diperbarui. Selamat datang di portal.', 'success');
             BSAdmin.showPortal();
             BSAdmin.loadDashboard();
           } else {
@@ -107,7 +105,7 @@
             errEl.style.display = '';
           }
         }).finally(function () {
-          if (btn) { btn.disabled = false; btn.textContent = '🔐 Simpan Kata Sandi Baru & Masuk'; }
+          if (btn) { btn.disabled = false; btn.innerHTML = icon('lock', 14) + ' <span>Simpan Kata Sandi Baru &amp; Masuk</span>'; }
         });
       });
     }
@@ -123,7 +121,7 @@
 
         if (!username || !password) {
           if (loginErr) {
-            loginErr.textContent = 'Isi username dan kata sandi terlebih dahulu.';
+            loginErr.textContent = 'Isi nama pengguna dan kata sandi terlebih dahulu.';
             loginErr.style.display = '';
           }
           return;
@@ -138,7 +136,7 @@
             if (window.BSAuth.mustChangePassword()) {
               BSAdmin.showMustChangeModal(password);
             } else {
-              BSAdmin.showToast('Selamat datang, ' + username + ' (' + (res.role || 'admin') + ')!', 'success');
+              BSAdmin.showToast('Selamat datang, ' + username + ' (' + (res.role || 'admin') + ').', 'success');
               BSAdmin.showPortal();
               BSAdmin.loadDashboard();
             }
@@ -155,7 +153,7 @@
             loginErr.style.display = '';
           }
         }).finally(function () {
-          if (btn) { btn.disabled = false; btn.textContent = 'Masuk Portal Admin'; }
+          if (btn) { btn.disabled = false; btn.textContent = 'Masuk ke Portal Manajemen'; }
         });
       });
     }
@@ -214,7 +212,6 @@
     }
   }
 
-  // Jalankan saat dokumen siap
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
   } else {
