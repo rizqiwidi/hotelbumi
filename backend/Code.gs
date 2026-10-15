@@ -102,10 +102,44 @@ function _log(level, action, message, ip) {
 
 var VALID_ROLES = ['super_admin', 'manager', 'content_editor', 'analyst_readonly'];
 
+var DEFAULT_ROLE_PERMISSIONS = {
+  super_admin:      { can_mutate: true,  allowed_tabs: ['dashboard','sources','antifraud','feedback','outlets','sales-wa','nfc','bulk-qr','promos','appearance','audit','config','account'] },
+  manager:          { can_mutate: true,  allowed_tabs: ['dashboard','sources','antifraud','feedback','outlets','sales-wa','nfc','bulk-qr','promos','appearance','audit','account'] },
+  content_editor:   { can_mutate: true,  allowed_tabs: ['outlets','sales-wa','promos','appearance','account'] },
+  analyst_readonly: { can_mutate: false, allowed_tabs: ['dashboard','sources','antifraud','outlets','sales-wa','bulk-qr','promos','audit','account'] }
+};
+
 function _sanitizeRole(role) {
-  var r = String(role || '').trim().toLowerCase();
-  if (VALID_ROLES.indexOf(r) !== -1) return r;
-  return 'super_admin';
+  var r = String(role || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+  if (r && r.length >= 3 && r.length <= 32) return r;
+  return 'manager';
+}
+
+function _getRoleDef(role) {
+  var r = _sanitizeRole(role || 'super_admin');
+  if (r === 'super_admin') return DEFAULT_ROLE_PERMISSIONS.super_admin;
+  try {
+    var ss = getSpreadsheet();
+    var cfgSheet = ss.getSheetByName('Config');
+    if (cfgSheet && cfgSheet.getLastRow() > 1) {
+      var rows = cfgSheet.getRange(2, 1, cfgSheet.getLastRow() - 1, 2).getValues();
+      for (var i = 0; i < rows.length; i++) {
+        if (String(rows[i][0] || '') === 'role_permissions' && rows[i][1]) {
+          var parsed = JSON.parse(rows[i][1]);
+          if (parsed && parsed[r] && Array.isArray(parsed[r].allowed_tabs)) {
+            return parsed[r];
+          }
+        }
+      }
+    }
+  } catch (e) {}
+  return DEFAULT_ROLE_PERMISSIONS[r] || { can_mutate: false, allowed_tabs: ['account'] };
+}
+
+function _roleHasTab(role, tabName) {
+  if (role === 'super_admin') return true;
+  var def = _getRoleDef(role);
+  return Array.isArray(def.allowed_tabs) && def.allowed_tabs.indexOf(tabName) !== -1;
 }
 
 /**
@@ -672,7 +706,7 @@ function _handleGetConfig(e) {
     ok:      true,
     version: Date.now(),
     system_health: {
-      backend_version: 'v6.4.0-phase4',
+      backend_version: 'v6.6.0-phase6',
       server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
       timezone:        'Asia/Jakarta'
     },
@@ -880,7 +914,7 @@ function _handleSubmitFeedback(data) {
 
 function _handleGetFeedbackData(data, session) {
   var role = session ? session.role : '';
-  if (role !== 'super_admin' && role !== 'manager') {
+  if (!_roleHasTab(role, 'feedback')) {
     _recordAudit(session.username, role, 'FEEDBACK_DENIED', 'feedback', 'REJECTED',
       'Ditolak: role ' + role + ' tidak berhak membaca data feedback tamu', '');
     return _jsonOut({ ok: false, error: 'Akses ditolak: hanya Super Admin & Manager.' });
@@ -1160,7 +1194,7 @@ function _maskWa(wa) {
 
 function _handleMarkFeedbackHandled(data, session) {
   var role = session ? session.role : '';
-  if (role !== 'super_admin' && role !== 'manager') {
+  if (!_roleHasTab(role, 'feedback')) {
     return _jsonOut({ ok: false, error: 'Akses ditolak: hanya Super Admin & Manager.' });
   }
   var row = parseInt(data.row, 10);
@@ -1470,7 +1504,7 @@ function _handleGetAdminData(data, session) {
     monthly_aggregates: monthlyAgg,
     timestamp:          new Date().toISOString(),
     system_health: {
-      backend_version: 'v6.4.0-phase4',
+      backend_version: 'v6.6.0-phase6',
       server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
       timezone:        'Asia/Jakarta',
       current_user:    session ? session.username : '',
@@ -1488,22 +1522,29 @@ function _handleSaveAllAdminData(data, session) {
   var actor = session ? session.username : 'system';
   var role  = session ? session.role : 'super_admin';
 
-  if (role === 'analyst_readonly') {
-    _recordAudit(actor, role, 'MUTATION_DENIED', 'all', 'REJECTED', 'Ditolak: analyst_readonly tidak boleh menyimpan data', '');
-    return _jsonOut({ ok: false, error: 'Akses ditolak: Peran analyst_readonly bersifat baca-saja dan tidak diizinkan melakukan mutasi data.' });
+  var roleDef = _getRoleDef(role);
+  if (role !== 'super_admin' && !roleDef.can_mutate) {
+    _recordAudit(actor, role, 'MUTATION_DENIED', 'all', 'REJECTED', 'Ditolak: peran ' + role + ' bersifat baca-saja', '');
+    return _jsonOut({ ok: false, error: 'Akses ditolak: Peran ' + role + ' bersifat baca-saja dan tidak diizinkan melakukan mutasi data.' });
   }
 
-  if (role === 'content_editor') {
-    if (data.sources || data.staff_devices || data.fraud_settings || (data.config && data.config.fraud_thresholds)) {
-      _recordAudit(actor, role, 'MUTATION_DENIED', 'sources/fraud/config', 'REJECTED', 'Ditolak: content_editor tidak berhak mengubah sumber, perangkat staf, atau konfigurasi anti-fraud', '');
-      return _jsonOut({ ok: false, error: 'Akses ditolak: Peran content_editor hanya berhak mengubah promosi, outlet, dan konten halaman tamu.' });
+  if (role !== 'super_admin') {
+    if (data.sources && !_roleHasTab(role, 'sources') && !_roleHasTab(role, 'sales-wa') && !_roleHasTab(role, 'nfc')) {
+      _recordAudit(actor, role, 'MUTATION_DENIED', 'sources', 'REJECTED', 'Ditolak: peran ' + role + ' tidak memiliki akses menu sumber/sales', '');
+      return _jsonOut({ ok: false, error: 'Akses ditolak: Peran Anda tidak memiliki izin mengubah daftar sumber.' });
     }
-  }
-
-  if (role === 'manager') {
-    if (data.fraud_settings || (data.config && data.config.fraud_thresholds)) {
-      _recordAudit(actor, role, 'MUTATION_DENIED', 'fraud_settings', 'REJECTED', 'Ditolak: manager tidak berhak mengubah parameter anti-fraud', '');
-      return _jsonOut({ ok: false, error: 'Akses ditolak: Peran manager tidak diizinkan mengubah konfigurasi anti-fraud sistem.' });
+    if (data.staff_devices && !_roleHasTab(role, 'antifraud')) {
+      _recordAudit(actor, role, 'MUTATION_DENIED', 'staff_devices', 'REJECTED', 'Ditolak: peran ' + role + ' tidak memiliki akses menu antifraud', '');
+      return _jsonOut({ ok: false, error: 'Akses ditolak: Peran Anda tidak memiliki izin mengelola perangkat staf.' });
+    }
+    if ((data.fraud_settings || (data.config && (data.config.fraud_thresholds || data.config.role_permissions))) && !_roleHasTab(role, 'config')) {
+      if (data.config && data.config.role_permissions && role !== 'super_admin') {
+        delete data.config.role_permissions;
+      }
+      if (data.fraud_settings) {
+        _recordAudit(actor, role, 'MUTATION_DENIED', 'fraud_settings', 'REJECTED', 'Ditolak: peran ' + role + ' tidak berhak mengubah parameter anti-fraud', '');
+        return _jsonOut({ ok: false, error: 'Akses ditolak: Peran Anda tidak diizinkan mengubah konfigurasi sistem/anti-fraud.' });
+      }
     }
   }
 
@@ -1527,7 +1568,8 @@ function _handleSaveAllAdminData(data, session) {
       var mergedConfig = data.config || {};
       var knownKeys = [
         'general', 'appearance', 'guest_sections', 'review_settings',
-        'whatsapp_settings', 'guest_content', 'promotions', 'outlets', 'fraud_thresholds'
+        'whatsapp_settings', 'guest_content', 'promotions', 'outlets', 'fraud_thresholds',
+        'role_permissions', 'language_mode', 'alert_email', 'alert_webhook_url'
       ];
       for (var k = 0; k < knownKeys.length; k++) {
         var key = knownKeys[k];
@@ -1626,8 +1668,8 @@ function _handleSaveAllAdminData(data, session) {
 ══════════════════════════════════════════════════════════════ */
 
 function _handleGetAuditLogs(data, session) {
-  if (session && session.role === 'content_editor') {
-    return _jsonOut({ ok: false, error: 'Akses ditolak: content_editor tidak memiliki izin melihat jejak audit.' });
+  if (session && !_roleHasTab(session.role, 'audit')) {
+    return _jsonOut({ ok: false, error: 'Akses ditolak: peran Anda tidak memiliki izin melihat jejak audit.' });
   }
 
   var ss       = getSpreadsheet();
@@ -1670,8 +1712,8 @@ function _handleGetAuditLogs(data, session) {
 ══════════════════════════════════════════════════════════════ */
 
 function _handleGetEventsData(data, session) {
-  if (session && session.role === 'content_editor') {
-    return _jsonOut({ ok: false, error: 'Akses ditolak: content_editor tidak memiliki izin melihat data analitik event.' });
+  if (session && !_roleHasTab(session.role, 'dashboard') && !_roleHasTab(session.role, 'antifraud')) {
+    return _jsonOut({ ok: false, error: 'Akses ditolak: peran Anda tidak memiliki izin melihat data analitik event.' });
   }
 
   var ss          = getSpreadsheet();

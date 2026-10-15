@@ -98,3 +98,50 @@ Seluruh tombol dan interaksi CRUD di Portal Admin (`/admin/`) kini langsung mela
 | **FR-V64-05** | **Impor/Ekspor CSV Sumber & Backup/Restore JSON 1-Klik** | Menambahkan tombol *Impor CSV* & *Ekspor CSV* pada `#tab-sources` (dengan auto-sync ke backend seusai impor) serta kartu *Unduh Cadangan Lengkap (.json)* & *Pulihkan dari Berkas JSON* pada `#tab-config`. |
 | **FR-V64-06** | **Mode Dwibahasa Otomatis (ID / EN) & Preset 1-Klik** | Menambahkan `BSConfig.PRESET_ID` (kamus lengkap Bahasa Indonesia) dan `language_mode: "auto" | "id" | "en"`. Halaman tamu (`guest/app.js`) mendeteksi `?lang=id|en` atau bahasa peramban secara otomatis tanpa mengubah tone warna maupun layout halaman tamu. Admin juga dapat menerapkan *Preset Bahasa Indonesia* atau *Preset English* 1-klik di `#tab-appearance`. |
 | **FR-V64-07** | **Tabel Historis `MonthlyAggregates` & Filter Tanggal Kustom** | `_handleGetAdminData()` dan `_handleGetEventsData()` kini membaca lembar `MonthlyAggregates` via `_readMonthlyAggregates(ss)` dan menampilkannya pada tabel *Ringkasan Historis Bulanan* di `#tab-dashboard`, dilengkapi filter rentang tanggal kustom (*Dari – Sampai*). |
+
+## 7. Spesifikasi Perbaikan Header Mobile & Peningkatan Operasional Fase 5 (`BUG-15`, `FR-V65-01` s/d `FR-V65-05`)
+
+### 7.1. Analisis Akar Masalah & Perbaikan Layout Header Dashboard di HP (`BUG-15` / `FR-V65-01`)
+
+| Komponen Header / Dashboard | Akar Masalah pada Layar HP (`<= 768px` & `<= 480px`) | Solusi Arsitektur Responsif (`assets/css/admin.css` & `admin/index.html`) |
+| :--- | :--- | :--- |
+| **Topbar Utama Portal (`.adm-topbar`)** | Memiliki tinggi kaku `height: var(--topbar-h)` (`66px`) dan `flex-wrap: nowrap`. Saat dibuka di layar HP (360px–414px), grup judul kiri (`.adm-topbar-left`) dan 4 kontrol aksi kanan (`.adm-topbar-actions`: indikator sync, dropdown bulan, tombol *Perbarui*, dan *Ekspor CSV*) bertabrakan secara horizontal serta meluber keluar dari kotak 66px menimpa `.adm-health-bar`. | Mengubah `.adm-topbar` pada `<= 768px` menjadi `height: auto; min-height: 56px; padding: 10px 14px; flex-direction: column; align-items: stretch; gap: 8px;`. Baris atas menampilkan tombol hamburger `38x38px` dan judul satu baris (`text-overflow: ellipsis`), sedangkan baris bawah menampilkan `.adm-topbar-actions` dalam CSS Grid proporsional (`auto 1fr auto auto` pada tablet/HP lebar dan `grid-template-columns: 1fr 1fr` 2x2 rapi pada layar `<= 480px`). |
+| **Bar Sinyal Health (`.adm-health-bar`)** | Menggunakan `padding: 7px 28px; gap: 16px; flex-wrap: wrap;` sehingga 5 item sinyal kesehatan sistem terpecah menjadi 3–4 baris tidak rata di layar HP. | Mengubah `.adm-health-bar` pada `<= 768px` menjadi CSS Grid 2 kolom (`grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 8px 14px; gap: 6px 10px;`) dengan badge status utama merentang penuh di baris pertama (`grid-column: 1 / -1`). |
+| **Header Filter & Rentang Tanggal Dashboard (`.adm-fav-filter-card`)** | Menggunakan inline `display: flex` dengan dua `<input type="date" style="width:auto">` dan 7 tombol aksi dalam satu kontainer, sehingga meluber secara horizontal di layar ponsel sempit. | Mengganti inline style dengan class semantik `.adm-dash-toolbar-wrap`, `.adm-dash-preset-btns` (grid 2 kolom di HP), `.adm-dash-date-inputs` (`grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)`), dan `.adm-dash-date-actions` (grid 3 kolom sejajar: *Terapkan*, *Reset*, *Simpan Filter*). |
+| **Header Kartu (`.adm-card-header`) & Sticky CMS Toolbar (`.adm-cms-toolbar`)** | `.adm-cms-toolbar` memakai `position: sticky; top: 66px;` yang bertumpukan dengan `.adm-topbar` saat tinggi topbar bertambah di HP dan menutupi setengah layar ponsel. | Mengatur `.adm-card-header` menjadi `flex-direction: column; align-items: stretch;` pada `<= 768px`, membuat `.adm-cms-toolbar` menjadi `position: static;` di HP, serta menurunkan `.adm-metrics-grid` menjadi 2 kolom ringkas (`<= 768px`) dan 1 kolom (`<= 480px`). |
+| **Drawer Navigasi Sidebar Mobile (`#adm-sidebar`)** | Saat menu hamburger dibuka di HP, tidak ada lapisan latar redup (*backdrop*) untuk menutup menu ketika area luar diketuk, dan halaman belakang masih ikut tergulir. | Menambahkan elemen `#adm-sidebar-backdrop` (`.adm-sidebar-backdrop`) serta pengunci gulir `body.adm-mobile-nav-open` di `admin-init.js` agar mengetuk area luar otomatis menutup sidebar. |
+
+### 7.2. Fitur Tambahan Operasional Fase 5 (`FR-V65-02` s/d `FR-V65-05`)
+
+| Kode Fitur | Nama Fitur & Peningkatan | Rincian Implementasi Teknis |
+| :--- | :--- | :--- |
+| **FR-V65-02** | **Pencarian Cepat & Filter Tipe Sumber di `#tab-sources`** | Menambahkan bilah pencarian instan `#adm-sources-search` (mencari nama, kode URL, unit/gerai, jabatan, atau nomor WA secara *real-time*), dropdown `#adm-sources-type-filter` (*Semua / Staf / Sales / NFC / Gerai*), dan penghitung `#adm-sources-count-info` di `admin/index.html` & `assets/js/admin/admin-sources.js`. |
+| **FR-V65-03** | **Ekspor CSV Masukan Tamu (`#tab-feedback`)** | Menambahkan tombol **Ekspor CSV** (`#adm-feedback-export-btn`) di header `#tab-feedback` (`assets/js/admin/admin-feedback.js`) untuk mengunduh rekapitulasi masukan dan keluhan tamu beserta status penanganannya. |
+| **FR-V65-04** | **Pengiriman Ulang Manual Antrean Offline (*DLQ Manual Flush*)** | Apabila terdapat event di `bs_dead_letter_queue` (`Antrean Tertunda > 0`), indikator `#adm-health-dlq-count` di bar health kini dapat diklik langsung untuk memicu `BSAdmin.flushDeadLetterQueue()` (`assets/js/admin/admin-core.js`) ke server. |
+| **FR-V65-05** | **Rekomendasi Ekspansi Masa Depan (Opsional Fase Berikutnya)** | 1) **PWA Offline Caching (`manifest.json` & Service Worker)** untuk menyimpan aset gambar gerai/logo di ponsel tamu; 2) **Integrasi Webhook WhatsApp Business API Resmi** pada `alert_webhook_url` untuk mengirim notifikasi keluhan bintang `<= 3` langsung ke grup WA Duty Manager; 3) **Multi-Property Support** jika manajemen ingin memperluas platform ke properti hotel/resor jaringan lainnya. |
+
+## 8. Spesifikasi Manajemen Role Dinamis & Pengaturan Visibilitas Menu Dashboard (`FR-V66-ROLE-MENU`)
+
+Menjawab kebutuhan agar **setiap role yang masuk ke dashboard hanya menampilkan menu sidebar yang sesuai (serta mendukung pembuatan role baru dengan daftar menu kustom)**, sistem dilengkapi modul **Manajemen Role & Pengaturan Menu Dashboard per Role (`#adm-role-mgmt-card`)** di tab **Akun & Keamanan (`#tab-account`)**:
+
+### 8.1. Matriks Default Role & Menu Sidebar yang Ditampilkan Saat Login
+
+| Kode Role (`role_id`) | Nama Tampilan Role | Mode Akses Data | Menu Pertama Saat Login (`default_tab`) | Menu Sidebar yang Tampil (`allowed_tabs`) | Menu yang Disembunyikan Otomatis (`display: none`) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`super_admin`** | Super Administrator (Akses Penuh) | CRUD Penuh | `dashboard` | Seluruh 13 Menu (`dashboard`, `sources`, `antifraud`, `feedback`, `outlets`, `sales-wa`, `nfc`, `bulk-qr`, `promos`, `appearance`, `audit`, `config`, `account`) | Tidak ada (akses penuh) |
+| **`manager`** | Manager Operasional | CRUD Aktif | `dashboard` | 12 Menu (`dashboard`, `sources`, `antifraud`, `feedback`, `outlets`, `sales-wa`, `nfc`, `bulk-qr`, `promos`, `appearance`, `audit`, `account`) | `config` (Konfigurasi Backend & Manajemen User/Role) |
+| **`content_editor`** | Editor Konten & Halaman Tamu | CRUD Aktif | `appearance` | 5 Menu (`outlets`, `sales-wa`, `promos`, `appearance`, `account`) | `dashboard`, `sources`, `antifraud`, `feedback`, `nfc`, `bulk-qr`, `audit`, `config` |
+| **`analyst_readonly`** | Analis Data (Hanya Baca) | Hanya Baca (*Read-Only*) | `dashboard` | 9 Menu (`dashboard`, `sources`, `antifraud`, `outlets`, `sales-wa`, `bulk-qr`, `promos`, `audit`, `account`) | `feedback` (PII Tamu), `nfc`, `appearance`, `config` |
+| **Role Kustom Baru** *(mis. `sales_spv`, `duty_manager`, `marcomm`, `front_office`)* | Dikonfigurasi bebas oleh `super_admin` | Dapat dipilih: **CRUD Aktif** atau **Hanya Baca** | Dapat dipilih dari 13 menu | Dikonfigurasi bebas melalui **13 Checkbox Menu Sidebar** di `#adm-role-form` | Seluruh menu yang tidak dicentang otomatis disembunyikan dari sidebar & diblokir di `switchTab()` serta `Code.gs` |
+
+### 8.2. Alur Kerja Penambahan Role & Pengaturan Menu (`#tab-account`)
+
+1. **Tambah Role Baru atau Edit Role yang Ada (`#adm-role-form`)**:
+   - Super Administrator membuka menu **Akun & Keamanan** (`#tab-account`) -> kartu **Manajemen Role & Pengaturan Menu Dashboard per Role**.
+   - Isi **Kode Role / ID** (contoh: `sales_spv` atau klik tombol **Atur Menu** pada role `manager` / `content_editor` / `analyst_readonly`), **Nama Tampilan Role**, **Mode Hak Akses Data** (*CRUD Aktif* vs *Hanya Baca*), dan **Menu Pertama yang Terbuka Saat Login**.
+   - Centang daftar **13 Menu Sidebar** (`input[name="adm-role-tab"]`) yang ingin ditampilkan saat pengguna dengan role tersebut masuk ke dashboard.
+   - Klik **Simpan Role & Menu ke Server** (`#adm-role-submit-btn`): konfigurasi `role_permissions` langsung tersimpan otomatis ke lembar `Config` di Google Sheets (`FR-CRUD-AUTO`) dan pilihan role tersebut langsung muncul di dropdown **Peran Hak Akses (Role)** (`#adm-user-role`) pada form pembuatan akun pengguna di bawahnya.
+2. **Penegakan Visibilitas Sidebar & Keamanan Backend (`admin-core.js` & `backend/Code.gs`)**:
+   - Di sisi frontend (`BSAdmin.applyRoleRestrictions()`), setiap item menu `.adm-nav-item` yang tidak termasuk dalam `allowed_tabs` role pengguna yang sedang login langsung disembunyikan (`style.display = "none"`), termasuk menyembunyikan judul grup kategori (`.adm-nav-group-title`) jika seluruh menu di dalam grup tersebut tersembunyi.
+   - Saat login berhasil (`BSAdmin.showPortal()`), pengguna otomatis diarahkan ke `default_tab` milik rolenya.
+   - Di sisi server (`backend/Code.gs` -> `_getRoleDef(role)` & `_roleHasTab(role, tabName)`), backend membaca `role_permissions` dari lembar `Config` dan menolak akses baca/tulis apabila token sesi pengguna berasal dari role yang tidak memiliki izin atas modul tersebut.

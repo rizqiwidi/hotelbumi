@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Portal Manajemen — Bumi Surabaya City Resort v6.4</title>
+  <title>Portal Manajemen — Bumi Surabaya City Resort v6.6</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,7 +37,7 @@
       </div>
       <div class="adm-login-badge">PORTAL MANAJEMEN RESOR</div>
       <h1>Bumi Surabaya</h1>
-      <p>Digital Guest Experience &amp; Attribution Platform v6.4</p>
+      <p>Digital Guest Experience &amp; Attribution Platform v6.6</p>
     </div>
 
     <div id="adm-lockout-msg" class="adm-alert adm-alert-danger" style="display:none;"></div>
@@ -144,7 +144,7 @@
     <div class="adm-sidebar-header">
       <div class="adm-sidebar-logo">
         <img src="../assets/images/logo-hotel.png" alt="Bumi Surabaya" class="adm-sidebar-brand-img" width="150">
-        <span class="adm-sidebar-ver">v6.4</span>
+        <span class="adm-sidebar-ver">v6.6</span>
       </div>
       <button id="adm-sidebar-close" class="adm-sidebar-close" aria-label="Tutup sidebar">✕</button>
     </div>
@@ -253,6 +253,7 @@
       </button>
     </div>
   </aside><!-- .adm-sidebar -->
+  <div id="adm-sidebar-backdrop" class="adm-sidebar-backdrop" aria-hidden="true"></div>
 
   <!-- ── AREA KONTEN UTAMA ─────────────────────────────────── -->
   <div class="adm-main">
@@ -297,10 +298,10 @@
         <span id="adm-health-status" class="adm-health-badge adm-health-online"><span class="adm-status-dot-sm"></span> Backend Siap</span>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Frontend:</span> <strong id="adm-health-frontend-ver">v6.4.0-phase4</strong>
+        <span class="adm-health-label">Frontend:</span> <strong id="adm-health-frontend-ver">v6.6.0-phase6</strong>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Backend:</span> <strong id="adm-health-backend-ver">v6.4.0-phase4</strong>
+        <span class="adm-health-label">Backend:</span> <strong id="adm-health-backend-ver">v6.6.0-phase6</strong>
       </div>
       <div class="adm-health-item">
         <span class="adm-health-label">Waktu Server:</span> <span id="adm-health-server-time">—</span>
@@ -321,24 +322,30 @@
     ═══════════════════════════════════════════════════════════ -->
     <section id="tab-dashboard" class="adm-tab-pane adm-tab-active" aria-label="Dashboard utama">
 
-      <!-- Toolbar Rentang & Filter Cepat -->
-      <div class="adm-card adm-fav-filter-card" style="margin-bottom:18px;padding:12px 18px;">
-        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
-          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
-            <span style="font-size:0.78rem;font-weight:600;color:var(--charcoal-muted);">Preset Analitik:</span>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="staff_7d">Staf (7 Hari)</button>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="outlets_30d">Gerai F&amp;B (30 Hari)</button>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="all_30d">Semua Sumber (30 Hari)</button>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-gold" id="adm-load-fav-btn" style="display:none;">Muat Filter Tersimpan</button>
+      <!-- Toolbar Rentang & Filter Cepat (Responsif Mobile — FR-V65-01) -->
+      <div class="adm-card adm-fav-filter-card">
+        <div class="adm-dash-toolbar-wrap">
+          <div class="adm-dash-preset-group">
+            <span class="adm-dash-toolbar-label">Preset Analitik:</span>
+            <div class="adm-dash-preset-btns">
+              <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="staff_7d">Staf (7 Hari)</button>
+              <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="outlets_30d">Gerai F&amp;B (30 Hari)</button>
+              <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="all_30d">Semua Sumber (30 Hari)</button>
+              <button type="button" class="adm-btn adm-btn-xs adm-btn-gold" id="adm-load-fav-btn" style="display:none;">Muat Filter Tersimpan</button>
+            </div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;">
-            <span style="font-size:0.76rem;font-weight:600;color:var(--charcoal-muted);">Rentang Tanggal:</span>
-            <input type="date" id="adm-date-from" class="adm-input" style="width:auto;padding:4px 8px;font-size:0.76rem;" aria-label="Dari tanggal">
-            <span style="font-size:0.75rem;color:var(--charcoal-muted);">s/d</span>
-            <input type="date" id="adm-date-to" class="adm-input" style="width:auto;padding:4px 8px;font-size:0.76rem;" aria-label="Sampai tanggal">
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-primary" id="adm-date-apply-btn">Terapkan</button>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-date-reset-btn">Reset</button>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-save-fav-btn" title="Simpan kombinasi periode dan filter saat ini">Simpan Filter</button>
+          <div class="adm-dash-date-group">
+            <span class="adm-dash-toolbar-label">Rentang Tanggal:</span>
+            <div class="adm-dash-date-inputs">
+              <input type="date" id="adm-date-from" class="adm-input adm-date-input" aria-label="Dari tanggal">
+              <span class="adm-dash-date-sep">s/d</span>
+              <input type="date" id="adm-date-to" class="adm-input adm-date-input" aria-label="Sampai tanggal">
+            </div>
+            <div class="adm-dash-date-actions">
+              <button type="button" class="adm-btn adm-btn-xs adm-btn-primary" id="adm-date-apply-btn">Terapkan</button>
+              <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-date-reset-btn">Reset</button>
+              <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-save-fav-btn" title="Simpan kombinasi periode dan filter saat ini">Simpan Filter</button>
+            </div>
           </div>
         </div>
       </div>
@@ -553,6 +560,18 @@
             <button type="button" id="adm-export-sources-csv-btn" class="adm-btn adm-btn-secondary">Ekspor CSV</button>
             <button type="button" id="adm-add-source-btn" class="adm-btn adm-btn-primary adm-btn-mutate">+ Tambah Staf / Titik</button>
           </div>
+        </div>
+
+        <div class="adm-sources-filter-bar">
+          <input type="search" id="adm-sources-search" class="adm-input" placeholder="Cari nama staf, kode URL, unit/gerai, jabatan, atau nomor WA…" aria-label="Cari sumber">
+          <select id="adm-sources-type-filter" class="adm-select" aria-label="Filter tipe sumber">
+            <option value="">Semua Tipe Sumber</option>
+            <option value="staff">Staf Operasional (Staff)</option>
+            <option value="sales">Sales &amp; Marketing</option>
+            <option value="nfc">Meja / Titik NFC</option>
+            <option value="outlet">Gerai (Outlet)</option>
+          </select>
+          <span id="adm-sources-count-info" class="adm-sources-count-info"></span>
         </div>
 
         <div class="adm-table-wrap">
@@ -1450,7 +1469,7 @@
           </div>
           <div class="adm-form-group">
             <label for="adm-cms-ftr-version">Teks Tag Versi di Bawah Footer</label>
-            <input type="text" id="adm-cms-ftr-version" class="adm-input" placeholder="Digital Guest Experience v6.4">
+            <input type="text" id="adm-cms-ftr-version" class="adm-input" placeholder="Digital Guest Experience v6.6">
           </div>
         </div>
 
@@ -1676,8 +1695,102 @@
             <li>Akun aktif: <strong id="adm-acc-current-user">admin</strong></li>
             <li>Otentikasi: Session Token Kriptografis Server-Side (Masa berlaku 6 jam)</li>
             <li>Hashing Kredensial: Salted Iterative SHA-256 (1.000 putaran per pengguna)</li>
-            <li>Versi Sistem: <strong>Digital Guest Experience v6.4</strong></li>
+            <li>Versi Sistem: <strong>Digital Guest Experience v6.6</strong></li>
           </ul>
+        </div>
+      </div>
+
+      <!-- Manajemen Role & Pengaturan Visibilitas Menu Sidebar Dashboard (FR-V66-ROLE-MENU) -->
+      <div class="adm-card" id="adm-role-mgmt-card" style="max-width:880px;margin:20px auto 0;">
+        <div class="adm-card-header">
+          <div>
+            <h2 class="adm-card-title">Manajemen Role &amp; Pengaturan Menu Dashboard per Role</h2>
+            <p class="adm-card-subtitle">Buat role baru atau atur menu sidebar apa saja yang tampil saat setiap role masuk ke Portal Manajemen</p>
+          </div>
+          <button type="button" id="adm-role-reset-form-btn" class="adm-btn adm-btn-secondary">Reset Form Role</button>
+        </div>
+
+        <form id="adm-role-form" style="background:#faf9f6;padding:16px;border-radius:8px;border:1px solid var(--border-light);margin-bottom:18px;" novalidate>
+          <h4 style="font-size:0.88rem;margin:0 0 12px 0;color:var(--deep-green);">Tambah Role Baru atau Ubah Hak Akses Menu Role</h4>
+          <div class="adm-two-col-form">
+            <div class="adm-form-group">
+              <label for="adm-role-id">Kode Role / ID <span class="adm-required">*</span></label>
+              <input type="text" id="adm-role-id" class="adm-input" placeholder="Contoh: sales_spv, duty_manager, marcomm, atau manager" required>
+              <span class="adm-field-hint">Ketik kode baru untuk membuat role baru, atau klik tombol "Atur Menu" pada tabel di bawah untuk mengubah role yang sudah ada.</span>
+            </div>
+            <div class="adm-form-group">
+              <label for="adm-role-label">Nama Tampilan Role <span class="adm-required">*</span></label>
+              <input type="text" id="adm-role-label" class="adm-input" placeholder="Contoh: Supervisor Sales &amp; Reservasi" required>
+            </div>
+          </div>
+
+          <div class="adm-two-col-form">
+            <div class="adm-form-group">
+              <label for="adm-role-can-mutate">Mode Hak Akses Data</label>
+              <select id="adm-role-can-mutate" class="adm-input">
+                <option value="true">Dapat Mengubah &amp; Menyimpan Data (CRUD Aktif pada Menu Terpilih)</option>
+                <option value="false">Hanya Baca / Read-Only (Tidak Dapat Mengubah Data)</option>
+              </select>
+            </div>
+            <div class="adm-form-group">
+              <label for="adm-role-default-tab">Menu Pertama yang Terbuka Saat Login</label>
+              <select id="adm-role-default-tab" class="adm-input">
+                <option value="dashboard">Dashboard Analitik</option>
+                <option value="sources">Staf &amp; Kartu NFC</option>
+                <option value="antifraud">Audit Anti-Fraud</option>
+                <option value="feedback">Feedback Tamu</option>
+                <option value="outlets">Manajemen Outlet</option>
+                <option value="sales-wa">WhatsApp Sales</option>
+                <option value="nfc">Programmer NFC</option>
+                <option value="bulk-qr">Cetak QR Massal</option>
+                <option value="promos">Promosi &amp; Visibilitas</option>
+                <option value="appearance">CMS Isi Halaman Tamu</option>
+                <option value="audit">Jejak Audit</option>
+                <option value="config">Konfigurasi Backend</option>
+                <option value="account">Akun &amp; Keamanan</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="adm-form-group" style="margin-top:8px;">
+            <label>Pilih Menu Sidebar yang Tampil Saat Role Ini Login (Menu yang tidak dicentang otomatis disembunyikan):</label>
+            <div class="adm-toggles-grid" style="margin-top:8px;">
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="dashboard" checked><div class="adm-toggle-label"><strong>Dashboard Analitik</strong><span>KPI, grafik tren &amp; peringkat</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="sources" checked><div class="adm-toggle-label"><strong>Staf &amp; Kartu NFC</strong><span>Daftar personel &amp; titik QR/NFC</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="antifraud" checked><div class="adm-toggle-label"><strong>Audit Anti-Fraud</strong><span>Anomali &amp; perangkat staf</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="feedback" checked><div class="adm-toggle-label"><strong>Feedback Tamu</strong><span>Masukan langsung tamu</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="outlets" checked><div class="adm-toggle-label"><strong>Manajemen Outlet</strong><span>Profil restoran &amp; lounge</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="sales-wa" checked><div class="adm-toggle-label"><strong>WhatsApp Sales</strong><span>Direktori kontak sales WA</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="nfc" checked><div class="adm-toggle-label"><strong>Programmer NFC</strong><span>Tulis chip NFC &amp; QR tunggal</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="bulk-qr" checked><div class="adm-toggle-label"><strong>Cetak QR Massal</strong><span>Cetak kartu, tent card &amp; stiker</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="promos" checked><div class="adm-toggle-label"><strong>Promosi &amp; Visibilitas</strong><span>Penawaran &amp; 8 toggle seksi</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="appearance" checked><div class="adm-toggle-label"><strong>CMS Isi Halaman Tamu</strong><span>Editor 6 zona teks &amp; tautan</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="audit" checked><div class="adm-toggle-label"><strong>Jejak Audit</strong><span>Riwayat log mutasi server</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="config"><div class="adm-toggle-label"><strong>Konfigurasi Backend</strong><span>Threshold fraud, alert &amp; backup</span></div></label>
+              <label class="adm-toggle-item"><input type="checkbox" name="adm-role-tab" value="account" checked disabled><div class="adm-toggle-label"><strong>Akun &amp; Keamanan</strong><span>Wajib aktif (ganti sandi sendiri)</span></div></label>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+            <button type="submit" id="adm-role-submit-btn" class="adm-btn adm-btn-gold adm-btn-mutate">Simpan Role &amp; Menu ke Server</button>
+          </div>
+        </form>
+
+        <div class="adm-table-wrap">
+          <table class="adm-table" aria-label="Daftar role dan menu yang diizinkan">
+            <thead>
+              <tr>
+                <th>Nama &amp; Kode Role</th>
+                <th>Mode Akses</th>
+                <th>Menu Awal</th>
+                <th>Menu Sidebar yang Ditampilkan</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="adm-roles-tbody">
+              <tr><td colspan="5" class="bs-empty">Memuat daftar konfigurasi role…</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1827,7 +1940,8 @@
               <option value="">Semua Outlet</option>
             </select>
             <span id="adm-feedback-count-info" style="font-size:0.78rem;color:var(--charcoal-muted);"></span>
-            <button class="adm-btn adm-btn-secondary" id="adm-feedback-refresh-btn">Perbarui</button>
+            <button type="button" class="adm-btn adm-btn-secondary" id="adm-feedback-export-btn">Ekspor CSV</button>
+            <button type="button" class="adm-btn adm-btn-secondary" id="adm-feedback-refresh-btn">Perbarui</button>
           </div>
         </div>
 

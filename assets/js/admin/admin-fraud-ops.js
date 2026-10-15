@@ -1,6 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
- * admin-fraud-ops.js — Audit Anomali, Perangkat Staf, Alert & Backup Konfigurasi, serta Manajemen Akun & RBAC (FR-P0-03, FR-P0-06, FR-V64-02, FR-V64-03, FR-V64-05)
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.6
+ * admin-fraud-ops.js — Audit Anomali, Perangkat Staf, Alert & Backup Konfigurasi, Manajemen Role & Visibilitas Menu Sidebar, serta Manajemen Akun RBAC (FR-P0-03, FR-P0-06, FR-V64-02, FR-V64-03, FR-V64-05, FR-V66-ROLE-MENU)
  */
 
 (function (window) {
@@ -309,7 +309,7 @@
     var sources = (window.BSStaffManager && typeof BSStaffManager.getSources === 'function')
       ? BSStaffManager.getSources() : [];
     var payload = {
-      backup_schema: 'bumi_surabaya_v6.4',
+      backup_schema: 'bumi_surabaya_v6.6',
       exported_at:   new Date().toISOString(),
       exported_by:   state.username || 'admin',
       config:        state.configData || {},
@@ -378,6 +378,7 @@
           if (BSAdmin.appearance) BSAdmin.appearance.populate();
           populateFraudThresholds();
           renderStaffDevicesTable();
+          renderRolesTable();
           BSAdmin.showToast('Cadangan konfigurasi berhasil dipulihkan dan otomatis tersimpan ke server.', 'success');
         }).catch(function (err) {
           BSAdmin.updateSyncStatus('failed', err.message);
@@ -429,8 +430,9 @@
   function populateAccount() {
     var u = (window.BSAuth && BSAuth.getUsername()) || 'admin';
     var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
+    var def = BSAdmin.getRoleDefinition ? BSAdmin.getRoleDefinition(r) : { label: r };
     var userEl = $id('adm-acc-current-user');
-    if (userEl) userEl.textContent = u + ' (' + r + ')';
+    if (userEl) userEl.textContent = u + ' (' + (def.label || r) + ')';
     BSAdmin.applyRoleRestrictions();
   }
 
@@ -480,34 +482,222 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-   * Manajemen Akun RBAC Multi-Pengguna di #tab-account (FR-V64-03, FR-CRUD-AUTO)
+   * Manajemen Role & Pengaturan Menu Dashboard per Role (FR-V66-ROLE-MENU)
    * ───────────────────────────────────────────────────────────── */
-  var ROLE_BADGE_LABELS = {
-    super_admin:      'Super Admin',
-    manager:          'Manager Operasional',
-    content_editor:   'Editor Konten',
-    analyst_readonly: 'Analis (Baca-Saja)'
+  var BUILTIN_ROLES = ['super_admin', 'manager', 'content_editor', 'analyst_readonly'];
+
+  var MENU_SHORT_LABELS = {
+    dashboard:  'Dashboard',
+    sources:    'Staf & NFC',
+    antifraud:  'Anti-Fraud',
+    feedback:   'Feedback',
+    outlets:    'Outlet F&B',
+    'sales-wa': 'WA Sales',
+    nfc:        'Prog. NFC',
+    'bulk-qr':  'Cetak QR',
+    promos:     'Promo & Seksi',
+    appearance: 'CMS Tamu',
+    audit:      'Jejak Audit',
+    config:     'Konfigurasi',
+    account:    'Akun'
   };
 
+  function populateUserRoleSelect() {
+    var sel = $id('adm-user-role');
+    if (!sel) return;
+    var curVal = sel.value || 'manager';
+    var rolesMap = BSAdmin.getRolePermissionsMap ? BSAdmin.getRolePermissionsMap() : {};
+    sel.innerHTML = '';
+    Object.keys(rolesMap).forEach(function (rk) {
+      var def = rolesMap[rk];
+      var opt = document.createElement('option');
+      opt.value = rk;
+      opt.textContent = (def.label || rk) + ' (' + rk + ')';
+      sel.appendChild(opt);
+    });
+    if (rolesMap[curVal]) sel.value = curVal;
+  }
+
+  function renderRolesTable() {
+    populateUserRoleSelect();
+    var tbody = $id('adm-roles-tbody');
+    if (!tbody) return;
+
+    var rolesMap = BSAdmin.getRolePermissionsMap ? BSAdmin.getRolePermissionsMap() : {};
+    var keys = Object.keys(rolesMap);
+
+    tbody.innerHTML = keys.map(function (rk) {
+      var def = rolesMap[rk];
+      var isSuper = (rk === 'super_admin');
+      var isBuiltin = (BUILTIN_ROLES.indexOf(rk) !== -1);
+      var modeBadge = def.can_mutate
+        ? '<span class="adm-badge-ok">Dapat Edit (CRUD)</span>'
+        : '<span class="adm-badge-warn">Hanya Baca</span>';
+      var defaultMenuLabel = MENU_SHORT_LABELS[def.default_tab] || def.default_tab || 'Dashboard';
+
+      var menuBadges = (def.allowed_tabs || []).map(function (t) {
+        return '<span class="adm-role-tag" style="margin:2px;">' + esc(MENU_SHORT_LABELS[t] || t) + '</span>';
+      }).join(' ');
+
+      var actionsHtml = isSuper
+        ? '<span style="font-size:0.74rem;color:var(--charcoal-muted);">Terkunci (Akses Penuh)</span>'
+        : '<div class="adm-action-group">' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditRoleMenu(\'' + esc(rk) + '\')">' + icon('edit', 13) + ' <span>Atur Menu</span></button>' +
+            (!isBuiltin
+              ? '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeleteRole(\'' + esc(rk) + '\')" title="Hapus Role Kustom">' + icon('trash', 13) + '</button>'
+              : '') +
+          '</div>';
+
+      return '<tr>' +
+        '<td><strong>' + esc(def.label || rk) + '</strong><br><code style="font-size:0.74rem;color:var(--charcoal-muted);">' + esc(rk) + '</code></td>' +
+        '<td>' + modeBadge + '</td>' +
+        '<td><strong>' + esc(defaultMenuLabel) + '</strong></td>' +
+        '<td style="max-width:380px;white-space:normal;">' + menuBadges + '</td>' +
+        '<td>' + actionsHtml + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  window.adminEditRoleMenu = function (roleKey) {
+    var rk = String(roleKey || '').trim().toLowerCase();
+    if (!rk || rk === 'super_admin') return;
+    var rolesMap = BSAdmin.getRolePermissionsMap ? BSAdmin.getRolePermissionsMap() : {};
+    var def = rolesMap[rk];
+    if (!def) return;
+
+    if ($id('adm-role-id'))          $id('adm-role-id').value          = rk;
+    if ($id('adm-role-label'))       $id('adm-role-label').value       = def.label || rk;
+    if ($id('adm-role-can-mutate'))  $id('adm-role-can-mutate').value  = def.can_mutate !== false ? 'true' : 'false';
+    if ($id('adm-role-default-tab')) $id('adm-role-default-tab').value = def.default_tab || 'dashboard';
+
+    var allowed = Array.isArray(def.allowed_tabs) ? def.allowed_tabs : [];
+    document.querySelectorAll('input[name="adm-role-tab"]').forEach(function (cb) {
+      if (cb.value === 'account') {
+        cb.checked = true;
+        cb.disabled = true;
+      } else {
+        cb.checked = (allowed.indexOf(cb.value) !== -1);
+      }
+    });
+
+    if ($id('adm-role-label')) $id('adm-role-label').focus();
+    BSAdmin.showToast('Mengedit role "' + (def.label || rk) + '". Centang menu yang ingin ditampilkan lalu klik Simpan Role & Menu.', 'info');
+  };
+
+  window.adminDeleteRole = function (roleKey) {
+    var rk = String(roleKey || '').trim().toLowerCase();
+    if (!rk || BUILTIN_ROLES.indexOf(rk) !== -1) {
+      BSAdmin.showToast('Role bawaan sistem tidak dapat dihapus (namun daftar menunya dapat diubah).', 'warning');
+      return;
+    }
+    if (!confirm('Hapus role kustom "' + rk + '" dari konfigurasi sistem?')) return;
+
+    var rolesMap = BSAdmin.getRolePermissionsMap ? BSAdmin.getRolePermissionsMap() : {};
+    delete rolesMap[rk];
+    state.configData.role_permissions = rolesMap;
+
+    BSAdmin.updateSyncStatus('saving');
+    BSApi.saveAllAdminData({ config: state.configData }).then(function () {
+      BSAdmin.updateSyncStatus('saved');
+      renderRolesTable();
+      renderUsersTable();
+      BSAdmin.showToast('Role "' + rk + '" berhasil dihapus dan disimpan ke server.', 'success');
+    }).catch(function (err) {
+      BSAdmin.updateSyncStatus('failed', err.message);
+      BSAdmin.showToast('Gagal menghapus role: ' + err.message, 'error');
+    });
+  };
+
+  function handleRoleFormSubmit(e) {
+    e.preventDefault();
+    var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
+    if (r !== 'super_admin') {
+      BSAdmin.showToast('Hanya Super Administrator yang dapat menambah atau mengubah pengaturan Role & Menu.', 'warning');
+      return;
+    }
+
+    var roleId = ($id('adm-role-id') ? $id('adm-role-id').value : '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    var label  = ($id('adm-role-label') ? $id('adm-role-label').value : '').trim();
+    var canMut = ($id('adm-role-can-mutate') ? $id('adm-role-can-mutate').value : 'true') === 'true';
+    var defTab = ($id('adm-role-default-tab') ? $id('adm-role-default-tab').value : 'dashboard').trim();
+
+    if (!roleId || roleId.length < 3 || roleId.length > 32) {
+      BSAdmin.showToast('Kode Role (ID) wajib 3–32 karakter (huruf kecil/angka/garis bawah, contoh: sales_spv atau duty_manager).', 'error');
+      return;
+    }
+    if (roleId === 'super_admin') {
+      BSAdmin.showToast('Role super_admin memiliki akses penuh ke seluruh menu dan tidak dapat dibatasi.', 'warning');
+      return;
+    }
+    if (!label) {
+      BSAdmin.showToast('Nama tampilan Role wajib diisi.', 'error');
+      return;
+    }
+
+    var selectedTabs = [];
+    document.querySelectorAll('input[name="adm-role-tab"]').forEach(function (cb) {
+      if (cb.checked || cb.value === 'account') {
+        if (selectedTabs.indexOf(cb.value) === -1) selectedTabs.push(cb.value);
+      }
+    });
+
+    if (selectedTabs.indexOf(defTab) === -1) {
+      defTab = selectedTabs[0] || 'account';
+    }
+
+    var rolesMap = BSAdmin.getRolePermissionsMap ? BSAdmin.getRolePermissionsMap() : {};
+    rolesMap[roleId] = {
+      label:        label,
+      can_mutate:   canMut,
+      default_tab:  defTab,
+      allowed_tabs: selectedTabs
+    };
+    state.configData.role_permissions = rolesMap;
+
+    var btn = $id('adm-role-submit-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+    BSAdmin.updateSyncStatus('saving');
+
+    BSApi.saveAllAdminData({ config: state.configData }).then(function () {
+      BSAdmin.updateSyncStatus('saved');
+      renderRolesTable();
+      renderUsersTable();
+      BSAdmin.applyRoleRestrictions();
+      BSAdmin.showToast('Konfigurasi Role "' + label + '" (' + selectedTabs.length + ' menu) berhasil disimpan ke server.', 'success');
+    }).catch(function (err) {
+      BSAdmin.updateSyncStatus('failed', err.message);
+      BSAdmin.showToast('Gagal menyimpan konfigurasi role: ' + err.message, 'error');
+    }).finally(function () {
+      if (btn) { btn.disabled = false; btn.innerHTML = icon('save', 14) + ' <span>Simpan Role &amp; Menu ke Server</span>'; }
+    });
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * Manajemen Akun RBAC Multi-Pengguna di #tab-account (FR-V64-03, FR-CRUD-AUTO)
+   * ───────────────────────────────────────────────────────────── */
   function loadUsers() {
     var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
     var card = $id('adm-user-mgmt-card');
+    var roleCard = $id('adm-role-mgmt-card');
     if (r !== 'super_admin') {
       if (card) card.style.display = 'none';
+      if (roleCard) roleCard.style.display = 'none';
       return;
     }
     if (card) card.style.display = '';
+    if (roleCard) roleCard.style.display = '';
+    renderRolesTable();
 
     var tbody = $id('adm-users-tbody');
     if (!tbody || !window.BSApi || typeof BSApi.listUsers !== 'function') return;
 
-    tbody.innerHTML = '<tr><td colspan="6" class="bs-empty">Memuat daftar akun pengguna dari server…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="bs-empty">Memuat daftar akun pengguna dari server…</td></tr>';
     BSApi.listUsers().then(function (resp) {
       if (!resp || !resp.ok) throw new Error((resp && resp.error) || 'Gagal memuat pengguna');
       state.users = Array.isArray(resp.users) ? resp.users : [];
       renderUsersTable();
     }).catch(function (err) {
-      tbody.innerHTML = '<tr><td colspan="6" class="bs-empty">Daftar akun pengguna belum dapat dimuat (' + esc(err.message) + '). Pastikan URL Google Apps Script aktif.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="bs-empty">Daftar akun pengguna belum dapat dimuat (' + esc(err.message) + '). Pastikan URL Google Apps Script aktif.</td></tr>';
     });
   }
 
@@ -516,15 +706,17 @@
     if (!tbody) return;
 
     if (!state.users || state.users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="bs-empty">Belum ada akun pengguna terdaftar.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="bs-empty">Belum ada akun pengguna terdaftar.</td></tr>';
       return;
     }
 
     var currentUsername = String(state.username || (window.BSAuth && BSAuth.getUsername()) || 'admin').toLowerCase();
+    var rolesMap = BSAdmin.getRolePermissionsMap ? BSAdmin.getRolePermissionsMap() : {};
 
     tbody.innerHTML = state.users.map(function (u) {
       var uname = String(u.username || '');
       var isSelf = (uname.toLowerCase() === currentUsername);
+      var rDef = rolesMap[u.role] || { label: u.role };
       var statusBadge = u.active !== false
         ? '<span class="adm-badge-ok">Aktif</span>'
         : '<span class="adm-badge-err">Nonaktif</span>';
@@ -535,7 +727,7 @@
 
       return '<tr>' +
         '<td><strong>' + esc(uname) + '</strong>' + (isSelf ? ' <span class="adm-role-tag">Anda</span>' : '') + '</td>' +
-        '<td><span class="adm-role-tag">' + esc(ROLE_BADGE_LABELS[u.role] || u.role) + '</span></td>' +
+        '<td><span class="adm-role-tag">' + esc(rDef.label || u.role) + '</span> <code style="font-size:0.72rem;color:var(--charcoal-muted);">(' + esc(u.role) + ')</code></td>' +
         '<td>' + statusBadge + pwBadge + '</td>' +
         '<td class="bs-num" style="font-size:0.78rem;text-align:left;">' + esc(updatedStr) + '</td>' +
         '<td>' +
@@ -554,6 +746,7 @@
   window.adminPopulateUserEdit = function (username) {
     var target = (state.users || []).find(function (u) { return String(u.username || '').toLowerCase() === String(username || '').toLowerCase(); });
     if (!target) return;
+    populateUserRoleSelect();
     if ($id('adm-user-username')) {
       $id('adm-user-username').value = target.username;
     }
@@ -571,11 +764,12 @@
       $id('adm-user-must-change').checked = Boolean(target.must_change_password);
     }
     if ($id('adm-user-username')) $id('adm-user-username').focus();
-    BSAdmin.showToast('Mengedit akun "' + target.username + '". Klik Simpan Akun untuk menyimpan ke server.', 'info');
+    BSAdmin.showToast('Mengedit akun "' + target.username + '". Klik Simpan Akun ke Server untuk menyimpan.', 'info');
   };
 
   window.adminToggleUserActive = function (username) {
-    if (!BSAdmin.checkPermission('manage_users')) return;
+    var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
+    if (r !== 'super_admin') return;
     var target = (state.users || []).find(function (u) { return String(u.username || '').toLowerCase() === String(username || '').toLowerCase(); });
     if (!target) return;
     var nextActive = !(target.active !== false);
@@ -598,7 +792,8 @@
   };
 
   window.adminDeleteUser = function (username) {
-    if (!BSAdmin.checkPermission('manage_users')) return;
+    var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
+    if (r !== 'super_admin') return;
     if (!confirm('Hapus permanen akun administrator "' + username + '" dari lembar Users?')) return;
 
     BSAdmin.updateSyncStatus('saving');
@@ -615,7 +810,8 @@
 
   function handleUserFormSubmit(e) {
     e.preventDefault();
-    if (!BSAdmin.checkPermission('manage_users')) {
+    var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
+    if (r !== 'super_admin') {
       BSAdmin.showToast('Hanya Super Administrator yang dapat mengelola akun pengguna.', 'warning');
       return;
     }
@@ -701,6 +897,20 @@
     var accForm = $id('adm-acc-pw-form');
     if (accForm) accForm.addEventListener('submit', handleAccountPasswordChange);
 
+    var roleForm = $id('adm-role-form');
+    if (roleForm) roleForm.addEventListener('submit', handleRoleFormSubmit);
+
+    var roleResetBtn = $id('adm-role-reset-form-btn');
+    if (roleResetBtn) {
+      roleResetBtn.addEventListener('click', function () {
+        if ($id('adm-role-form')) $id('adm-role-form').reset();
+        document.querySelectorAll('input[name="adm-role-tab"]').forEach(function (cb) {
+          cb.checked = true;
+          if (cb.value === 'account') cb.disabled = true;
+        });
+      });
+    }
+
     var userForm = $id('adm-user-form');
     if (userForm) userForm.addEventListener('submit', handleUserFormSubmit);
 
@@ -713,6 +923,7 @@
     renderStaffDevices:   renderStaffDevicesTable,
     populateThresholds:   populateFraudThresholds,
     populateAccount:      populateAccount,
+    renderRoles:          renderRolesTable,
     loadUsers:            loadUsers,
     reEvaluateFraud:      reEvaluateFraud,
     exportBackupJson:     exportConfigBackupJson,

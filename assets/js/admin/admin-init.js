@@ -1,6 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
- * admin-init.js — Bootstrapper, Lifecycle & Koordinasi Event Portal Admin (FR-P0-03, FR-ADM-01)
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.5
+ * admin-init.js — Bootstrapper, Lifecycle, Mobile Drawer Backdrop & Koordinasi Event Portal Admin (FR-P0-03, FR-ADM-01, FR-V65-01)
  */
 
 (function (window) {
@@ -12,33 +12,49 @@
   var icon = BSAdmin.icon || function () { return ''; };
 
   function initApp() {
-    var sidebar       = $id('adm-sidebar');
-    var sidebarToggle = $id('adm-sidebar-toggle');
-    var sidebarClose  = $id('adm-sidebar-close');
-    var loginForm     = $id('adm-login-form');
-    var loginErr      = $id('adm-login-err');
-    var logoutBtn     = $id('adm-logout-btn');
-    var refreshBtn    = $id('adm-refresh-btn');
+    var sidebar         = $id('adm-sidebar');
+    var sidebarBackdrop = $id('adm-sidebar-backdrop');
+    var sidebarToggle   = $id('adm-sidebar-toggle');
+    var sidebarClose    = $id('adm-sidebar-close');
+    var loginForm       = $id('adm-login-form');
+    var loginErr        = $id('adm-login-err');
+    var logoutBtn       = $id('adm-logout-btn');
+    var refreshBtn      = $id('adm-refresh-btn');
 
-    /* ── 1. Navigasi Sidebar & Responsivitas ── */
+    function setMobileSidebarOpen(isOpen) {
+      if (!sidebar) return;
+      sidebar.classList.toggle('adm-sidebar-open', Boolean(isOpen));
+      if (sidebarBackdrop) {
+        sidebarBackdrop.classList.toggle('adm-sidebar-backdrop-open', Boolean(isOpen));
+      }
+      document.body.classList.toggle('adm-mobile-nav-open', Boolean(isOpen));
+    }
+
+    /* ── 1. Navigasi Sidebar & Responsivitas Drawer Mobile (FR-V65-01) ── */
     document.querySelectorAll('.adm-nav-item').forEach(function (el) {
       el.addEventListener('click', function (e) {
         e.preventDefault();
         BSAdmin.switchTab(el.dataset.tab);
-        if (window.innerWidth < 768 && sidebar) {
-          sidebar.classList.remove('adm-sidebar-open');
+        if (window.innerWidth <= 768) {
+          setMobileSidebarOpen(false);
         }
       });
     });
 
     if (sidebarToggle && sidebar) {
       sidebarToggle.addEventListener('click', function () {
-        sidebar.classList.toggle('adm-sidebar-open');
+        var nextState = !sidebar.classList.contains('adm-sidebar-open');
+        setMobileSidebarOpen(nextState);
       });
     }
     if (sidebarClose && sidebar) {
       sidebarClose.addEventListener('click', function () {
-        sidebar.classList.remove('adm-sidebar-open');
+        setMobileSidebarOpen(false);
+      });
+    }
+    if (sidebarBackdrop) {
+      sidebarBackdrop.addEventListener('click', function () {
+        setMobileSidebarOpen(false);
       });
     }
 
@@ -164,6 +180,7 @@
         if (state.syncStatus.hasUnsaved) {
           if (!confirm('Ada perubahan yang belum tersimpan ke server. Yakin ingin keluar?')) return;
         }
+        setMobileSidebarOpen(false);
         window.BSAuth.logout();
         var portal = $id('adm-portal');
         var loginScreen = $id('adm-login-screen');

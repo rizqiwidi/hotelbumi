@@ -1,5 +1,5 @@
 /* ============================================================
-   BUMI SURABAYA — ADMIN PORTAL CSS v6.3 (Anti-Slop Enterprise UI)
+   BUMI SURABAYA — ADMIN PORTAL CSS v6.5 (Anti-Slop Enterprise UI)
    Luxury Hospitality Management System & Analytics Platform
    Deep Emerald (#1a3c2a), Champagne Gold (#c9a96e), Warm Ivory (#f6f5f0)
    ============================================================ */
@@ -1121,7 +1121,107 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── RESPONSIVE ───────────────────────────────────────────── */
+/* ── SIDEBAR BACKDROP, DASHBOARD TOOLBAR & SOURCES FILTER BAR (FR-V65-01, FR-V65-02) ── */
+.adm-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 34, 23, 0.52);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 950;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+.adm-sidebar-backdrop.adm-sidebar-backdrop-open {
+  display: block;
+  opacity: 1;
+}
+body.adm-mobile-nav-open {
+  overflow: hidden;
+}
+
+.adm-fav-filter-card {
+  margin-bottom: 18px;
+  padding: 13px 18px;
+}
+.adm-dash-toolbar-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.adm-dash-preset-group,
+.adm-dash-date-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.adm-dash-preset-btns,
+.adm-dash-date-inputs,
+.adm-dash-date-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.adm-dash-toolbar-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--charcoal-muted);
+  white-space: nowrap;
+}
+.adm-date-input {
+  width: auto;
+  min-width: 128px;
+  padding: 5px 8px;
+  font-size: 0.76rem;
+}
+.adm-dash-date-sep {
+  font-size: 0.74rem;
+  color: var(--charcoal-muted);
+}
+
+.adm-sources-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: #faf9f6;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+}
+.adm-sources-filter-bar #adm-sources-search {
+  flex: 2 1 240px;
+  padding: 7px 11px;
+  font-size: 0.82rem;
+}
+.adm-sources-filter-bar #adm-sources-type-filter {
+  flex: 1 1 180px;
+  max-width: 240px;
+  padding: 7px 11px;
+  font-size: 0.82rem;
+}
+.adm-sources-count-info {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--charcoal-muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.adm-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* ── RESPONSIVE & MOBILE HEADER OVERHAUL (BUG-15 / FR-V65-01) ── */
 @media (max-width: 1200px) {
   .adm-metrics-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -1131,7 +1231,14 @@ body {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
+  .adm-topbar {
+    height: auto;
+    min-height: var(--topbar-h);
+    padding: 10px 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
   .adm-metrics-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1146,27 +1253,209 @@ body {
 @media (max-width: 768px) {
   .adm-sidebar {
     transform: translateX(-100%);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
   }
   .adm-sidebar.adm-sidebar-open {
     transform: translateX(0);
   }
   .adm-sidebar-close {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
   }
   .adm-sidebar-toggle {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-xs);
+    background: #f4f3ee;
+    border: 1px solid var(--border-light);
+    flex-shrink: 0;
   }
   .adm-main {
     margin-left: 0;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
+
+  /* Perbaikan Header Topbar Mobile (BUG-15 / FR-V65-01) */
   .adm-topbar {
-    padding: 0 16px;
+    height: auto;
+    min-height: 56px;
+    padding: 10px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    position: sticky;
+    top: 0;
   }
+  .adm-topbar-left {
+    width: 100%;
+    min-width: 0;
+    gap: 10px;
+  }
+  .adm-topbar-left > div {
+    min-width: 0;
+    flex: 1;
+  }
+  .adm-topbar-breadcrumb {
+    display: block;
+    font-size: 0.63rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .adm-topbar-title {
+    font-size: 1.08rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .adm-topbar-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-light);
+  }
+  .adm-topbar-actions .adm-select-wrap {
+    min-width: 0;
+    width: 100%;
+  }
+  .adm-topbar-actions .adm-select-wrap .adm-select {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 0.76rem;
+  }
+  .adm-topbar-actions .adm-btn {
+    padding: 6px 10px;
+    font-size: 0.76rem;
+  }
+  .adm-sync-indicator {
+    padding: 4px 9px;
+    font-size: 0.73rem;
+  }
+
+  /* Perbaikan Bar Sinyal Health Mobile */
+  .adm-health-bar {
+    padding: 8px 14px;
+    gap: 6px 10px;
+    font-size: 0.71rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .adm-health-bar .adm-health-item:first-child {
+    grid-column: 1 / -1;
+  }
+  .adm-health-item {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Perbaikan Toolbar Preset & Rentang Tanggal Dashboard di HP */
+  .adm-fav-filter-card {
+    padding: 12px 14px;
+  }
+  .adm-dash-toolbar-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .adm-dash-preset-group,
+  .adm-dash-date-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+  }
+  .adm-dash-date-group {
+    padding-top: 8px;
+    border-top: 1px solid var(--border-light);
+  }
+  .adm-dash-preset-btns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+  .adm-dash-preset-btns .adm-btn {
+    width: 100%;
+  }
+  .adm-dash-date-inputs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+  }
+  .adm-date-input {
+    width: 100%;
+    min-width: 0;
+  }
+  .adm-dash-date-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+  .adm-dash-date-actions .adm-btn {
+    width: 100%;
+  }
+
+  /* Perbaikan Header Kartu & Toolbar CMS di HP */
   .adm-tab-pane {
-    padding: 18px 16px;
+    padding: 14px 12px;
+  }
+  .adm-card {
+    padding: 16px 14px;
+  }
+  .adm-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .adm-card-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .adm-filter-row {
+    width: 100%;
+  }
+  .adm-cms-toolbar {
+    position: static;
+    padding: 12px 14px;
+  }
+  .adm-sources-filter-bar #adm-sources-type-filter {
+    max-width: none;
+    width: 100%;
+  }
+  .adm-sources-count-info {
+    margin-left: 0;
+    width: 100%;
   }
   .adm-metrics-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .adm-metrics-grid .adm-metric-card:last-child {
+    grid-column: 1 / -1;
+  }
+  .adm-metric-card {
+    padding: 14px;
+  }
+  .adm-metric-value {
+    font-size: 1.38rem;
   }
   .adm-two-col-form {
     grid-template-columns: 1fr;
@@ -1177,19 +1466,36 @@ body {
 }
 
 @media (max-width: 480px) {
+  .adm-topbar-breadcrumb {
+    display: none;
+  }
   .adm-topbar-actions {
-    flex-wrap: wrap;
+    grid-template-columns: 1fr 1fr;
     gap: 6px;
+  }
+  .adm-topbar-actions .adm-sync-indicator {
+    justify-content: center;
+    width: 100%;
+  }
+  .adm-topbar-actions .adm-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .adm-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  .adm-dash-preset-btns {
+    grid-template-columns: 1fr 1fr;
   }
   .adm-table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
   .adm-modal-box {
-    width: 95%;
-    max-width: 95%;
-    padding: 20px 16px;
-    margin: 16px auto;
+    width: 96%;
+    max-width: 96%;
+    padding: 18px 14px;
+    margin: 12px auto;
   }
 }
 

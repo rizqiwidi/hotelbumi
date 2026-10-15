@@ -1,6 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
- * admin-core.js — Central state manager, SVG icon system (FR-ADM-01), RBAC enforcement (FR-P1-04) & health signals
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.6
+ * admin-core.js — Central state manager, SVG icon system (FR-ADM-01), Dynamic Role & Sidebar Menu Visibility (FR-V66-ROLE-MENU) & health signals
  */
 
 (function (window) {
@@ -179,58 +179,141 @@
   BSAdmin.setupAccessibleModal = setupAccessibleModal;
 
   /* ─────────────────────────────────────────────────────────────
-   * 3. Penegakan Izin Role di Sisi UI (SEC-11, FR-P1-04, FR-V64-03)
+   * 3. Manajemen Role Dinamis & Visibilitas Menu Sidebar (FR-V66-ROLE-MENU)
    * ───────────────────────────────────────────────────────────── */
-  var ROLE_LABELS = {
-    super_admin:      'Super Administrator (Akses Penuh)',
-    manager:          'Manager Operasional',
-    content_editor:   'Editor Konten & Halaman Tamu',
-    analyst_readonly: 'Analis Data (Hanya Baca)'
+  var ALL_TAB_IDS = [
+    'dashboard', 'sources', 'antifraud', 'feedback',
+    'outlets', 'sales-wa', 'nfc', 'bulk-qr',
+    'promos', 'appearance', 'audit', 'config', 'account'
+  ];
+
+  var DEFAULT_ROLES_MAP = {
+    super_admin: {
+      label: 'Super Administrator (Akses Penuh)',
+      can_mutate: true,
+      default_tab: 'dashboard',
+      allowed_tabs: ALL_TAB_IDS.slice()
+    },
+    manager: {
+      label: 'Manager Operasional',
+      can_mutate: true,
+      default_tab: 'dashboard',
+      allowed_tabs: ['dashboard', 'sources', 'antifraud', 'feedback', 'outlets', 'sales-wa', 'nfc', 'bulk-qr', 'promos', 'appearance', 'audit', 'account']
+    },
+    content_editor: {
+      label: 'Editor Konten & Halaman Tamu',
+      can_mutate: true,
+      default_tab: 'appearance',
+      allowed_tabs: ['outlets', 'sales-wa', 'promos', 'appearance', 'account']
+    },
+    analyst_readonly: {
+      label: 'Analis Data (Hanya Baca)',
+      can_mutate: false,
+      default_tab: 'dashboard',
+      allowed_tabs: ['dashboard', 'sources', 'antifraud', 'outlets', 'sales-wa', 'bulk-qr', 'promos', 'audit', 'account']
+    }
   };
 
-  var CONTENT_EDITOR_DISALLOWED_TABS = ['dashboard', 'sources', 'antifraud', 'config', 'audit', 'feedback'];
+  function getRolePermissionsMap() {
+    var base = JSON.parse(JSON.stringify(DEFAULT_ROLES_MAP));
+    var custom = (state.configData && state.configData.role_permissions && typeof state.configData.role_permissions === 'object')
+      ? state.configData.role_permissions : {};
+    Object.keys(custom).forEach(function (rk) {
+      if (rk === 'super_admin') return;
+      var item = custom[rk];
+      if (item && typeof item === 'object' && Array.isArray(item.allowed_tabs)) {
+        var tabs = item.allowed_tabs.slice();
+        if (tabs.indexOf('account') === -1) tabs.push('account');
+        base[rk] = {
+          label:        String(item.label || rk),
+          can_mutate:   item.can_mutate !== false,
+          default_tab:  String(item.default_tab || tabs[0] || 'account'),
+          allowed_tabs: tabs
+        };
+      }
+    });
+    return base;
+  }
+  BSAdmin.getRolePermissionsMap = getRolePermissionsMap;
+
+  function getRoleDefinition(roleKey) {
+    var r = String(roleKey || state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin').trim().toLowerCase();
+    var map = getRolePermissionsMap();
+    if (map[r]) return map[r];
+    return {
+      label: r,
+      can_mutate: false,
+      default_tab: 'account',
+      allowed_tabs: ['account']
+    };
+  }
+  BSAdmin.getRoleDefinition = getRoleDefinition;
+
+  function isTabAllowedForRole(tabName, roleKey) {
+    var r = String(roleKey || state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin').trim().toLowerCase();
+    if (r === 'super_admin' || tabName === 'account') return true;
+    var def = getRoleDefinition(r);
+    return Array.isArray(def.allowed_tabs) && def.allowed_tabs.indexOf(tabName) !== -1;
+  }
+  BSAdmin.isTabAllowedForRole = isTabAllowedForRole;
 
   function checkPermission(action) {
-    var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
+    var r = String(state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin').trim().toLowerCase();
     if (r === 'super_admin') return true;
 
-    if (action === 'save_fraud_settings' || action === 'save_system_config' || action === 'manage_users') {
-      return r === 'super_admin';
+    var def = getRoleDefinition(r);
+    var canMutate = Boolean(def.can_mutate);
+
+    if (action === 'manage_users') {
+      return false;
     }
-    if (action === 'save_sources' || action === 'save_staff_devices') {
-      return r === 'super_admin' || r === 'manager';
+    if (action === 'save_fraud_settings' || action === 'save_system_config') {
+      return canMutate && isTabAllowedForRole('config', r);
+    }
+    if (action === 'save_sources') {
+      return canMutate && (isTabAllowedForRole('sources', r) || isTabAllowedForRole('sales-wa', r) || isTabAllowedForRole('nfc', r));
+    }
+    if (action === 'save_staff_devices') {
+      return canMutate && isTabAllowedForRole('antifraud', r);
     }
     if (action === 'save_content') {
-      return r === 'super_admin' || r === 'manager' || r === 'content_editor';
+      return canMutate && (isTabAllowedForRole('appearance', r) || isTabAllowedForRole('outlets', r) || isTabAllowedForRole('promos', r) || isTabAllowedForRole('sales-wa', r));
     }
-    if (action === 'view_analytics' || action === 'view_audit') {
-      return r === 'super_admin' || r === 'manager' || r === 'analyst_readonly';
+    if (action === 'view_analytics') {
+      return isTabAllowedForRole('dashboard', r) || isTabAllowedForRole('antifraud', r);
     }
-    if (action === 'view_feedback' || action === 'handle_feedback') {
-      return r === 'super_admin' || r === 'manager';
+    if (action === 'view_audit') {
+      return isTabAllowedForRole('audit', r);
+    }
+    if (action === 'view_feedback') {
+      return isTabAllowedForRole('feedback', r);
+    }
+    if (action === 'handle_feedback') {
+      return canMutate && isTabAllowedForRole('feedback', r);
     }
     return false;
   }
   BSAdmin.checkPermission = checkPermission;
 
   function applyRoleRestrictions() {
-    var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
+    var r = String(state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin').trim().toLowerCase();
     var u = (window.BSAuth && BSAuth.getUsername()) || 'admin';
+    var def = getRoleDefinition(r);
 
     var userBadge = $id('adm-sidebar-user-role');
     if (userBadge) {
-      userBadge.innerHTML = '<span class="adm-status-dot-sm"></span> ' + (ROLE_LABELS[r] || r);
+      userBadge.innerHTML = '<span class="adm-status-dot-sm"></span> ' + esc(def.label || r);
     }
     var curUserEl = $id('adm-acc-current-user');
     if (curUserEl) {
-      curUserEl.textContent = u + ' (' + (ROLE_LABELS[r] || r) + ')';
+      curUserEl.textContent = u + ' (' + (def.label || r) + ')';
     }
 
     var readonlyBanner = $id('adm-readonly-banner');
     if (readonlyBanner) {
-      if (r === 'analyst_readonly') {
+      if (!def.can_mutate && r !== 'super_admin') {
         readonlyBanner.style.display = 'block';
-        readonlyBanner.textContent = 'Mode Baca-Saja: Peran analyst_readonly tidak memiliki izin untuk menyimpan perubahan data.';
+        readonlyBanner.textContent = 'Mode Baca-Saja: Peran "' + (def.label || r) + '" tidak memiliki izin untuk menyimpan perubahan data.';
       } else {
         readonlyBanner.style.display = 'none';
       }
@@ -240,31 +323,67 @@
     if (userMgmtCard) {
       userMgmtCard.style.display = (r === 'super_admin') ? '' : 'none';
     }
+    var roleMgmtCard = $id('adm-role-mgmt-card');
+    if (roleMgmtCard) {
+      roleMgmtCard.style.display = (r === 'super_admin') ? '' : 'none';
+    }
 
-    var isReadonly = (r === 'analyst_readonly');
-    var isContentOnly = (r === 'content_editor');
+    var isReadonly = (!def.can_mutate && r !== 'super_admin');
 
     document.querySelectorAll('.adm-btn-mutate').forEach(function (btn) {
       if (isReadonly) {
         btn.disabled = true;
-        btn.title = 'Akses dinonaktifkan: Anda memiliki hak akses baca-saja.';
+        btn.title = 'Akses dinonaktifkan: Peran Anda bersifat baca-saja.';
+      } else {
+        btn.disabled = false;
       }
     });
 
+    // Sembunyikan menu sidebar yang tidak diizinkan untuk Role ini (FR-V66-ROLE-MENU)
     document.querySelectorAll('.adm-nav-item').forEach(function (item) {
       var tab = item.dataset.tab;
-      if (isContentOnly && CONTENT_EDITOR_DISALLOWED_TABS.indexOf(tab) !== -1) {
-        item.style.opacity = '0.4';
-        item.setAttribute('aria-disabled', 'true');
-        item.title = 'Hanya dapat diakses oleh Super Admin & Manager.';
-      } else {
+      var allowed = isTabAllowedForRole(tab, r);
+      if (allowed) {
+        item.style.display = '';
         item.style.opacity = '';
         item.removeAttribute('aria-disabled');
-      }
-      if ((r === 'content_editor' || r === 'analyst_readonly') && tab === 'feedback') {
+      } else {
         item.style.display = 'none';
+        item.setAttribute('aria-disabled', 'true');
       }
     });
+
+    // Sembunyikan judul grup navigasi (.adm-nav-group-title) jika seluruh menu di bawahnya disembunyikan
+    var navEl = document.querySelector('.adm-nav');
+    if (navEl) {
+      var children = Array.prototype.slice.call(navEl.children);
+      var currentGroupTitle = null;
+      var visibleInGroup = 0;
+      children.forEach(function (child) {
+        if (child.classList.contains('adm-nav-group-title')) {
+          if (currentGroupTitle) {
+            currentGroupTitle.style.display = visibleInGroup > 0 ? '' : 'none';
+          }
+          currentGroupTitle = child;
+          visibleInGroup = 0;
+        } else if (child.classList.contains('adm-nav-item')) {
+          if (child.style.display !== 'none') visibleInGroup++;
+        }
+      });
+      if (currentGroupTitle) {
+        currentGroupTitle.style.display = visibleInGroup > 0 ? '' : 'none';
+      }
+    }
+
+    // Jika tab yang sedang terbuka tidak diizinkan bagi role ini, alihkan ke default_tab role tersebut
+    var activeNav = document.querySelector('.adm-nav-item.adm-nav-active');
+    var activeTab = activeNav ? activeNav.dataset.tab : 'dashboard';
+    if (!isTabAllowedForRole(activeTab, r)) {
+      var targetTab = (def.default_tab && isTabAllowedForRole(def.default_tab, r))
+        ? def.default_tab
+        : (def.allowed_tabs && def.allowed_tabs[0]) || 'account';
+      switchTab(targetTab);
+    }
   }
   BSAdmin.applyRoleRestrictions = applyRoleRestrictions;
 
@@ -287,7 +406,7 @@
       }
     } catch (_) {}
 
-    if (feVerEl) feVerEl.textContent = 'v6.4.0-phase4';
+    if (feVerEl) feVerEl.textContent = 'v6.6.0-phase6';
 
     if (backendHealth && backendHealth.backend_version) {
       if (statusEl) {
@@ -304,14 +423,54 @@
     }
 
     if (dlqEl) {
-      dlqEl.textContent = dlqCount + ' event tertunda';
+      dlqEl.textContent = dlqCount + ' event tertunda' + (dlqCount > 0 ? ' (Klik untuk Kirim)' : '');
       dlqEl.className = dlqCount > 0 ? 'adm-badge-warn' : 'adm-badge-ok';
+      dlqEl.style.cursor = dlqCount > 0 ? 'pointer' : 'default';
+      dlqEl.onclick = dlqCount > 0 ? flushDeadLetterQueue : null;
     }
   }
   BSAdmin.updateHealthSignals = updateHealthSignals;
 
+  function flushDeadLetterQueue() {
+    var gasUrl = (window.BSConfig && BSConfig.getGasUrl()) || '';
+    if (!gasUrl) {
+      showToast('URL Google Apps Script belum diatur.', 'warning');
+      return;
+    }
+    try {
+      var rawDlq = window.localStorage && localStorage.getItem('bs_dead_letter_queue');
+      var queue = rawDlq ? JSON.parse(rawDlq) : [];
+      if (!Array.isArray(queue) || queue.length === 0) {
+        showToast('Tidak ada antrean event tertunda.', 'info');
+        updateHealthSignals();
+        return;
+      }
+      showToast('Mengirim ulang ' + queue.length + ' event tertunda ke server…', 'info');
+      Promise.all(queue.map(function (ev) {
+        return fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(Object.assign({ action: 'track' }, ev))
+        }).then(function (r) { return r.ok; }).catch(function () { return false; });
+      })).then(function (results) {
+        var remaining = queue.filter(function (_, idx) { return !results[idx]; });
+        if (remaining.length === 0) {
+          localStorage.removeItem('bs_dead_letter_queue');
+          showToast('Seluruh event tertunda berhasil dikirim ke server.', 'success');
+        } else {
+          localStorage.setItem('bs_dead_letter_queue', JSON.stringify(remaining));
+          showToast((queue.length - remaining.length) + ' terkirim, ' + remaining.length + ' masih tertunda.', 'warning');
+        }
+        updateHealthSignals();
+      });
+    } catch (err) {
+      showToast('Gagal mengirim antrean: ' + err.message, 'error');
+    }
+  }
+  BSAdmin.flushDeadLetterQueue = flushDeadLetterQueue;
+
   /* ─────────────────────────────────────────────────────────────
-   * 5. Navigasi Antar Tab (dengan Pemblokiran RBAC — FR-P1-04)
+   * 5. Navigasi Antar Tab (dengan Pemblokiran Dinamis per Role — FR-V66-ROLE-MENU)
    * ───────────────────────────────────────────────────────────── */
   var TAB_TITLES = {
     dashboard:  'Dashboard Analitik',
@@ -324,19 +483,17 @@
     promos:     'Promosi & Visibilitas Seksi Tamu',
     appearance: 'CMS Isi Halaman Tamu & Identitas',
     config:     'Konfigurasi Backend & Ambang Batas',
-    account:    'Pengaturan Akun & Manajemen Peran',
+    account:    'Pengaturan Akun, Role & Menu Dashboard',
     audit:      'Jejak Audit & Riwayat Mutasi',
     feedback:   'Feedback Langsung Tamu'
   };
+  BSAdmin.TAB_TITLES = TAB_TITLES;
 
   function switchTab(name) {
     var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
-    if (r === 'content_editor' && CONTENT_EDITOR_DISALLOWED_TABS.indexOf(name) !== -1) {
-      showToast('Peran Editor Konten hanya memiliki akses ke pengelolaan Gerai, Promosi, dan CMS Halaman Tamu.', 'warning');
-      return;
-    }
-    if (r === 'analyst_readonly' && name === 'feedback') {
-      showToast('Peran Analis Data tidak memiliki akses ke data PII Feedback Tamu.', 'warning');
+    if (!isTabAllowedForRole(name, r)) {
+      var def = getRoleDefinition(r);
+      showToast('Peran "' + (def.label || r) + '" tidak memiliki akses ke menu "' + (TAB_TITLES[name] || name) + '".', 'warning');
       return;
     }
 
@@ -360,7 +517,8 @@
     if (name === 'antifraud'  && BSAdmin.fraud)      { BSAdmin.fraud.renderTable(); BSAdmin.fraud.renderStaffDevices(); }
     if (name === 'account'    && BSAdmin.fraud)      {
       BSAdmin.fraud.populateAccount();
-      if (typeof BSAdmin.fraud.loadUsers === 'function') BSAdmin.fraud.loadUsers();
+      if (typeof BSAdmin.fraud.renderRoles === 'function') BSAdmin.fraud.renderRoles();
+      if (typeof BSAdmin.fraud.loadUsers === 'function')   BSAdmin.fraud.loadUsers();
     }
     if (name === 'audit'      && BSAdmin.audit)      BSAdmin.audit.load();
     if (name === 'feedback'   && BSAdmin.feedback)   BSAdmin.feedback.load();
@@ -382,8 +540,9 @@
     state.userRole = r;
 
     applyRoleRestrictions();
-    if (r === 'content_editor') {
-      switchTab('appearance');
+    var def = getRoleDefinition(r);
+    if (def.default_tab && isTabAllowedForRole(def.default_tab, r)) {
+      switchTab(def.default_tab);
     }
     if ($id('adm-cfg-gas-url')) $id('adm-cfg-gas-url').value = (window.BSConfig && BSConfig.getGasUrl()) || '';
   }
@@ -440,6 +599,9 @@
           if (admResp.config.guest_content && typeof admResp.config.guest_content === 'object') {
             state.configData.guest_content = Object.assign({}, BSConfig.DEFAULTS.guest_content, admResp.config.guest_content);
           }
+          if (admResp.config.role_permissions && typeof admResp.config.role_permissions === 'object') {
+            state.configData.role_permissions = Object.assign({}, BSConfig.DEFAULTS.role_permissions || {}, admResp.config.role_permissions);
+          }
           if (Array.isArray(admResp.config.outlets))    state.outlets = admResp.config.outlets.slice();
           if (Array.isArray(admResp.config.promotions)) state.promos  = admResp.config.promotions.slice();
         }
@@ -455,10 +617,10 @@
         if (admResp.system_health) {
           if (admResp.system_health.current_role) {
             state.userRole = admResp.system_health.current_role;
-            applyRoleRestrictions();
           }
           updateHealthSignals(admResp.system_health);
         }
+        applyRoleRestrictions();
       }
     }).catch(function () {
       return window.BSApi && BSApi.getPublicConfig().then(function (cfgResp) {
@@ -484,9 +646,10 @@
       if (BSAdmin.fraud) {
         BSAdmin.fraud.populateThresholds();
         BSAdmin.fraud.renderStaffDevices();
+        if (typeof BSAdmin.fraud.renderRoles === 'function') BSAdmin.fraud.renderRoles();
       }
 
-      if (state.userRole === 'content_editor') {
+      if (!checkPermission('view_analytics')) {
         if (refreshBtn) {
           refreshBtn.disabled = false;
           refreshBtn.innerHTML = icon('rotate', 14) + ' <span>Perbarui</span>';

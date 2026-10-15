@@ -1,6 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
- * admin-sources.js — Manajemen sumber, staf hotel, sales WA, rotasi kode, titik NFC & Impor/Ekspor CSV (FR-CRUD-AUTO, FR-V64-05)
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.5
+ * admin-sources.js — Manajemen sumber, staf hotel, sales WA, rotasi kode, titik NFC, pencarian instan & Impor/Ekspor CSV (FR-CRUD-AUTO, FR-V64-05, FR-V65-02)
  *
  * Setiap aksi CRUD (Tambah, Edit, Rotasi, Aktif/Nonaktif, Hapus, Impor CSV) OTOMATIS tersimpan ke Google Sheets!
  */
@@ -46,15 +46,40 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-   * 2. Render Tabel Sumber
+   * 2. Render Tabel Sumber (dengan Filter Tipe & Pencarian Instan — FR-V65-02)
    * ───────────────────────────────────────────────────────────── */
   function renderSourcesTable() {
-    var sources = (window.BSStaffManager && BSStaffManager.getSources) ? BSStaffManager.getSources() : [];
-    var tbody   = $id('adm-sources-tbody');
+    var allSources = (window.BSStaffManager && BSStaffManager.getSources) ? BSStaffManager.getSources() : [];
+    var tbody      = $id('adm-sources-tbody');
     if (!tbody) return;
 
+    var searchQ    = ($id('adm-sources-search') ? $id('adm-sources-search').value : '').trim().toLowerCase();
+    var typeFilter = ($id('adm-sources-type-filter') ? $id('adm-sources-type-filter').value : '') || '';
+
+    var sources = allSources.filter(function (s) {
+      if (typeFilter && s.type !== typeFilter) return false;
+      if (searchQ) {
+        var mName   = String(s.name || '').toLowerCase().indexOf(searchQ) !== -1;
+        var mCode   = String(s.code || '').toLowerCase().indexOf(searchQ) !== -1;
+        var mOutlet = String(s.outlet || '').toLowerCase().indexOf(searchQ) !== -1;
+        var mRole   = String(s.role || '').toLowerCase().indexOf(searchQ) !== -1;
+        var mWa     = String(s.whatsapp || '').toLowerCase().indexOf(searchQ) !== -1;
+        if (!mName && !mCode && !mOutlet && !mRole && !mWa) return false;
+      }
+      return true;
+    });
+
+    var countInfo = $id('adm-sources-count-info');
+    if (countInfo) {
+      countInfo.textContent = sources.length + ' dari ' + allSources.length + ' sumber';
+    }
+
     if (sources.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">Belum ada data sumber. Klik "+ Tambah Staf / Titik" atau "Impor CSV".</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">' +
+        (allSources.length === 0
+          ? 'Belum ada data sumber. Klik "+ Tambah Staf / Titik" atau "Impor CSV".'
+          : 'Tidak ada sumber yang cocok dengan pencarian / filter.') +
+        '</td></tr>';
       return;
     }
 
@@ -374,6 +399,12 @@
         openSourceModal(null);
       });
     }
+    if ($id('adm-sources-search')) {
+      $id('adm-sources-search').addEventListener('input', renderSourcesTable);
+    }
+    if ($id('adm-sources-type-filter')) {
+      $id('adm-sources-type-filter').addEventListener('change', renderSourcesTable);
+    }
     if ($id('adm-source-modal-close'))  $id('adm-source-modal-close').addEventListener('click', closeSourceModal);
     if ($id('adm-source-modal-cancel')) $id('adm-source-modal-cancel').addEventListener('click', closeSourceModal);
     if ($id('adm-src-name')) $id('adm-src-name').addEventListener('input', previewSlug);
@@ -398,70 +429,76 @@
         if (type === 'sales' && !wa) {
           BSAdmin.showToast('Nomor WhatsApp wajib diisi untuk tipe Sales.', 'error'); return;
         }
-        if (wa && !/^628\d{7,13}$/.test(wa)) {
-          BSAdmin.showToast('Format nomor WhatsApp harus diawali 628 (contoh: 6281234567890).', 'error'); return;
-        }
 
         try {
-          var isEdit = Boolean(BSAdmin.state.editingCode);
-          if (isEdit) {
+          var isEditing = Boolean(BSAdmin.state.editingCode);
+          if (isEditing) {
             BSStaffManager.updateSource(BSAdmin.state.editingCode, {
-              name: name, type: type, role: role, outlet: outlet, whatsapp: wa,
-              service_hours: hours, welcome_template: tmpl
+              name: name, type: type, role: role, outlet: outlet,
+              whatsapp: wa, service_hours: hours, welcome_template: tmpl
             });
           } else {
             BSStaffManager.addSource({
-              name: name, type: type, role: role, outlet: outlet, whatsapp: wa,
-              service_hours: hours, welcome_template: tmpl
+              name: name, type: type, role: role, outlet: outlet,
+              whatsapp: wa, service_hours: hours, welcome_template: tmpl
             });
           }
           closeSourceModal();
           refreshAllSourceViews();
-          autoSyncSources((isEdit ? 'Perubahan sumber "' : 'Sumber baru "') + name + '" berhasil disimpan otomatis ke server.');
+          autoSyncSources((isEditing ? 'Perubahan "' : 'Data baru "') + name + '" otomatis disimpan ke server.');
         } catch (err) {
           BSAdmin.showToast('Gagal: ' + err.message, 'error');
         }
       });
     }
 
+    // Tombol manual Simpan & Sinkronkan ke Cloud (tetap aktif sebagai cadangan/manual sync)
     var saveBtn = $id('adm-save-sources-btn');
     if (saveBtn) {
       saveBtn.addEventListener('click', function () {
         if (!BSAdmin.checkPermission('save_sources')) {
-          BSAdmin.showToast('Peran Anda tidak memiliki izin untuk menyimpan data sumber.', 'warning');
+          BSAdmin.showToast('Peran Anda tidak memiliki izin untuk menyimpan sumber.', 'warning');
           return;
         }
-        autoSyncSources('Seluruh data sumber berhasil disinkronkan ke Google Sheets.');
+        autoSyncSources('Daftar sumber berhasil disinkronkan ke Google Sheets.');
       });
     }
 
+    // Tombol Ekspor & Impor CSV Sumber (FR-V64-05)
     var exportCsvBtn = $id('adm-export-sources-csv-btn');
     if (exportCsvBtn) {
       exportCsvBtn.addEventListener('click', exportSourcesCsv);
     }
-
-    var importCsvBtn  = $id('adm-import-sources-csv-btn');
-    var importCsvFile = $id('adm-import-sources-file');
-    if (importCsvBtn && importCsvFile) {
+    var importCsvBtn = $id('adm-import-sources-csv-btn');
+    var importCsvInput = $id('adm-import-sources-file');
+    if (importCsvBtn && importCsvInput) {
       importCsvBtn.addEventListener('click', function () {
-        importCsvFile.value = '';
-        importCsvFile.click();
+        importCsvInput.value = '';
+        importCsvInput.click();
       });
-      importCsvFile.addEventListener('change', function () {
-        if (this.files && this.files[0]) {
-          handleImportSourcesCsv(this.files[0]);
+      importCsvInput.addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (file) handleImportSourcesCsv(file);
+      });
+    }
+
+    var retryBtn = $id('adm-sync-retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', function () {
+        if (BSAdmin.state.syncStatus && typeof BSAdmin.state.syncStatus.retryFn === 'function') {
+          BSAdmin.state.syncStatus.retryFn();
         }
       });
     }
   }
 
   BSAdmin.sources = {
-    render:          renderSourcesTable,
-    openModal:       openSourceModal,
-    closeModal:      closeSourceModal,
-    autoSyncSources: autoSyncSources,
-    exportCsv:       exportSourcesCsv,
-    init:            init
+    render:           renderSourcesTable,
+    openModal:        openSourceModal,
+    closeModal:       closeSourceModal,
+    autoSyncSources:  autoSyncSources,
+    exportCsv:        exportSourcesCsv,
+    init:             init
   };
 
   window.BSAdmin = BSAdmin;

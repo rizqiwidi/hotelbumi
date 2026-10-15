@@ -137,6 +137,32 @@
       alert_email:         '',   // Email penerima notifikasi instan feedback <= 3 bintang (FR-V64-02)
       alert_webhook_url:   ''    // Webhook URL opsional untuk notifikasi instan feedback <= 3 bintang
     },
+    role_permissions: {
+      super_admin: {
+        label: 'Super Administrator (Akses Penuh)',
+        can_mutate: true,
+        default_tab: 'dashboard',
+        allowed_tabs: ['dashboard', 'sources', 'antifraud', 'feedback', 'outlets', 'sales-wa', 'nfc', 'bulk-qr', 'promos', 'appearance', 'audit', 'config', 'account']
+      },
+      manager: {
+        label: 'Manager Operasional',
+        can_mutate: true,
+        default_tab: 'dashboard',
+        allowed_tabs: ['dashboard', 'sources', 'antifraud', 'feedback', 'outlets', 'sales-wa', 'nfc', 'bulk-qr', 'promos', 'appearance', 'audit', 'account']
+      },
+      content_editor: {
+        label: 'Editor Konten & Halaman Tamu',
+        can_mutate: true,
+        default_tab: 'appearance',
+        allowed_tabs: ['outlets', 'sales-wa', 'promos', 'appearance', 'account']
+      },
+      analyst_readonly: {
+        label: 'Analis Data (Hanya Baca)',
+        can_mutate: false,
+        default_tab: 'dashboard',
+        allowed_tabs: ['dashboard', 'sources', 'antifraud', 'outlets', 'sales-wa', 'bulk-qr', 'promos', 'audit', 'account']
+      }
+    },
     appearance: {
       accent_color:        '#c9a96e',
       hero_text:           'Bumi Surabaya City Resort',
