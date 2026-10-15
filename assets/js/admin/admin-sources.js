@@ -1,6 +1,8 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
- * admin-sources.js — Manajemen sumber, staf hotel, sales WA, rotasi kode & titik NFC (FR-ADM-01, FR-ADM-04, FR-CMS-05)
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
+ * admin-sources.js — Manajemen sumber, staf hotel, sales WA, rotasi kode, titik NFC & Impor/Ekspor CSV (FR-CRUD-AUTO, FR-V64-05)
+ *
+ * Setiap aksi CRUD (Tambah, Edit, Rotasi, Aktif/Nonaktif, Hapus, Impor CSV) OTOMATIS tersimpan ke Google Sheets!
  */
 
 (function (window) {
@@ -11,13 +13,48 @@
   var esc = BSAdmin.esc;
   var icon = BSAdmin.icon || function () { return ''; };
 
+  /* ─────────────────────────────────────────────────────────────
+   * 1. Helper Auto-Save Sumber ke Cloud (FR-CRUD-AUTO)
+   * ───────────────────────────────────────────────────────────── */
+  function autoSyncSources(successMsg) {
+    if (!window.BSStaffManager || typeof BSStaffManager.syncToCloud !== 'function') {
+      return Promise.resolve();
+    }
+    var saveBtn = $id('adm-save-sources-btn');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Menyimpan ke Cloud…';
+    }
+    BSAdmin.updateSyncStatus('saving');
+
+    function attemptSync() {
+      return BSStaffManager.syncToCloud().then(function () {
+        BSAdmin.updateSyncStatus('saved');
+        if (successMsg) BSAdmin.showToast(successMsg, 'success');
+      }).catch(function (err) {
+        BSAdmin.updateSyncStatus('failed', err.message, attemptSync);
+        BSAdmin.showToast('Tersimpan lokal, namun gagal sinkron ke server: ' + err.message, 'error');
+      }).finally(function () {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = icon('save', 14) + ' <span>Simpan &amp; Sinkronkan ke Cloud</span>';
+        }
+      });
+    }
+
+    return attemptSync();
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * 2. Render Tabel Sumber
+   * ───────────────────────────────────────────────────────────── */
   function renderSourcesTable() {
     var sources = (window.BSStaffManager && BSStaffManager.getSources) ? BSStaffManager.getSources() : [];
     var tbody   = $id('adm-sources-tbody');
     if (!tbody) return;
 
     if (sources.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">Belum ada data sumber. Klik "Tambah Staf / Titik".</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">Belum ada data sumber. Klik "+ Tambah Staf / Titik" atau "Impor CSV".</td></tr>';
       return;
     }
 
@@ -54,6 +91,9 @@
     BSAdmin.applyRoleRestrictions && BSAdmin.applyRoleRestrictions();
   }
 
+  /* ─────────────────────────────────────────────────────────────
+   * 3. Modal Tambah / Edit Sumber
+   * ───────────────────────────────────────────────────────────── */
   function openSourceModal(code, defaultType) {
     if (!BSAdmin.checkPermission('save_sources')) {
       BSAdmin.showToast('Peran Anda tidak memiliki izin untuk mengedit sumber.', 'warning');
@@ -125,6 +165,22 @@
     }
   }
 
+  function refreshAllSourceViews() {
+    renderSourcesTable();
+    if (BSAdmin.content && typeof BSAdmin.content.renderSalesWa === 'function') {
+      BSAdmin.content.renderSalesWa();
+    }
+    if (BSAdmin.nfc && typeof BSAdmin.nfc.populateSelect === 'function') {
+      BSAdmin.nfc.populateSelect();
+    }
+    if (BSAdmin.reports && typeof BSAdmin.reports.renderBulkQr === 'function') {
+      BSAdmin.reports.renderBulkQr();
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * 4. Aksi Global Sumber (Otomatis Tersimpan ke Cloud — FR-CRUD-AUTO)
+   * ───────────────────────────────────────────────────────────── */
   window.adminEditSource = function (code) {
     openSourceModal(code);
   };
@@ -137,9 +193,8 @@
     if (!confirm('Rotasi kode untuk sumber ini? Kartu NFC/QR lama akan dicabut dan ditandai perlu cetak ulang.')) return;
     try {
       var updated = BSStaffManager.rotateCode(code);
-      BSAdmin.updateSyncStatus('unsaved');
-      BSAdmin.showToast('Kode dirotasi menjadi: ' + updated.code + ' (Perlu cetak ulang kartu).', 'success');
-      renderSourcesTable();
+      refreshAllSourceViews();
+      autoSyncSources('Kode berhasil dirotasi menjadi ' + updated.code + ' dan disimpan ke server.');
     } catch (err) {
       BSAdmin.showToast('Gagal rotasi: ' + err.message, 'error');
     }
@@ -154,16 +209,12 @@
     var src = sources.find(function (s) { return s.code === code; });
     if (!src) return;
     var action = src.active ? 'nonaktifkan' : 'aktifkan kembali';
-    if (!confirm('Yakin ingin ' + action + ' sumber ini?')) return;
+    if (!confirm('Yakin ingin ' + action + ' sumber "' + src.name + '"?')) return;
     try {
       if (src.active) BSStaffManager.deactivateSource(code);
       else BSStaffManager.updateSource(code, { active: true });
-      BSAdmin.updateSyncStatus('unsaved');
-      BSAdmin.showToast('Status sumber berhasil diubah.', 'success');
-      renderSourcesTable();
-      if (BSAdmin.content && typeof BSAdmin.content.renderSalesWa === 'function') {
-        BSAdmin.content.renderSalesWa();
-      }
+      refreshAllSourceViews();
+      autoSyncSources('Status sumber "' + src.name + '" berhasil diperbarui dan disimpan ke server.');
     } catch (err) {
       BSAdmin.showToast('Gagal: ' + err.message, 'error');
     }
@@ -174,23 +225,149 @@
       BSAdmin.showToast('Peran Anda tidak memiliki izin untuk menghapus sumber.', 'warning');
       return;
     }
-    if (!confirm('Hapus permanen sumber "' + code + '"? Data tidak dapat dikembalikan.')) return;
+    if (!confirm('Hapus permanen sumber "' + code + '"? Data akan langsung dihapus dari server.')) return;
     try {
       BSStaffManager.deleteSource(code);
-      BSAdmin.updateSyncStatus('unsaved');
-      BSAdmin.showToast('Sumber berhasil dihapus.', 'success');
-      renderSourcesTable();
-      if (BSAdmin.content && typeof BSAdmin.content.renderSalesWa === 'function') {
-        BSAdmin.content.renderSalesWa();
-      }
-      if (BSAdmin.nfc && typeof BSAdmin.nfc.populateSelect === 'function') {
-        BSAdmin.nfc.populateSelect();
-      }
+      refreshAllSourceViews();
+      autoSyncSources('Sumber "' + code + '" berhasil dihapus dari server.');
     } catch (err) {
       BSAdmin.showToast('Gagal: ' + err.message, 'error');
     }
   };
 
+  /* ─────────────────────────────────────────────────────────────
+   * 5. Impor & Ekspor Massal Sumber via CSV (FR-V64-05)
+   * ───────────────────────────────────────────────────────────── */
+  function csvEscape(val) {
+    var s = (val === null || val === undefined) ? '' : String(val);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    if (s.indexOf(',') !== -1 || s.indexOf('"') !== -1 || s.indexOf('\n') !== -1) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  function parseCsvLine(line) {
+    var result = [];
+    var cur = '';
+    var inQuotes = false;
+    for (var i = 0; i < line.length; i++) {
+      var ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (ch === '"') { inQuotes = false; }
+        else { cur += ch; }
+      } else {
+        if (ch === '"') { inQuotes = true; }
+        else if (ch === ',') { result.push(cur.trim()); cur = ''; }
+        else { cur += ch; }
+      }
+    }
+    result.push(cur.trim());
+    return result;
+  }
+
+  function exportSourcesCsv() {
+    var sources = (window.BSStaffManager && BSStaffManager.getSources) ? BSStaffManager.getSources() : [];
+    if (!sources.length) {
+      BSAdmin.showToast('Belum ada data sumber untuk diekspor.', 'warning');
+      return;
+    }
+    var headers = ['code', 'name', 'type', 'outlet', 'role', 'whatsapp', 'service_hours', 'welcome_template', 'active', 'kartu_diprogram'];
+    var lines = [headers.join(',')];
+    sources.forEach(function (s) {
+      lines.push(headers.map(function (h) { return csvEscape(s[h]); }).join(','));
+    });
+    var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'bumi-surabaya-sources-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+    BSAdmin.showToast('File CSV daftar sumber berhasil diunduh.', 'success');
+  }
+
+  function handleImportSourcesCsv(file) {
+    if (!file) return;
+    if (!BSAdmin.checkPermission('save_sources')) {
+      BSAdmin.showToast('Peran Anda tidak memiliki izin untuk mengimpor sumber.', 'warning');
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      try {
+        var text = String(ev.target.result || '').replace(/^\uFEFF/, '');
+        var lines = text.split(/\r?\n/).filter(function (l) { return l.trim().length > 0; });
+        if (lines.length < 2) {
+          BSAdmin.showToast('File CSV kosong atau tidak memiliki baris data.', 'error');
+          return;
+        }
+        var headers = parseCsvLine(lines[0]).map(function (h) { return h.toLowerCase().replace(/[^a-z0-9_]/g, ''); });
+        var idxName   = headers.indexOf('name') !== -1 ? headers.indexOf('name') : headers.indexOf('nama');
+        var idxType   = headers.indexOf('type') !== -1 ? headers.indexOf('type') : headers.indexOf('tipe');
+        var idxOutlet = headers.indexOf('outlet') !== -1 ? headers.indexOf('outlet') : headers.indexOf('gerai');
+        var idxRole   = headers.indexOf('role') !== -1 ? headers.indexOf('role') : headers.indexOf('jabatan');
+        var idxWa     = headers.indexOf('whatsapp') !== -1 ? headers.indexOf('whatsapp') : headers.indexOf('wa');
+        var idxHours  = headers.indexOf('service_hours');
+        var idxTmpl   = headers.indexOf('welcome_template');
+        var idxCode   = headers.indexOf('code');
+
+        if (idxName === -1) {
+          BSAdmin.showToast('Kolom "name" (atau "nama") wajib ada pada baris header CSV.', 'error');
+          return;
+        }
+
+        var existingSources = BSStaffManager.getSources();
+        var addedCount = 0;
+        var updatedCount = 0;
+
+        for (var r = 1; r < lines.length; r++) {
+          var cols = parseCsvLine(lines[r]);
+          var name = (cols[idxName] || '').trim();
+          if (!name) continue;
+          var type = (idxType !== -1 && cols[idxType] ? cols[idxType].trim().toLowerCase() : 'staff');
+          if (['staff', 'sales', 'nfc', 'outlet'].indexOf(type) === -1) type = 'staff';
+          var outlet = idxOutlet !== -1 ? (cols[idxOutlet] || '').trim() : '';
+          var role   = idxRole !== -1   ? (cols[idxRole]   || '').trim() : '';
+          var wa     = idxWa !== -1     ? (cols[idxWa]     || '').replace(/[^0-9]/g, '') : '';
+          var hours  = idxHours !== -1  ? (cols[idxHours]  || '').trim() : '';
+          var tmpl   = idxTmpl !== -1   ? (cols[idxTmpl]   || '').trim() : '';
+          var code   = idxCode !== -1   ? (cols[idxCode]   || '').trim() : '';
+
+          var match = existingSources.find(function (s) {
+            return (code && s.code === code) || (s.name.toLowerCase() === name.toLowerCase() && s.type === type);
+          });
+
+          if (match) {
+            BSStaffManager.updateSource(match.code, {
+              name: name, type: type, outlet: outlet, role: role,
+              whatsapp: wa, service_hours: hours, welcome_template: tmpl
+            });
+            updatedCount++;
+          } else {
+            BSStaffManager.addSource({
+              name: name, type: type, outlet: outlet, role: role,
+              whatsapp: wa, service_hours: hours, welcome_template: tmpl
+            });
+            addedCount++;
+          }
+        }
+
+        refreshAllSourceViews();
+        autoSyncSources('Impor CSV berhasil (' + addedCount + ' baru, ' + updatedCount + ' diperbarui) & otomatis disimpan ke server.');
+      } catch (err) {
+        BSAdmin.showToast('Gagal memproses file CSV: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * 6. Inisialisasi Event Listener Modul Sources
+   * ───────────────────────────────────────────────────────────── */
   function init() {
     if ($id('adm-add-source-btn')) {
       $id('adm-add-source-btn').addEventListener('click', function () {
@@ -203,6 +380,7 @@
     if ($id('adm-src-type')) $id('adm-src-type').addEventListener('change', previewSlug);
     BSAdmin.setupAccessibleModal('adm-source-modal', closeSourceModal);
 
+    // Form submit: Tambah / Edit Sumber atau Sales -> Otomatis tersimpan ke Cloud!
     var form = $id('adm-source-form');
     if (form) {
       form.addEventListener('submit', function (e) {
@@ -211,7 +389,8 @@
         var type   = $id('adm-src-type') ? $id('adm-src-type').value : '';
         var role   = ($id('adm-src-role') ? $id('adm-src-role').value : '').trim();
         var outlet = $id('adm-src-outlet') ? $id('adm-src-outlet').value : '';
-        var wa     = ($id('adm-src-wa') ? $id('adm-src-wa').value : '').trim();
+        var wa     = ($id('adm-src-wa') ? $id('adm-src-wa').value : '').replace(/[^0-9]/g, '');
+        if (wa.indexOf('08') === 0) wa = '62' + wa.substring(1);
         var hours  = ($id('adm-src-hours') ? $id('adm-src-hours').value : '').trim();
         var tmpl   = ($id('adm-src-welcome-tmpl') ? $id('adm-src-welcome-tmpl').value : '').trim();
 
@@ -224,28 +403,21 @@
         }
 
         try {
-          if (BSAdmin.state.editingCode) {
+          var isEdit = Boolean(BSAdmin.state.editingCode);
+          if (isEdit) {
             BSStaffManager.updateSource(BSAdmin.state.editingCode, {
               name: name, type: type, role: role, outlet: outlet, whatsapp: wa,
               service_hours: hours, welcome_template: tmpl
             });
-            BSAdmin.showToast('Sumber berhasil diperbarui.', 'success');
           } else {
             BSStaffManager.addSource({
               name: name, type: type, role: role, outlet: outlet, whatsapp: wa,
               service_hours: hours, welcome_template: tmpl
             });
-            BSAdmin.showToast('Sumber berhasil ditambahkan.', 'success');
           }
-          BSAdmin.updateSyncStatus('unsaved');
           closeSourceModal();
-          renderSourcesTable();
-          if (BSAdmin.content && typeof BSAdmin.content.renderSalesWa === 'function') {
-            BSAdmin.content.renderSalesWa();
-          }
-          if (BSAdmin.nfc && typeof BSAdmin.nfc.populateSelect === 'function') {
-            BSAdmin.nfc.populateSelect();
-          }
+          refreshAllSourceViews();
+          autoSyncSources((isEdit ? 'Perubahan sumber "' : 'Sumber baru "') + name + '" berhasil disimpan otomatis ke server.');
         } catch (err) {
           BSAdmin.showToast('Gagal: ' + err.message, 'error');
         }
@@ -259,33 +431,37 @@
           BSAdmin.showToast('Peran Anda tidak memiliki izin untuk menyimpan data sumber.', 'warning');
           return;
         }
-        var btn = this;
-        btn.disabled = true;
-        btn.textContent = 'Menyinkronkan…';
-        BSAdmin.updateSyncStatus('saving');
+        autoSyncSources('Seluruh data sumber berhasil disinkronkan ke Google Sheets.');
+      });
+    }
 
-        function syncSources() {
-          BSStaffManager.syncToCloud().then(function () {
-            BSAdmin.updateSyncStatus('saved');
-            BSAdmin.showToast('Data staf & sumber berhasil disinkronkan ke Google Sheets.', 'success');
-          }).catch(function (err) {
-            BSAdmin.updateSyncStatus('failed', err.message, syncSources);
-            BSAdmin.showToast('Gagal sinkronisasi: ' + err.message, 'error');
-          }).finally(function () {
-            btn.disabled = false;
-            btn.innerHTML = icon('save', 14) + ' <span>Simpan &amp; Sinkronkan ke Cloud</span>';
-          });
+    var exportCsvBtn = $id('adm-export-sources-csv-btn');
+    if (exportCsvBtn) {
+      exportCsvBtn.addEventListener('click', exportSourcesCsv);
+    }
+
+    var importCsvBtn  = $id('adm-import-sources-csv-btn');
+    var importCsvFile = $id('adm-import-sources-file');
+    if (importCsvBtn && importCsvFile) {
+      importCsvBtn.addEventListener('click', function () {
+        importCsvFile.value = '';
+        importCsvFile.click();
+      });
+      importCsvFile.addEventListener('change', function () {
+        if (this.files && this.files[0]) {
+          handleImportSourcesCsv(this.files[0]);
         }
-        syncSources();
       });
     }
   }
 
   BSAdmin.sources = {
-    render:     renderSourcesTable,
-    openModal:  openSourceModal,
-    closeModal: closeSourceModal,
-    init:       init
+    render:          renderSourcesTable,
+    openModal:       openSourceModal,
+    closeModal:      closeSourceModal,
+    autoSyncSources: autoSyncSources,
+    exportCsv:       exportSourcesCsv,
+    init:            init
   };
 
   window.BSAdmin = BSAdmin;

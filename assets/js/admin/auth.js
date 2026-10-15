@@ -1,11 +1,6 @@
 /**
- * BUMI SURABAYA v6.0
- * auth.js — Login session & credentials management
- *
- * - Autentikasi berbasis Username & Password (tab Sheets 'Users')
- * - Token sesi acak 32 hex disimpan di sessionStorage (TTL 6 jam di GAS, 8 jam client)
- * - Brute-force protection: maks 5 kali gagal / 15 menit
- * - Alur paksa ganti password jika must_change=TRUE
+ * BUMI SURABAYA v6.4
+ * auth.js — Login session, server-side logout & credentials management (FR-V64-04)
  */
 
 (function(window) {
@@ -45,7 +40,22 @@
     sessionStorage.setItem(LOGIN_TIME,      String(Date.now()));
   }
 
+  /**
+   * Logout: cabut token sesi di server Google Apps Script (CacheService.remove)
+   * sekaligus bersihkan sessionStorage lokal (FR-V64-04).
+   */
   function logout() {
+    var token  = getToken();
+    var gasUrl = (window.BSConfig && BSConfig.getGasUrl()) || '';
+    if (token && gasUrl) {
+      try {
+        fetch(gasUrl, {
+          method:  'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body:    JSON.stringify({ action: 'logout', token: token })
+        }).catch(function() {});
+      } catch (_) {}
+    }
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(ROLE_KEY);
     sessionStorage.removeItem(USERNAME_KEY);
@@ -54,7 +64,6 @@
     if (window.BSConfig) window.BSConfig.clearCache();
   }
 
-  // Brute-force tracking (di sessionStorage per-tab/browser session)
   function getFailCount() {
     var ts   = parseInt(sessionStorage.getItem(BF_TS_KEY) || '0', 10);
     var fails= parseInt(sessionStorage.getItem(BF_KEY)    || '0', 10);
@@ -81,12 +90,6 @@
     return Math.max(0, remaining);
   }
 
-  /**
-   * Login dengan username & password ke backend Google Apps Script.
-   * @param {string} username
-   * @param {string} password
-   * @returns {Promise<{ok:boolean, token:string, username:string, must_change:boolean, role:string}>}
-   */
   function login(username, password) {
     var gasUrl = (window.BSConfig && BSConfig.getGasUrl()) || '';
     if (!gasUrl) return Promise.reject(new Error('URL backend belum dikonfigurasi.'));
@@ -109,12 +112,6 @@
     });
   }
 
-  /**
-   * Perbarui kata sandi pengguna via endpoint change_password.
-   * @param {string} oldPassword
-   * @param {string} newPassword
-   * @returns {Promise<{ok:boolean, message:string}>}
-   */
   function changePassword(oldPassword, newPassword) {
     var gasUrl = (window.BSConfig && BSConfig.getGasUrl()) || '';
     var token  = getToken();
@@ -141,9 +138,6 @@
     });
   }
 
-  /**
-   * Verifikasi token ke backend GAS (kompatibilitas & fallback).
-   */
   function verifyToken(gasUrl, token) {
     if (!gasUrl || !token) return Promise.resolve({ ok: false, error: 'Parameter tidak lengkap' });
     return fetch(gasUrl, {

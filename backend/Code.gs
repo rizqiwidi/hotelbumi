@@ -494,12 +494,21 @@ function _verifySession(token, allowMustChange) {
    doGet — Endpoint publik GET
 ══════════════════════════════════════════════════════════════ */
 
+var PUBLIC_CONFIG_CACHE_KEY = 'public_config_json_v64';
+var PUBLIC_CONFIG_CACHE_TTL = 300; // 5 menit (FR-V64-01)
+
+function _invalidatePublicConfigCache() {
+  try {
+    CacheService.getScriptCache().remove(PUBLIC_CONFIG_CACHE_KEY);
+  } catch (e) {}
+}
+
 function doGet(e) {
   try {
     var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : 'get_config';
 
     if (action === 'get_config') {
-      return _handleGetConfig();
+      return _handleGetConfig(e);
     }
 
     return _jsonOut({ ok: false, error: 'Aksi GET tidak dikenali: ' + action });
@@ -517,7 +526,18 @@ function doGet(e) {
  * - Hanya sources yang berstatus active === true yang dikembalikan.
  * - Field internal/kartu/legacy_codes tidak dikirim ke publik.
  */
-function _handleGetConfig() {
+function _handleGetConfig(e) {
+  var bypassCache = !!(e && e.parameter && e.parameter.nocache === '1');
+  var cache = CacheService.getScriptCache();
+  if (!bypassCache) {
+    try {
+      var cachedJson = cache.get(PUBLIC_CONFIG_CACHE_KEY);
+      if (cachedJson) {
+        return ContentService.createTextOutput(cachedJson).setMimeType(ContentService.MimeType.JSON);
+      }
+    } catch (_) {}
+  }
+
   var ss        = getSpreadsheet();
   var cfgSheet  = ss.getSheetByName('Config');
   var srcSheet  = ss.getSheetByName('Sources');
@@ -545,7 +565,8 @@ function _handleGetConfig() {
       tiktok:            (rawConfig.general && rawConfig.general.tiktok) || '',
       youtube:           (rawConfig.general && rawConfig.general.youtube) || '',
       website:           (rawConfig.general && rawConfig.general.website) || '',
-      logo_url:          (rawConfig.general && rawConfig.general.logo_url) || ''
+      logo_url:          (rawConfig.general && rawConfig.general.logo_url) || '',
+      language_mode:     (rawConfig.general && rawConfig.general.language_mode) || 'en'
     },
     appearance: {
       accent_color:        (rawConfig.appearance && rawConfig.appearance.accent_color) || '#c9a96e',
@@ -647,17 +668,24 @@ function _handleGetConfig() {
     }
   }
 
-  return _jsonOut({
+  var outObj = {
     ok:      true,
     version: Date.now(),
     system_health: {
-      backend_version: 'v6.3.0-phase3',
+      backend_version: 'v6.4.0-phase4',
       server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
       timezone:        'Asia/Jakarta'
     },
     config:  publicConfig,
     sources: activeSources
-  });
+  };
+  try {
+    var serialized = JSON.stringify(outObj);
+    if (serialized.length < 95000) {
+      cache.put(PUBLIC_CONFIG_CACHE_KEY, serialized, PUBLIC_CONFIG_CACHE_TTL);
+    }
+  } catch (_) {}
+  return _jsonOut(outObj);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -684,6 +712,10 @@ function doPost(e) {
 
     if (action === 'login') {
       return _handleLogin(data);
+    }
+
+    if (action === 'logout') {
+      return _handleLogout(data);
     }
 
     /* ── 2. Endpoint Ganti Password (khusus: izinkan saat must_change=true) ── */
@@ -720,6 +752,18 @@ function doPost(e) {
 
     if (action === 'mark_feedback_handled') {
       return _handleMarkFeedbackHandled(data, session);
+    }
+
+    if (action === 'list_users') {
+      return _handleListUsers(data, session);
+    }
+
+    if (action === 'save_user') {
+      return _handleSaveUser(data, session);
+    }
+
+    if (action === 'delete_user') {
+      return _handleDeleteUser(data, session);
     }
 
     _log('WARN', 'doPost', 'Aksi tidak dikenali: ' + action, '');
@@ -791,11 +835,15 @@ function _handleSubmitFeedback(data) {
     var devHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, devId)
       .map(function(b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
 
+    var srcCode = String(data.source || 'general').substring(0, 60);
+    var srcName = _stripFeedbackHtml(data.source_name).substring(0, 80);
+    var srcOutlet = _stripFeedbackHtml(data.outlet).substring(0, 80);
+
     sheet.appendRow([
       tsServer,
-      String(data.source || 'general').substring(0, 60),
-      _stripFeedbackHtml(data.source_name).substring(0, 80),
-      _stripFeedbackHtml(data.outlet).substring(0, 80),
+      srcCode,
+      srcName,
+      srcOutlet,
       guestName,
       guestWa,
       rating,
@@ -803,6 +851,20 @@ function _handleSubmitFeedback(data) {
       'unread',
       devHash
     ]);
+
+    // FR-V64-02: Notifikasi instan (Service Recovery Alert) untuk rating <= 3 bintang
+    if (rating <= 3) {
+      _sendLowRatingAlert({
+        timestamp:   tsServer,
+        rating:      rating,
+        message:     message,
+        guest_name:  guestName || 'Anonim',
+        guest_wa:    guestWa   || 'Tidak dicantumkan',
+        source:      srcCode,
+        source_name: srcName   || srcCode,
+        outlet:      srcOutlet || 'Umum'
+      });
+    }
 
     return _jsonOut({ ok: true });
   } finally {
@@ -863,6 +925,227 @@ function _handleGetFeedbackData(data, session) {
   }
 
   return _jsonOut({ ok: true, items: items.slice(offset, offset + limit), total: items.length, unread: unread });
+}
+
+
+/**
+ * Kirim notifikasi instan (Email & Webhook opsional) saat tamu mengirim Direct Feedback rating <= 3 (FR-V64-02).
+ */
+function _sendLowRatingAlert(fb) {
+  try {
+    var ss = getSpreadsheet();
+    var cfgSheet = ss.getSheetByName('Config');
+    var alertEmail = '';
+    var alertWebhook = '';
+    if (cfgSheet && cfgSheet.getLastRow() > 1) {
+      var rows = cfgSheet.getRange(2, 1, cfgSheet.getLastRow() - 1, 2).getValues();
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i][0] === 'general') {
+          try {
+            var gen = JSON.parse(rows[i][1]);
+            alertEmail   = String((gen && gen.alert_email) || '').trim();
+            alertWebhook = String((gen && gen.alert_webhook_url) || '').trim();
+          } catch (_) {}
+          break;
+        }
+      }
+    }
+    if (!alertEmail) {
+      try {
+        alertEmail = String(PropertiesService.getScriptProperties().getProperty('EMAIL_MANAJEMEN') || '').trim();
+      } catch (_) {}
+    }
+
+    var stars = '';
+    for (var s = 1; s <= 5; s++) stars += (s <= fb.rating ? '★' : '☆');
+    var subject = '[ALERT KELUHAN TAMU ' + fb.rating + '/5] Bumi Surabaya — ' + (fb.outlet || 'Layanan Hotel');
+
+    if (alertEmail) {
+      var htmlBody = '<div style="font-family:Inter,Arial,sans-serif;max-width:560px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">' +
+        '<div style="background:#143323;color:#dfc38d;padding:16px 20px;font-weight:700;font-size:16px;">Notifikasi Instan Layanan Tamu (Service Recovery Alert)</div>' +
+        '<div style="padding:20px;color:#1c2420;line-height:1.6;font-size:14px;">' +
+          '<p style="margin:0 0 12px;">Seorang tamu baru saja mengirimkan masukan dengan rating rendah (<strong>' + stars + ' — ' + fb.rating + '/5</strong>):</p>' +
+          '<table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px;">' +
+            '<tr><td style="padding:6px 0;color:#728078;width:130px;">Waktu Server</td><td><strong>' + fb.timestamp + '</strong></td></tr>' +
+            '<tr><td style="padding:6px 0;color:#728078;">Gerai / Unit</td><td><strong>' + fb.outlet + '</strong></td></tr>' +
+            '<tr><td style="padding:6px 0;color:#728078;">Staf / Titik</td><td>' + fb.source_name + ' (<code>' + fb.source + '</code>)</td></tr>' +
+            '<tr><td style="padding:6px 0;color:#728078;">Nama Tamu</td><td>' + fb.guest_name + '</td></tr>' +
+            '<tr><td style="padding:6px 0;color:#728078;">WhatsApp Tamu</td><td>' + fb.guest_wa + '</td></tr>' +
+          '</table>' +
+          '<div style="background:#fef2f2;border-left:4px solid #dc2626;padding:12px 14px;border-radius:4px;color:#7f1d1d;">' +
+            '<strong>Pesan Tamu:</strong><br>' + fb.message +
+          '</div>' +
+          '<p style="margin:14px 0 0;font-size:12px;color:#728078;">Silakan buka tab <strong>Feedback Tamu</strong> di Portal Manajemen untuk menindaklanjuti masukan ini.</p>' +
+        '</div></div>';
+      GmailApp.sendEmail(alertEmail, subject, fb.message, { htmlBody: htmlBody });
+    }
+
+    if (alertWebhook && /^https:\/\//i.test(alertWebhook)) {
+      UrlFetchApp.fetch(alertWebhook, {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify({
+          type: 'low_rating_feedback_alert',
+          subject: subject,
+          rating: fb.rating,
+          outlet: fb.outlet,
+          source: fb.source,
+          source_name: fb.source_name,
+          guest_name: fb.guest_name,
+          guest_wa: fb.guest_wa,
+          message: fb.message,
+          timestamp: fb.timestamp
+        }),
+        muteHttpExceptions: true
+      });
+    }
+  } catch (err) {
+    _log('WARN', 'low_rating_alert_failed', err.toString(), '');
+  }
+}
+
+/**
+ * Handler: logout (server-side session revocation — FR-V64-04)
+ */
+function _handleLogout(data) {
+  var token = data && data.token ? String(data.token).trim() : '';
+  if (token) {
+    var session = _verifySession(token, true);
+    try {
+      CacheService.getScriptCache().remove('sess_' + token);
+    } catch (_) {}
+    if (session && session.username) {
+      _recordAudit(session.username, session.role || 'admin', 'LOGOUT', 'session', 'SUCCESS', 'Keluar sesi (token dicabut dari server)', '');
+    }
+  }
+  return _jsonOut({ ok: true });
+}
+
+/**
+ * Handler: list_users, save_user, delete_user (RBAC User Management CRUD — FR-V64-03)
+ */
+function _handleListUsers(data, session) {
+  if (!session || session.role !== 'super_admin') {
+    return _jsonOut({ ok: false, error: 'Akses ditolak: hanya Super Administrator yang dapat mengelola akun pengguna.' });
+  }
+  var sheet = _getOrCreateUsersSheet();
+  var users = [];
+  if (sheet && sheet.getLastRow() > 1) {
+    var maxCol = Math.max(sheet.getLastColumn(), 7);
+    var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, maxCol).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      if (!rows[i][0]) continue;
+      users.push({
+        username:    String(rows[i][0]).trim(),
+        must_change: rows[i][3] === true || rows[i][3] === 'TRUE',
+        created_at:  rows[i][4] || '',
+        updated_at:  rows[i][5] || '',
+        role:        _sanitizeRole(rows[i][6])
+      });
+    }
+  }
+  return _jsonOut({ ok: true, users: users });
+}
+
+function _handleSaveUser(data, session) {
+  if (!session || session.role !== 'super_admin') {
+    _recordAudit(session ? session.username : 'unknown', session ? session.role : 'unknown', 'USER_MUTATION_DENIED', 'users', 'REJECTED', 'Ditolak: bukan super_admin', '');
+    return _jsonOut({ ok: false, error: 'Akses ditolak: hanya Super Administrator yang dapat membuat atau mengubah akun pengguna.' });
+  }
+
+  var targetUser = String(data.target_username || '').trim().toLowerCase();
+  var targetRole = _sanitizeRole(data.target_role || 'manager');
+  var newPw      = String(data.new_password || '').trim();
+  var mustChange = data.must_change !== undefined ? Boolean(data.must_change) : true;
+
+  if (!targetUser || !/^[a-z0-9_.-]{3,40}$/.test(targetUser)) {
+    return _jsonOut({ ok: false, error: 'Username harus terdiri dari 3–40 karakter huruf kecil, angka, titik, atau garis bawah.' });
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet    = _getOrCreateUsersSheet();
+    var existing = _findUser(targetUser);
+    var now      = new Date();
+
+    if (existing) {
+      if (newPw) {
+        if (newPw.length < 8) {
+          return _jsonOut({ ok: false, error: 'Kata sandi baru minimal 8 karakter.' });
+        }
+        var salt = _generateSecureRandomHex(16);
+        var hash = _hashPassword(salt, newPw);
+        sheet.getRange(existing.rowIndex, 2).setValue(hash);
+        sheet.getRange(existing.rowIndex, 3).setValue(salt);
+      }
+      sheet.getRange(existing.rowIndex, 4).setValue(mustChange);
+      sheet.getRange(existing.rowIndex, 6).setValue(now);
+      sheet.getRange(existing.rowIndex, 7).setValue(targetRole);
+      _recordAudit(session.username, session.role, 'UPDATE_USER', 'user:' + targetUser, 'SUCCESS', 'Perbarui akun role=' + targetRole + ', must_change=' + mustChange + (newPw ? ', sandi direset' : ''), '');
+    } else {
+      if (!newPw || newPw.length < 8) {
+        return _jsonOut({ ok: false, error: 'Kata sandi awal wajib diisi (minimal 8 karakter) untuk pengguna baru.' });
+      }
+      var newSalt = _generateSecureRandomHex(16);
+      var newHash = _hashPassword(newSalt, newPw);
+      sheet.appendRow([targetUser, newHash, newSalt, mustChange, now, now, targetRole]);
+      _recordAudit(session.username, session.role, 'CREATE_USER', 'user:' + targetUser, 'SUCCESS', 'Buat pengguna baru role=' + targetRole + ', must_change=' + mustChange, '');
+    }
+
+    return _handleListUsers(data, session);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function _handleDeleteUser(data, session) {
+  if (!session || session.role !== 'super_admin') {
+    return _jsonOut({ ok: false, error: 'Akses ditolak: hanya Super Administrator yang dapat menghapus akun pengguna.' });
+  }
+  var targetUser = String(data.target_username || '').trim().toLowerCase();
+  if (!targetUser) return _jsonOut({ ok: false, error: 'Username target wajib diisi.' });
+  if (targetUser === String(session.username || '').toLowerCase()) {
+    return _jsonOut({ ok: false, error: 'Tidak dapat menghapus akun yang sedang Anda gunakan untuk login saat ini.' });
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet    = _getOrCreateUsersSheet();
+    var existing = _findUser(targetUser);
+    if (!existing) {
+      return _jsonOut({ ok: false, error: 'Pengguna tidak ditemukan.' });
+    }
+    sheet.deleteRow(existing.rowIndex);
+    _recordAudit(session.username, session.role, 'DELETE_USER', 'user:' + targetUser, 'SUCCESS', 'Akun pengguna dihapus dari sistem', '');
+    return _handleListUsers(data, session);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Baca data rekap bulanan dari lembar MonthlyAggregates (FR-V64-07).
+ */
+function _readMonthlyAggregates(ss) {
+  var aggSheet = ss.getSheetByName('MonthlyAggregates');
+  if (!aggSheet || aggSheet.getLastRow() <= 1) return [];
+  var rows = aggSheet.getRange(2, 1, aggSheet.getLastRow() - 1, 10).getValues();
+  return rows.map(function(r) {
+    return {
+      month_key:            String(r[0] || ''),
+      source_code:          String(r[1] || ''),
+      source_name:          String(r[2] || ''),
+      source_type:          String(r[3] || ''),
+      total_visits:         Number(r[4]) || 0,
+      total_reviews:        Number(r[5]) || 0,
+      total_wa:             Number(r[6]) || 0,
+      total_promos:         Number(r[7]) || 0,
+      quality_score:        Number(r[8]) || 0,
+      fraud_events_flagged: Number(r[9]) || 0
+    };
+  });
 }
 
 function _maskWa(wa) {
@@ -1177,14 +1460,17 @@ function _handleGetAdminData(data, session) {
     });
   }
 
+  var monthlyAgg = (role === 'content_editor') ? [] : _readMonthlyAggregates(ss);
+
   return _jsonOut({
-    ok:            true,
-    config:        fullConfig,
-    sources:       allSources,
-    staff_devices: staffDevices,
-    timestamp:     new Date().toISOString(),
+    ok:                 true,
+    config:             fullConfig,
+    sources:            allSources,
+    staff_devices:      staffDevices,
+    monthly_aggregates: monthlyAgg,
+    timestamp:          new Date().toISOString(),
     system_health: {
-      backend_version: 'v6.3.0-phase3',
+      backend_version: 'v6.4.0-phase4',
       server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
       timezone:        'Asia/Jakarta',
       current_user:    session ? session.username : '',
@@ -1324,6 +1610,7 @@ function _handleSaveAllAdminData(data, session) {
       auditParts.push('staff_devices count: ' + data.staff_devices.length);
     }
 
+    _invalidatePublicConfigCache();
     var details = auditParts.join('; ') || 'Penyimpanan data admin';
     _recordAudit(actor, role, 'MUTATION_SAVE', 'admin_data', 'SUCCESS', details, '');
     _log('INFO', 'save_all_admin_data', 'Data admin disimpan oleh ' + actor + ' (' + role + '). ' + details, '');
@@ -1465,15 +1752,17 @@ function _handleGetEventsData(data, session) {
 
   var allSources = _readSourcesSheetAll(srcSheet);
 
+  var monthlyAgg = _readMonthlyAggregates(ss);
   _log('INFO', 'get_events_data', 'Kirim ' + eventsList.length + ' events dari ' + targetMonth, '');
   return _jsonOut({
-    ok:            true,
-    month:         targetMonth,
-    events:        eventsList,
-    staff_devices: staffDevices,
-    config:        fullConfig,
-    sources:       allSources,
-    archive_tabs:  archiveTabs,
+    ok:                 true,
+    month:              targetMonth,
+    events:             eventsList,
+    staff_devices:      staffDevices,
+    config:             fullConfig,
+    sources:            allSources,
+    monthly_aggregates: monthlyAgg,
+    archive_tabs:       archiveTabs,
     total:         eventsList.length,
     total_rows:    (evSheet && evSheet.getLastRow() > 1) ? (evSheet.getLastRow() - 1) : 0,
     limit:         limit

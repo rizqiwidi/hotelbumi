@@ -1,6 +1,6 @@
 /**
- * BUMI SURABAYA v6.3
- * dashboard.js — Admin dashboard rendering module (Anti-Slop Edition — FR-ADM-01 s/d FR-ADM-04)
+ * BUMI SURABAYA v6.4
+ * dashboard.js — Admin dashboard rendering module (Anti-Slop Edition — FR-ADM-01 s/d FR-ADM-04, FR-V64-07)
  *
  * Renders metric cards, leaderboard, trend chart (Emerald & Champagne Gold palette),
  * and source analysis table with tabular numerals and zero decorative emojis or ticket codes.
@@ -185,11 +185,18 @@
   }
 
   /**
-   * Render a multi-dataset line chart of visits/reviews over time using Deep Emerald & Champagne Gold (FR-ADM-03).
+   * Render a multi-dataset line chart of visits/reviews over time using Deep Emerald & Champagne Gold (FR-ADM-03, FR-V64-07).
    */
   function renderTrendChart(data = {}, period = '7d') {
     const canvas = _el('adm-trend-chart');
     if (!canvas) return;
+
+    const sortedAll = (data.daily || [])
+      .slice()
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const daily = period === 'custom'
+      ? sortedAll
+      : sortedAll.slice(-(period === '30d' ? 30 : 7));
 
     if (typeof global.Chart === 'undefined') {
       var parent = canvas.parentElement;
@@ -200,9 +207,7 @@
         var fb = document.createElement('div');
         fb.className = 'adm-chart-fallback';
         fb.style.cssText = 'padding:16px;background:#fcfbf9;border:1px solid #e5e2dc;border-radius:6px;font-size:0.85rem;color:#47544d;';
-        var daysCount = period === '30d' ? 30 : 7;
-        var dailyList = (data.daily || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-daysCount);
-        var rowsHtml = dailyList.map(function(d){ return '<tr><td style="padding:6px 8px;">' + _shortDate(d.date) + '</td><td class="bs-num" style="padding:6px 8px;text-align:right;"><strong>' + (d.visits||0) + '</strong></td><td class="bs-num" style="padding:6px 8px;text-align:right;"><strong>' + (d.reviews||0) + '</strong></td></tr>'; }).join('');
+        var rowsHtml = daily.map(function(d){ return '<tr><td style="padding:6px 8px;">' + _shortDate(d.date) + '</td><td class="bs-num" style="padding:6px 8px;text-align:right;"><strong>' + (d.visits||0) + '</strong></td><td class="bs-num" style="padding:6px 8px;text-align:right;"><strong>' + (d.reviews||0) + '</strong></td></tr>'; }).join('');
         fb.innerHTML = '<div style="margin-bottom:8px;font-weight:600;color:#143323;">Ringkasan Tren Harian (' + period + ')</div>' +
           '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;"><thead><tr style="border-bottom:1px solid #ddd;text-align:left;"><th style="padding:6px 8px;">Tanggal</th><th style="padding:6px 8px;text-align:right;">Kunjungan</th><th style="padding:6px 8px;text-align:right;">Klik Review</th></tr></thead><tbody>' +
           (rowsHtml || '<tr><td colspan="3" style="padding:8px;text-align:center;">Belum ada data harian</td></tr>') +
@@ -220,12 +225,6 @@
       _chartRegistry.get('trend').destroy();
       _chartRegistry.delete('trend');
     }
-
-    const days  = period === '30d' ? 30 : 7;
-    const daily = (data.daily || [])
-      .slice()
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .slice(-days);
 
     const labels  = daily.map((d) => _shortDate(d.date));
     const visits  = daily.map((d) => d.visits  || 0);
@@ -287,7 +286,7 @@
         scales: {
           x: {
             grid:  { display: false },
-            ticks: { maxTicksLimit: days <= 7 ? 7 : 10, color: '#728078' },
+            ticks: { maxTicksLimit: daily.length <= 7 ? 7 : 12, color: '#728078' },
           },
           y: {
             beginAtZero: true,

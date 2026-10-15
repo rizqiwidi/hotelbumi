@@ -1,6 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
- * admin-nfc-ops.js — Programmer Kartu NFC & Preview/Cetak QR Tunggal (FR-P1-05, FR-ADM-01)
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
+ * admin-nfc-ops.js — Programmer Kartu NFC & Preview/Cetak QR Tunggal (FR-P1-05, FR-ADM-01, FR-CRUD-AUTO)
  */
 
 (function (window) {
@@ -95,7 +95,6 @@
         ? 'ID Badge Resmi Staf Bumi Surabaya City Resort'
         : 'Tap kartu NFC atau pindai QR Code untuk layanan tamu';
 
-      // Bungkus QR Code individual di dalam kartu siap-cetak (FR-P1-05)
       qrWrap.innerHTML =
         '<div class="adm-print-card-sample print-card" id="adm-single-print-card">' +
           '<div class="adm-pc-logo"><img src="../assets/images/logo-hotel.png" alt="Logo" width="110"></div>' +
@@ -114,14 +113,21 @@
     }
   }
 
+  /**
+   * Tandai kartu sudah diprogram dan OTOMATIS sinkronkan ke Google Sheets (FR-CRUD-AUTO).
+   */
   function markCardProgrammed(code) {
     if (!code) return;
     try {
       if (window.BSStaffManager && typeof BSStaffManager.updateSource === 'function') {
         BSStaffManager.updateSource(code, { kartu_diprogram: true, needs_reprint: false });
-        BSAdmin.updateSyncStatus('unsaved');
         if (BSAdmin.sources && typeof BSAdmin.sources.render === 'function') {
           BSAdmin.sources.render();
+        }
+        if (BSAdmin.sources && typeof BSAdmin.sources.autoSyncSources === 'function') {
+          BSAdmin.sources.autoSyncSources('Status kartu NFC (' + code + ') otomatis disimpan ke server.');
+        } else if (typeof BSStaffManager.syncToCloud === 'function') {
+          BSStaffManager.syncToCloud().catch(function () {});
         }
       }
     } catch (_) {}
@@ -162,7 +168,6 @@
         bar.className   = 'adm-nfc-status adm-nfc-ok';
         var curCode = $id('adm-nfc-source-select') ? $id('adm-nfc-source-select').value : '';
         markCardProgrammed(curCode);
-        BSAdmin.showToast('Kartu NFC berhasil diprogram.', 'success');
       } else if (ev.status === 'error') {
         bar.textContent = 'Gagal: ' + (ev.message || 'kesalahan tidak dikenal');
         bar.className   = 'adm-nfc-status adm-nfc-err';
@@ -205,14 +210,12 @@
         var code = ($id('adm-nfc-source-select') ? $id('adm-nfc-source-select').value : '');
         if (!code) return;
         markCardProgrammed(code);
-        BSAdmin.showToast('Status kartu diperbarui: Sudah Diprogram.', 'success');
       });
     }
 
     var printBtn = $id('adm-print-qr-btn');
     if (printBtn) {
       printBtn.addEventListener('click', function () {
-        // Isolasi cetak hanya untuk kartu tunggal di #tab-nfc (FR-P1-05)
         document.body.classList.add('print-single-qr');
         window.print();
         setTimeout(function () {

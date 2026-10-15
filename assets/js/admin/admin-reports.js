@@ -1,6 +1,6 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
- * admin-reports.js — Analitik, Filter Favorit, Ekspor CSV & Cetak QR Massal (FR-P1-05, FR-ADM-01, FR-ADM-02)
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
+ * admin-reports.js — Analitik, Filter Rentang Tanggal Kustom, MonthlyAggregates, Ekspor CSV & Cetak QR Massal (FR-P1-05, FR-V64-07)
  */
 
 (function (window) {
@@ -10,6 +10,134 @@
   var state = BSAdmin.state;
   var $id = BSAdmin.$id || function (id) { return document.getElementById(id); };
   var esc = BSAdmin.esc || function (s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+
+  /**
+   * Filter state.events berdasarkan rentang tanggal kustom (FR-V64-07)
+   */
+  function getFilteredEvents() {
+    var all = Array.isArray(state.events) ? state.events : [];
+    var fromStr = (state.dateFrom || '').trim();
+    var toStr   = (state.dateTo   || '').trim();
+    if (!fromStr && !toStr) return all;
+
+    var fromMs = fromStr ? new Date(fromStr + 'T00:00:00').getTime() : 0;
+    var toMs   = toStr   ? new Date(toStr   + 'T23:59:59.999').getTime() : Infinity;
+
+    return all.filter(function (ev) {
+      var rawTs = ev.ts_server || ev.ts_client || '';
+      if (!rawTs) return false;
+      var t = new Date(rawTs).getTime();
+      if (isNaN(t)) return false;
+      return t >= fromMs && t <= toMs;
+    });
+  }
+
+  function applyDateRangeFilter() {
+    var fromEl = $id('adm-date-from');
+    var toEl   = $id('adm-date-to');
+    var fromVal = fromEl ? (fromEl.value || '').trim() : '';
+    var toVal   = toEl   ? (toEl.value   || '').trim() : '';
+
+    if (fromVal && toVal && fromVal > toVal) {
+      BSAdmin.showToast('Tanggal "Dari" tidak boleh lebih akhir dari tanggal "Sampai".', 'error');
+      return;
+    }
+
+    state.dateFrom = fromVal;
+    state.dateTo   = toVal;
+
+    if (fromVal || toVal) {
+      setPeriod('custom');
+      BSAdmin.showToast('Filter rentang tanggal diterapkan (' + (fromVal || 'Awal') + ' s/d ' + (toVal || 'Sekarang') + ').', 'info');
+    } else {
+      setPeriod('7d');
+    }
+
+    if (BSAdmin.fraud && typeof BSAdmin.fraud.reEvaluateFraud === 'function') {
+      BSAdmin.fraud.reEvaluateFraud();
+    }
+  }
+
+  function resetDateRangeFilter() {
+    state.dateFrom = '';
+    state.dateTo   = '';
+    if ($id('adm-date-from')) $id('adm-date-from').value = '';
+    if ($id('adm-date-to'))   $id('adm-date-to').value   = '';
+    setPeriod('7d');
+    if (BSAdmin.fraud && typeof BSAdmin.fraud.reEvaluateFraud === 'function') {
+      BSAdmin.fraud.reEvaluateFraud();
+    }
+    BSAdmin.showToast('Rentang tanggal dikembalikan ke default (7 Hari).', 'info');
+  }
+
+  /**
+   * Render Tabel Ringkasan Historis Bulanan (MonthlyAggregates — FR-V64-07)
+   */
+  function renderMonthlyAggregates() {
+    var tbody = $id('adm-monthly-aggregates-tbody');
+    if (!tbody) return;
+
+    var rows = Array.isArray(state.monthlyAggregates) ? state.monthlyAggregates.slice() : [];
+
+    // Jika lembar MonthlyAggregates belum memiliki baris arsip, hitung agregasi bulanan langsung dari state.events aktif
+    if (rows.length === 0 && Array.isArray(state.events) && state.events.length > 0) {
+      var byMonth = {};
+      state.events.forEach(function (ev) {
+        var rawTs = ev.ts_server || ev.ts_client || '';
+        if (!rawTs || String(rawTs).length < 7) return;
+        var ym = String(rawTs).substring(0, 7);
+        if (!/^\d{4}-\d{2}$/.test(ym)) return;
+        if (!byMonth[ym]) {
+          byMonth[ym] = { month: ym, total_events: 0, valid_events: 0, visits: 0, review_clicks: 0, wa_clicks: 0, scoreSum: 0, archived_at: 'Aktif (Berjalan)' };
+        }
+        var m = byMonth[ym];
+        m.total_events++;
+        var isValid = (ev.valid === true || String(ev.valid).toLowerCase() === 'true' || ev.valid === undefined);
+        if (isValid) {
+          m.valid_events++;
+          var et = String(ev.event_type || '');
+          if (et === 'visit')        m.visits++;
+          if (et === 'review_click') m.review_clicks++;
+          if (et === 'wa_click')     m.wa_clicks++;
+          m.scoreSum += Number(ev.quality_score || 0);
+        }
+      });
+      rows = Object.keys(byMonth).sort().reverse().map(function (ym) {
+        var m = byMonth[ym];
+        return {
+          month: ym,
+          total_events: m.total_events,
+          valid_events: m.valid_events,
+          visits: m.visits,
+          review_clicks: m.review_clicks,
+          wa_clicks: m.wa_clicks,
+          avg_quality_score: m.valid_events > 0 ? Number((m.scoreSum / m.valid_events).toFixed(2)) : 0,
+          archived_at: m.archived_at
+        };
+      });
+    }
+
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="bs-empty">Belum ada data agregasi bulanan di lembar MonthlyAggregates maupun event berjalan.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (r) {
+      var archTs = r.archived_at && r.archived_at !== 'Aktif (Berjalan)'
+        ? new Date(r.archived_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+        : (r.archived_at || '—');
+      return '<tr>' +
+        '<td><strong>' + esc(r.month || '—') + '</strong></td>' +
+        '<td class="bs-num">' + Number(r.total_events || 0).toLocaleString('id-ID') + '</td>' +
+        '<td class="bs-num">' + Number(r.valid_events || 0).toLocaleString('id-ID') + '</td>' +
+        '<td class="bs-num">' + Number(r.visits || 0).toLocaleString('id-ID') + '</td>' +
+        '<td class="bs-num">' + Number(r.review_clicks || 0).toLocaleString('id-ID') + '</td>' +
+        '<td class="bs-num">' + Number(r.wa_clicks || 0).toLocaleString('id-ID') + '</td>' +
+        '<td class="bs-num">' + Number(r.avg_quality_score || 0).toFixed(2) + '</td>' +
+        '<td style="font-size:0.78rem;color:var(--adm-text-muted);">' + esc(archTs) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
 
   function setPeriod(period) {
     state.currentPeriod = period;
@@ -63,6 +191,8 @@
       var fav = {
         period: state.currentPeriod || '7d',
         filter: state.currentFilter || '',
+        dateFrom: state.dateFrom || '',
+        dateTo: state.dateTo || '',
         savedAt: new Date().toISOString()
       };
       if (window.localStorage) {
@@ -83,8 +213,15 @@
         return;
       }
       var fav = JSON.parse(raw);
+      if (fav.dateFrom !== undefined && $id('adm-date-from')) $id('adm-date-from').value = fav.dateFrom;
+      if (fav.dateTo !== undefined && $id('adm-date-to'))     $id('adm-date-to').value   = fav.dateTo;
+      state.dateFrom = fav.dateFrom || '';
+      state.dateTo   = fav.dateTo   || '';
       if (fav.period) setPeriod(fav.period);
       if (typeof fav.filter !== 'undefined') setFilter(fav.filter);
+      if (BSAdmin.fraud && typeof BSAdmin.fraud.reEvaluateFraud === 'function') {
+        BSAdmin.fraud.reEvaluateFraud();
+      }
       BSAdmin.showToast('Filter favorit dimuat: ' + fav.period + ' / ' + (fav.filter || 'Semua') + '.', 'success');
     } catch (_) {
       BSAdmin.showToast('Gagal memuat filter favorit.', 'error');
@@ -123,13 +260,14 @@
   }
 
   function exportEventsCsv() {
-    if (!state.events || state.events.length === 0) {
+    var evs = getFilteredEvents();
+    if (!evs || evs.length === 0) {
       BSAdmin.showToast('Tidak ada data event untuk diekspor.', 'error');
       return;
     }
     if (window.BSDashboard && typeof BSDashboard.exportCsv === 'function') {
-      BSDashboard.exportCsv(state.events, 'bumi-surabaya-events-' + (state.currentPeriod || 'all'));
-      BSAdmin.showToast('Berkas CSV berhasil diunduh.', 'success');
+      BSDashboard.exportCsv(evs, 'bumi-surabaya-events-' + (state.currentPeriod || 'all'));
+      BSAdmin.showToast('Berkas CSV berhasil diunduh (' + evs.length + ' baris).', 'success');
     }
   }
 
@@ -278,6 +416,11 @@
     var btn30d = $id('adm-trend-30d');
     if (btn30d) btn30d.addEventListener('click', function () { setPeriod('30d'); });
 
+    var dateApplyBtn = $id('adm-date-apply-btn');
+    if (dateApplyBtn) dateApplyBtn.addEventListener('click', applyDateRangeFilter);
+    var dateResetBtn = $id('adm-date-reset-btn');
+    if (dateResetBtn) dateResetBtn.addEventListener('click', resetDateRangeFilter);
+
     document.querySelectorAll('[data-filter]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         setFilter(btn.dataset.filter);
@@ -333,15 +476,19 @@
   }
 
   BSAdmin.reports = {
-    setPeriod:           setPeriod,
-    setFilter:           setFilter,
-    applyPreset:         applyPreset,
-    saveFavorite:        saveCurrentAsFavorite,
-    loadFavorite:        loadSavedFavorite,
-    populateMonthSelect: populateMonthSelect,
-    exportCsv:           exportEventsCsv,
-    renderBulkQr:        renderBulkQr,
-    init:                init
+    setPeriod:               setPeriod,
+    setFilter:               setFilter,
+    getFilteredEvents:       getFilteredEvents,
+    applyDateRangeFilter:    applyDateRangeFilter,
+    resetDateRangeFilter:    resetDateRangeFilter,
+    renderMonthlyAggregates: renderMonthlyAggregates,
+    applyPreset:             applyPreset,
+    saveFavorite:            saveCurrentAsFavorite,
+    loadFavorite:            loadSavedFavorite,
+    populateMonthSelect:     populateMonthSelect,
+    exportCsv:               exportEventsCsv,
+    renderBulkQr:            renderBulkQr,
+    init:                    init
   };
 
   window.BSAdmin = BSAdmin;

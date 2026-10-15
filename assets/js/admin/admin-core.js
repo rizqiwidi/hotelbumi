@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
  * admin-core.js — Central state manager, SVG icon system (FR-ADM-01), RBAC enforcement (FR-P1-04) & health signals
  */
 
@@ -13,9 +13,12 @@
    * ───────────────────────────────────────────────────────────── */
   var state = {
     events:             [],
+    monthlyAggregates:  [],
     evalResult:         null,
     currentPeriod:      '7d',
     currentFilter:      '',
+    dateFrom:           '',
+    dateTo:             '',
     editingCode:        null,
     editingOutletId:    null,
     editingPromoIdx:    null,
@@ -24,6 +27,7 @@
     promos:             [],
     staffDevices:       [],
     auditLogs:          [],
+    users:              [],
     userRole:           'super_admin',
     username:           'admin',
     lastFocusedTrigger: null,
@@ -79,9 +83,12 @@
     printer:  '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
     shield:   '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
     download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+    upload:   '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
     clock:    '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
     link:     '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
-    lock:     '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
+    lock:     '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    users:    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    bell:     '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'
   };
 
   function icon(name, size) {
@@ -172,7 +179,7 @@
   BSAdmin.setupAccessibleModal = setupAccessibleModal;
 
   /* ─────────────────────────────────────────────────────────────
-   * 3. Penegakan Izin Role di Sisi UI (SEC-11, FR-P1-04)
+   * 3. Penegakan Izin Role di Sisi UI (SEC-11, FR-P1-04, FR-V64-03)
    * ───────────────────────────────────────────────────────────── */
   var ROLE_LABELS = {
     super_admin:      'Super Administrator (Akses Penuh)',
@@ -187,7 +194,7 @@
     var r = state.userRole || (window.BSAuth && BSAuth.getRole()) || 'super_admin';
     if (r === 'super_admin') return true;
 
-    if (action === 'save_fraud_settings' || action === 'save_system_config') {
+    if (action === 'save_fraud_settings' || action === 'save_system_config' || action === 'manage_users') {
       return r === 'super_admin';
     }
     if (action === 'save_sources' || action === 'save_staff_devices') {
@@ -227,6 +234,11 @@
       } else {
         readonlyBanner.style.display = 'none';
       }
+    }
+
+    var userMgmtCard = $id('adm-user-mgmt-card');
+    if (userMgmtCard) {
+      userMgmtCard.style.display = (r === 'super_admin') ? '' : 'none';
     }
 
     var isReadonly = (r === 'analyst_readonly');
@@ -275,7 +287,7 @@
       }
     } catch (_) {}
 
-    if (feVerEl) feVerEl.textContent = 'v6.3.0-phase3';
+    if (feVerEl) feVerEl.textContent = 'v6.4.0-phase4';
 
     if (backendHealth && backendHealth.backend_version) {
       if (statusEl) {
@@ -312,7 +324,7 @@
     promos:     'Promosi & Visibilitas Seksi Tamu',
     appearance: 'CMS Isi Halaman Tamu & Identitas',
     config:     'Konfigurasi Backend & Ambang Batas',
-    account:    'Pengaturan Akun & Keamanan',
+    account:    'Pengaturan Akun & Manajemen Peran',
     audit:      'Jejak Audit & Riwayat Mutasi',
     feedback:   'Feedback Langsung Tamu'
   };
@@ -346,7 +358,10 @@
     if (name === 'nfc'        && BSAdmin.nfc)        { BSAdmin.nfc.populateSelect(); BSAdmin.nfc.checkSupport(); }
     if (name === 'config'     && BSAdmin.fraud)      BSAdmin.fraud.populateThresholds();
     if (name === 'antifraud'  && BSAdmin.fraud)      { BSAdmin.fraud.renderTable(); BSAdmin.fraud.renderStaffDevices(); }
-    if (name === 'account'    && BSAdmin.fraud)      BSAdmin.fraud.populateAccount();
+    if (name === 'account'    && BSAdmin.fraud)      {
+      BSAdmin.fraud.populateAccount();
+      if (typeof BSAdmin.fraud.loadUsers === 'function') BSAdmin.fraud.loadUsers();
+    }
     if (name === 'audit'      && BSAdmin.audit)      BSAdmin.audit.load();
     if (name === 'feedback'   && BSAdmin.feedback)   BSAdmin.feedback.load();
   }
@@ -400,7 +415,7 @@
   BSAdmin.checkLockout = checkLockout;
 
   /* ─────────────────────────────────────────────────────────────
-   * 7. Data Loader Koordinator (Dashboard, Config, Events)
+   * 7. Data Loader Koordinator (Dashboard, Config, Events, MonthlyAggregates)
    * ───────────────────────────────────────────────────────────── */
   function loadDashboard() {
     var monthSelect = $id('adm-month-select');
@@ -433,6 +448,9 @@
         }
         if (Array.isArray(admResp.staff_devices)) {
           state.staffDevices = admResp.staff_devices.slice();
+        }
+        if (Array.isArray(admResp.monthly_aggregates)) {
+          state.monthlyAggregates = admResp.monthly_aggregates.slice();
         }
         if (admResp.system_health) {
           if (admResp.system_health.current_role) {
@@ -481,6 +499,9 @@
         if (!resp.ok) throw new Error(resp.error || 'Gagal memuat data event');
 
         state.events = resp.events || [];
+        if (Array.isArray(resp.monthly_aggregates) && resp.monthly_aggregates.length > 0) {
+          state.monthlyAggregates = resp.monthly_aggregates.slice();
+        }
         if (Array.isArray(resp.sources) && resp.sources.length > 0 && !state.syncStatus.hasUnsaved && window.BSStaffManager && typeof BSStaffManager.initSources === 'function') {
           BSStaffManager.initSources(resp.sources);
           if (BSAdmin.sources) BSAdmin.sources.render();
@@ -492,7 +513,13 @@
 
         if (BSAdmin.reports) {
           BSAdmin.reports.populateMonthSelect(resp.archive_tabs || []);
+          if (typeof BSAdmin.reports.renderMonthlyAggregates === 'function') {
+            BSAdmin.reports.renderMonthlyAggregates();
+          }
         }
+
+        var eventsToEval = (BSAdmin.reports && typeof BSAdmin.reports.getFilteredEvents === 'function')
+          ? BSAdmin.reports.getFilteredEvents() : state.events;
 
         var srcList = (window.BSStaffManager && BSStaffManager.getSources)
           ? BSStaffManager.getSources() : [];
@@ -500,7 +527,7 @@
           ? state.configData.fraud_thresholds : BSConfig.DEFAULTS.fraud_thresholds;
 
         state.evalResult = (window.BSAntiFraud && BSAntiFraud.evaluate)
-          ? BSAntiFraud.evaluate(state.events, ftConfig, srcList, state.staffDevices)
+          ? BSAntiFraud.evaluate(eventsToEval, ftConfig, srcList, state.staffDevices)
           : null;
 
         if (state.evalResult && window.BSDashboard) {

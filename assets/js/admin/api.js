@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v6.0
+ * BUMI SURABAYA v6.4
  * api.js — Admin API client to Google Apps Script
  *
  * Seluruh request admin menggunakan POST dengan token di BODY (bukan URL).
@@ -16,11 +16,6 @@
     return (window.BSAuth && BSAuth.getToken()) || '';
   }
 
-  /**
-   * POST request terproteksi ke GAS.
-   * @param {object} body - payload (token ditambahkan otomatis jika belum ada)
-   * @returns {Promise<object>}
-   */
   function post(body) {
     var url = getGasUrl();
     if (!url) return Promise.reject(new Error('Backend URL belum dikonfigurasi.'));
@@ -43,9 +38,6 @@
     });
   }
 
-  /**
-   * GET publik (tanpa token)
-   */
   function get(params) {
     var url   = getGasUrl();
     if (!url) return Promise.reject(new Error('Backend URL belum dikonfigurasi.'));
@@ -57,7 +49,6 @@
     }).then(function(r) { return r.json(); });
   }
 
-  /** Login via API */
   function login(username, password) {
     if (window.BSAuth && typeof BSAuth.login === 'function') {
       return BSAuth.login(username, password);
@@ -65,7 +56,13 @@
     return post({ action: 'login', username: username, password: password });
   }
 
-  /** Ganti password admin via API */
+  function logout() {
+    if (window.BSAuth && typeof BSAuth.logout === 'function') {
+      return BSAuth.logout();
+    }
+    return post({ action: 'logout' });
+  }
+
   function changePassword(oldPassword, newPassword) {
     if (window.BSAuth && typeof BSAuth.changePassword === 'function') {
       return BSAuth.changePassword(oldPassword, newPassword);
@@ -73,53 +70,65 @@
     return post({ action: 'change_password', old_password: oldPassword, new_password: newPassword });
   }
 
-  /** Simpan semua konfigurasi + sources + staff_devices ke Sheets */
   function saveAllAdminData(payload) {
     return post(Object.assign({ action: 'save_all_admin_data' }, payload));
   }
 
-  /** Ambil data konfigurasi penuh admin (config sensitif + all sources + staff_devices) */
   function getAdminData() {
     return post({ action: 'get_admin_data' });
   }
 
-  /** Ambil events data bulan tertentu */
   function getEventsData(month, limit) {
     return post({ action: 'get_events_data', month: month, limit: limit || 10000 });
   }
 
-  /** Ambil konfigurasi publik (sources + config) */
-  function getPublicConfig() {
-    return get({ action: 'get_config' });
+  function getPublicConfig(bypassCache) {
+    var p = { action: 'get_config' };
+    if (bypassCache) p.nocache = '1';
+    return get(p);
   }
 
-  /** Ambil log jejak audit mutasi terbaru (SEC-11, SEC-12, SRC-09) */
   function getAuditLogs(limit) {
     return post({ action: 'get_audit_logs', limit: limit || 200 });
   }
 
-  /** Ambil data feedback tamu (REV-02; hanya super_admin & manager di backend) */
   function getFeedbackData(filters) {
     return post(Object.assign({ action: 'get_feedback_data', limit: 50 }, filters || {}));
   }
 
-  /** Tandai satu feedback sebagai handled (REV-02) */
   function markFeedbackHandled(row) {
     return post({ action: 'mark_feedback_handled', row: row });
   }
 
+  /** Manajemen Akun Pengguna RBAC (FR-V64-03 — khusus super_admin) */
+  function listUsers() {
+    return post({ action: 'list_users' });
+  }
+
+  function saveUser(userPayload) {
+    return post(Object.assign({ action: 'save_user' }, userPayload || {}));
+  }
+
+  function deleteUser(username) {
+    return post({ action: 'delete_user', target_username: username });
+  }
+
   window.BSApi = {
-    post:             post,
-    get:              get,
-    login:            login,
-    changePassword:   changePassword,
-    saveAllAdminData: saveAllAdminData,
-    getAdminData:     getAdminData,
-    getEventsData:    getEventsData,
-    getPublicConfig:  getPublicConfig,
-    getAuditLogs:     getAuditLogs,
-    getFeedbackData:  getFeedbackData,
-    markFeedbackHandled: markFeedbackHandled
+    post:                post,
+    get:                 get,
+    login:               login,
+    logout:              logout,
+    changePassword:      changePassword,
+    saveAllAdminData:    saveAllAdminData,
+    getAdminData:        getAdminData,
+    getEventsData:       getEventsData,
+    getPublicConfig:     getPublicConfig,
+    getAuditLogs:        getAuditLogs,
+    getFeedbackData:     getFeedbackData,
+    markFeedbackHandled: markFeedbackHandled,
+    listUsers:           listUsers,
+    saveUser:            saveUser,
+    deleteUser:          deleteUser
   };
 
 })(window);

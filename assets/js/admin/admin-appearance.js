@@ -1,11 +1,8 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
- * admin-appearance.js — Full Guest Page CMS Workspace (FR-CMS-01 s/d FR-CMS-08)
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
+ * admin-appearance.js — Full Guest Page CMS Workspace & Bilingual ID/EN Presets (FR-CMS-01 s/d FR-CMS-08, FR-V64-06, FR-CRUD-AUTO)
  *
- * Mengelola 100% isi konten tampilan halaman tamu (Identitas, Loading, Hero,
- * Google Review, Direct Feedback, Header/Template Gerai & Promo, WA Concierge &
- * Sales Picker Modal, Sosial Media, Final CTA, Floating Mobile Bar, Footer, dan
- * Modal Kebijakan Privasi) TANPA mengubah tone warna maupun layout halaman tamu.
+ * Setiap tombol Simpan Zona, Preset Bahasa (ID/EN), Mode Bahasa, dan Reset Standar OTOMATIS tersimpan ke Google Sheets!
  */
 
 (function (window) {
@@ -49,7 +46,7 @@
     var rev = Object.assign({}, def.review_settings || {}, cfg.review_settings || {});
     var gc  = Object.assign({}, def.guest_content || {}, cfg.guest_content || {});
 
-    // Zona 1 & 2: Identitas Umum, Loading Screen & Hero Section (FR-CMS-02)
+    setVal('adm-cms-lang-mode',        gen.language_mode || 'en');
     setVal('adm-cms-hotel-name',       gen.hotel_name || 'Bumi Surabaya City Resort');
     setVal('adm-cms-hotel-desc',       gen.description || '');
     setVal('adm-cms-hotel-address',    gen.address || '');
@@ -70,7 +67,6 @@
     setVal('adm-cms-hero-wa-btn',      gc.hero_wa_btn_label || 'Chat with Us');
     setVal('adm-cms-hero-scroll-hint', gc.hero_scroll_hint || 'Scroll to explore');
 
-    // Zona 3: Google Review & Direct Feedback (FR-CMS-03)
     setVal('adm-cms-review-url',       rev.review_url || gen.google_review_url || '');
     setVal('adm-cms-rev-sec-title',    gc.review_section_title || "We'd Love to Hear From You");
     setVal('adm-cms-rev-sec-sub',      gc.review_section_subtitle || 'Your feedback helps our team keep improving every day.');
@@ -85,7 +81,6 @@
     setVal('adm-cms-fb-submit-lbl',    gc.feedback_submit_label || 'Send Feedback');
     setVal('adm-cms-fb-thanks-txt',    gc.feedback_thanks_text || 'Thank you! Your feedback means a lot to us.');
 
-    // Zona 4: Header & Template Seksi Gerai F&B & Promosi (FR-CMS-04)
     setVal('adm-cms-outlets-title',    gc.outlets_section_title || 'Discover Dining');
     setVal('adm-cms-outlets-sub',      gc.outlets_section_subtitle || 'Explore our iconic F&B outlets, each with its own culinary story.');
     setVal('adm-cms-outlets-cta',      gc.outlets_card_cta_label || 'Explore & Reserve →');
@@ -95,7 +90,6 @@
     setVal('adm-cms-promos-cta',       gc.promos_card_cta_label || 'Discover More →');
     setVal('adm-cms-promos-wa-tpl',    gc.promos_wa_template || 'Hello Bumi Surabaya, I am interested in the promotion: {promo_name} at {outlet_name}. Please share reservation details.');
 
-    // Zona 5: WhatsApp Concierge & Modal WA Sales Picker (FR-CMS-05)
     setVal('adm-cms-wa-pill',          gc.wa_status_pill || 'Concierge Online');
     setVal('adm-cms-wa-title',         gc.wa_section_title || 'Reservations & Inquiries');
     setVal('adm-cms-wa-sub',           gc.wa_section_subtitle || 'Our team is one message away — table reservations, private events, and special requests.');
@@ -107,7 +101,6 @@
     setVal('adm-cms-wap-empty',        gc.wa_picker_empty_text || 'Our sales team contacts are being updated. Meanwhile, you can reach our main reservation line below:');
     setVal('adm-cms-wap-fb-btn',       gc.wa_picker_fallback_btn || 'Chat Reservation');
 
-    // Zona 6: Sosial Media, Final CTA, Floating Mobile Bar & Footer (FR-CMS-06)
     setVal('adm-cms-soc-title',        gc.social_section_title || 'Stay Connected');
     setVal('adm-cms-soc-sub',          gc.social_section_subtitle || 'Follow us for the latest stories and exclusive offers.');
     setVal('adm-cms-soc-ig-url',       gen.instagram || '');
@@ -130,12 +123,11 @@
     setVal('adm-cms-ftr-privacy-lbl',  gc.footer_privacy_label || 'Privacy & Data Use Policy');
     setVal('adm-cms-ftr-admin-lbl',    gc.footer_admin_label || 'Management Portal');
     setVal('adm-cms-ftr-copyright',    gc.footer_copyright || '© 2026 Bumi Surabaya City Resort. All rights reserved.');
-    setVal('adm-cms-ftr-version',      gc.footer_version_tag || 'Digital Guest Experience v6.3');
+    setVal('adm-cms-ftr-version',      gc.footer_version_tag || 'Digital Guest Experience v6.4');
     if ($id('adm-cms-ftr-show-admin')) {
       $id('adm-cms-ftr-show-admin').checked = gc.footer_show_admin_link !== false;
     }
 
-    // Zona 7: Modal Kebijakan Privasi (FR-CMS-07)
     setVal('adm-cms-prv-badge',        gc.privacy_badge || 'WORLD-CLASS RESORT PRIVACY STANDARD');
     setVal('adm-cms-prv-title',        gc.privacy_title || 'Guest Privacy & Data Use Policy');
     setVal('adm-cms-prv-lead-bold',    gc.privacy_lead_bold || '');
@@ -153,7 +145,7 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-   * 2. Kumpulkan Nilai Form CMS ke State (untuk Simpan & Live Preview)
+   * 2. Kumpulkan Nilai Form CMS ke State
    * ───────────────────────────────────────────────────────────── */
   function collectDraftToState() {
     var cfg = BSAdmin.state.configData || {};
@@ -167,6 +159,7 @@
       address:           getVal('adm-cms-hotel-address', ''),
       phone:             getVal('adm-cms-hotel-phone', ''),
       logo_url:          getVal('adm-cms-logo-url', 'assets/images/logo-hotel.png'),
+      language_mode:     getVal('adm-cms-lang-mode', 'en'),
       google_review_url: revUrl,
       instagram:         getVal('adm-cms-soc-ig-url', ''),
       facebook:          getVal('adm-cms-soc-fb-url', ''),
@@ -283,7 +276,7 @@
   /* ─────────────────────────────────────────────────────────────
    * 3. Simpan Seluruh Konten Halaman Tamu ke Cloud
    * ───────────────────────────────────────────────────────────── */
-  function saveAppearance() {
+  function saveAppearance(customToastMsg) {
     if (!BSAdmin.checkPermission('save_content')) {
       BSAdmin.showToast('Peran Anda tidak memiliki izin untuk mengubah konten halaman tamu.', 'warning');
       return;
@@ -302,7 +295,7 @@
       window.BSApi && BSApi.saveAllAdminData({ config: payloadConfig }).then(function () {
         if (window.BSConfig) BSConfig.clearCache();
         BSAdmin.updateSyncStatus('saved');
-        BSAdmin.showToast('Seluruh perubahan konten halaman tamu berhasil disimpan ke server.', 'success');
+        BSAdmin.showToast(customToastMsg || 'Seluruh perubahan konten halaman tamu berhasil disimpan ke server.', 'success');
       }).catch(function (err) {
         BSAdmin.updateSyncStatus('failed', err.message, syncApp);
         BSAdmin.showToast('Gagal menyimpan konten: ' + err.message, 'error');
@@ -317,10 +310,41 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-   * 4. Reset ke Nilai Standar (Default) & Sub-Navigasi CMS (FR-CMS-08)
+   * 4. Preset Bahasa (ID / EN) & Reset Standar — Otomatis Tersimpan (FR-V64-06, FR-CRUD-AUTO)
    * ───────────────────────────────────────────────────────────── */
+  function applyLanguagePreset(lang) {
+    if (!BSAdmin.checkPermission('save_content')) {
+      BSAdmin.showToast('Peran Anda tidak memiliki izin untuk mengubah konten halaman tamu.', 'warning');
+      return;
+    }
+    var def = (window.BSConfig && BSConfig.DEFAULTS) || {};
+    var pid = (window.BSConfig && BSConfig.PRESET_ID) || {};
+
+    if (lang === 'id') {
+      BSAdmin.state.configData.general = Object.assign({}, BSAdmin.state.configData.general || {}, { language_mode: 'id' });
+      BSAdmin.state.configData.appearance = Object.assign({}, def.appearance || {}, pid.appearance || {});
+      BSAdmin.state.configData.guest_content = Object.assign({}, def.guest_content || {}, pid.guest_content || {});
+      BSAdmin.state.configData.review_settings = Object.assign({}, BSAdmin.state.configData.review_settings || {}, {
+        button_text:   (pid.guest_content && pid.guest_content.hero_review_btn_label) || 'Bagikan Pengalaman Anda',
+        review_prompt: (pid.guest_content && pid.guest_content.review_card_prompt) || ''
+      });
+      populateAppearance();
+      saveAppearance('Preset Bahasa Indonesia berhasil diterapkan dan disimpan otomatis ke server.');
+    } else {
+      BSAdmin.state.configData.general = Object.assign({}, BSAdmin.state.configData.general || {}, { language_mode: 'en' });
+      BSAdmin.state.configData.appearance = JSON.parse(JSON.stringify(def.appearance || {}));
+      BSAdmin.state.configData.guest_content = JSON.parse(JSON.stringify(def.guest_content || {}));
+      BSAdmin.state.configData.review_settings = Object.assign({}, BSAdmin.state.configData.review_settings || {}, {
+        button_text:   (def.review_settings && def.review_settings.button_text) || 'Share Your Experience',
+        review_prompt: (def.review_settings && def.review_settings.review_prompt) || ''
+      });
+      populateAppearance();
+      saveAppearance('Preset Bahasa Inggris (EN) berhasil diterapkan dan disimpan otomatis ke server.');
+    }
+  }
+
   function resetToDefaults() {
-    if (!confirm('Kembalikan seluruh teks dan konten halaman tamu di editor ini ke nilai standar bawaan? (Klik Simpan setelahnya untuk menerapkan ke server)')) {
+    if (!confirm('Kembalikan seluruh teks dan konten halaman tamu ke nilai standar bawaan dan simpan ke server?')) {
       return;
     }
     var def = (window.BSConfig && BSConfig.DEFAULTS) || {};
@@ -329,8 +353,7 @@
     BSAdmin.state.configData.review_settings = JSON.parse(JSON.stringify(def.review_settings || {}));
     BSAdmin.state.configData.guest_content   = JSON.parse(JSON.stringify(def.guest_content || {}));
     populateAppearance();
-    BSAdmin.updateSyncStatus('unsaved');
-    BSAdmin.showToast('Editor dikembalikan ke teks standar. Klik Simpan untuk mempublikasikan.', 'info');
+    saveAppearance('Teks standar berhasil dipulihkan dan disimpan otomatis ke server.');
   }
 
   function switchCmsZone(zoneId) {
@@ -352,12 +375,42 @@
   function init() {
     var saveBtn = $id('adm-app-save-btn');
     if (saveBtn) {
-      saveBtn.addEventListener('click', saveAppearance);
+      saveBtn.addEventListener('click', function () { saveAppearance(); });
     }
+
+    document.querySelectorAll('.adm-cms-save-zone-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        saveAppearance('Perubahan zona CMS berhasil disimpan ke server.');
+      });
+    });
 
     var resetBtn = $id('adm-cms-reset-btn');
     if (resetBtn) {
       resetBtn.addEventListener('click', resetToDefaults);
+    }
+
+    var presetIdBtn = $id('adm-cms-preset-id-btn');
+    if (presetIdBtn) {
+      presetIdBtn.addEventListener('click', function () { applyLanguagePreset('id'); });
+    }
+
+    var presetEnBtn = $id('adm-cms-preset-en-btn');
+    if (presetEnBtn) {
+      presetEnBtn.addEventListener('click', function () { applyLanguagePreset('en'); });
+    }
+
+    var langModeSel = $id('adm-cms-lang-mode');
+    if (langModeSel) {
+      langModeSel.addEventListener('change', function () {
+        saveAppearance('Mode bahasa halaman tamu (' + this.value.toUpperCase() + ') otomatis disimpan ke server.');
+      });
+    }
+
+    var ftrShowAdmin = $id('adm-cms-ftr-show-admin');
+    if (ftrShowAdmin) {
+      ftrShowAdmin.addEventListener('change', function () {
+        saveAppearance('Pengaturan tautan footer otomatis disimpan ke server.');
+      });
     }
 
     document.querySelectorAll('[data-cms-zone-btn]').forEach(function (btn) {
@@ -379,6 +432,7 @@
     collectDraftToState: collectDraftToState,
     save:                saveAppearance,
     resetToDefaults:     resetToDefaults,
+    applyLanguagePreset: applyLanguagePreset,
     switchCmsZone:       switchCmsZone,
     init:                init
   };

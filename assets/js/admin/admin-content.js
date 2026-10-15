@@ -1,6 +1,8 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
- * admin-content.js — Manajemen gerai F&B, promosi, 8 toggle visibilitas seksi, sales WA & live draft preview (FR-ADM-01, FR-ADM-05, FR-CMS-03 s/d FR-CMS-08, FR-P2-02)
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
+ * admin-content.js — Manajemen gerai F&B, promosi, 8 toggle visibilitas seksi, sales WA & live draft preview (FR-CRUD-AUTO)
+ *
+ * Setiap aksi CRUD (Tambah/Edit/Toggle/Hapus Gerai & Promosi, Toggle Visibilitas Seksi, Simpan WA) OTOMATIS tersimpan ke Google Sheets!
  */
 
 (function (window) {
@@ -11,9 +13,6 @@
   var esc = BSAdmin.esc;
   var icon = BSAdmin.icon || function () { return ''; };
 
-  /* ─────────────────────────────────────────────────────────────
-   * 1. Dinamisasi Dropdown Gerai di Seluruh Modal Admin (FR-P2-02)
-   * ───────────────────────────────────────────────────────────── */
   function populateOutletDropdowns() {
     var outlets = BSAdmin.state.outlets || [];
     var names = outlets.map(function (o) { return o && o.name; }).filter(Boolean);
@@ -53,9 +52,32 @@
     }
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 2. Manajemen Gerai F&B (Outlets — FR-ADM-05)
-   * ───────────────────────────────────────────────────────────── */
+  function saveOutletsToCloud(toastMsg) {
+    BSAdmin.state.configData.outlets = BSAdmin.state.outlets;
+    BSAdmin.updateSyncStatus('saving');
+    return window.BSApi && BSApi.saveAllAdminData({ config: { outlets: BSAdmin.state.outlets } }).then(function () {
+      if (window.BSConfig) BSConfig.clearCache();
+      BSAdmin.updateSyncStatus('saved');
+      BSAdmin.showToast(toastMsg || 'Daftar gerai berhasil disimpan ke server.', 'success');
+    }).catch(function (err) {
+      BSAdmin.updateSyncStatus('failed', err.message, function () { saveOutletsToCloud(toastMsg); });
+      BSAdmin.showToast('Gagal menyimpan gerai: ' + err.message, 'error');
+    });
+  }
+
+  function savePromosToCloud(toastMsg) {
+    BSAdmin.state.configData.promotions = BSAdmin.state.promos;
+    BSAdmin.updateSyncStatus('saving');
+    return window.BSApi && BSApi.saveAllAdminData({ config: { promotions: BSAdmin.state.promos } }).then(function () {
+      if (window.BSConfig) BSConfig.clearCache();
+      BSAdmin.updateSyncStatus('saved');
+      BSAdmin.showToast(toastMsg || 'Daftar promosi berhasil disimpan ke server.', 'success');
+    }).catch(function (err) {
+      BSAdmin.updateSyncStatus('failed', err.message, function () { savePromosToCloud(toastMsg); });
+      BSAdmin.showToast('Gagal menyimpan promosi: ' + err.message, 'error');
+    });
+  }
+
   function renderOutlets() {
     var grid = $id('adm-outlets-grid');
     if (!grid) return;
@@ -69,7 +91,8 @@
     }
 
     grid.innerHTML = outlets.map(function (o, idx) {
-      var activeBadge = (o.active !== false)
+      var isAct = (o.active !== false);
+      var activeBadge = isAct
         ? '<span class="adm-badge-ok">Aktif</span>'
         : '<span class="adm-badge-err">Nonaktif</span>';
       var imgSrc = o.image_url || 'assets/images/outlets/arumanis.jpg';
@@ -90,6 +113,7 @@
           '</div>' +
           '<div class="adm-outlet-card-actions">' +
             '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditOutlet(' + idx + ')">' + icon('edit', 13) + ' <span>Edit Detail</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminToggleOutlet(' + idx + ')">' + icon('power', 13) + ' <span>' + (isAct ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
             '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeleteOutlet(' + idx + ')">' + icon('trash', 13) + ' <span>Hapus</span></button>' +
           '</div>' +
         '</div>' +
@@ -153,6 +177,18 @@
     openOutletModal(idx);
   };
 
+  window.adminToggleOutlet = function (idx) {
+    if (!BSAdmin.checkPermission('save_content')) {
+      BSAdmin.showToast('Peran Anda tidak memiliki izin untuk mengubah status gerai.', 'warning');
+      return;
+    }
+    var outlets = BSAdmin.state.outlets || [];
+    if (!outlets[idx]) return;
+    outlets[idx].active = (outlets[idx].active === false);
+    renderOutlets();
+    saveOutletsToCloud('Status gerai "' + outlets[idx].name + '" diperbarui & disimpan ke server.');
+  };
+
   window.adminDeleteOutlet = function (idx) {
     if (!BSAdmin.checkPermission('save_content')) {
       BSAdmin.showToast('Peran Anda tidak memiliki izin untuk menghapus gerai.', 'warning');
@@ -160,27 +196,13 @@
     }
     var outlets = BSAdmin.state.outlets || [];
     if (!outlets[idx]) return;
-    if (!confirm('Hapus gerai "' + outlets[idx].name + '"?')) return;
+    var delName = outlets[idx].name;
+    if (!confirm('Hapus gerai "' + delName + '"?')) return;
     outlets.splice(idx, 1);
     renderOutlets();
-
-    function saveOutlets() {
-      BSAdmin.updateSyncStatus('saving');
-      window.BSApi && BSApi.saveAllAdminData({ config: { outlets: BSAdmin.state.outlets } }).then(function () {
-        if (window.BSConfig) BSConfig.clearCache();
-        BSAdmin.updateSyncStatus('saved');
-        BSAdmin.showToast('Gerai dihapus dan konfigurasi disinkronkan.', 'success');
-      }).catch(function (err) {
-        BSAdmin.updateSyncStatus('failed', err.message, saveOutlets);
-        BSAdmin.showToast('Gagal: ' + err.message, 'error');
-      });
-    }
-    saveOutlets();
+    saveOutletsToCloud('Gerai "' + delName + '" dihapus dan disinkronkan ke server.');
   };
 
-  /* ─────────────────────────────────────────────────────────────
-   * 3. Manajemen Promosi (Promotions)
-   * ───────────────────────────────────────────────────────────── */
   function renderPromos() {
     var tbody = $id('adm-promos-tbody');
     if (!tbody) return;
@@ -192,7 +214,8 @@
     }
 
     tbody.innerHTML = promos.map(function (p, idx) {
-      var actBadge = (p.active !== false)
+      var isAct = (p.active !== false);
+      var actBadge = isAct
         ? '<span class="adm-badge-ok">Aktif</span>'
         : '<span class="adm-badge-err">Nonaktif</span>';
 
@@ -204,7 +227,8 @@
         '<td>' + actBadge + '</td>' +
         '<td class="adm-actions">' +
           '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditPromo(' + idx + ')">' + icon('edit', 13) + ' <span>Edit</span></button>' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeletePromo(' + idx + ')">' + icon('trash', 13) + ' <span>Hapus</span></button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminTogglePromo(' + idx + ')">' + icon('power', 13) + ' <span>' + (isAct ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeletePromo(' + idx + ')">' + icon('trash', 13) + '</button>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -268,6 +292,18 @@
     openPromoModal(idx);
   };
 
+  window.adminTogglePromo = function (idx) {
+    if (!BSAdmin.checkPermission('save_content')) {
+      BSAdmin.showToast('Peran Anda tidak memiliki izin untuk mengubah status promosi.', 'warning');
+      return;
+    }
+    var promos = BSAdmin.state.promos || [];
+    if (!promos[idx]) return;
+    promos[idx].active = (promos[idx].active === false);
+    renderPromos();
+    savePromosToCloud('Status promosi "' + promos[idx].name + '" diperbarui & disimpan ke server.');
+  };
+
   window.adminDeletePromo = function (idx) {
     if (!BSAdmin.checkPermission('save_content')) {
       BSAdmin.showToast('Peran Anda tidak memiliki izin untuk menghapus promosi.', 'warning');
@@ -275,27 +311,13 @@
     }
     var promos = BSAdmin.state.promos || [];
     if (!promos[idx]) return;
-    if (!confirm('Hapus promosi "' + promos[idx].name + '"?')) return;
+    var delName = promos[idx].name;
+    if (!confirm('Hapus promosi "' + delName + '"?')) return;
     promos.splice(idx, 1);
     renderPromos();
-
-    function savePromos() {
-      BSAdmin.updateSyncStatus('saving');
-      window.BSApi && BSApi.saveAllAdminData({ config: { promotions: BSAdmin.state.promos } }).then(function () {
-        if (window.BSConfig) BSConfig.clearCache();
-        BSAdmin.updateSyncStatus('saved');
-        BSAdmin.showToast('Promosi dihapus dan disinkronkan.', 'success');
-      }).catch(function (err) {
-        BSAdmin.updateSyncStatus('failed', err.message, savePromos);
-        BSAdmin.showToast('Gagal: ' + err.message, 'error');
-      });
-    }
-    savePromos();
+    savePromosToCloud('Promosi "' + delName + '" dihapus dan disinkronkan ke server.');
   };
 
-  /* ─────────────────────────────────────────────────────────────
-   * 4. Visibilitas 8 Seksi Halaman Tamu & WhatsApp Settings (FR-CMS-03 s/d FR-CMS-06)
-   * ───────────────────────────────────────────────────────────── */
   function populateSections() {
     var sec = (BSAdmin.state.configData && BSAdmin.state.configData.guest_sections)
       ? BSAdmin.state.configData.guest_sections
@@ -309,6 +331,42 @@
     if ($id('adm-sec-social'))     $id('adm-sec-social').checked     = sec.show_social !== false;
     if ($id('adm-sec-final-cta'))  $id('adm-sec-final-cta').checked  = sec.show_final_cta !== false;
     if ($id('adm-sec-mobile-bar')) $id('adm-sec-mobile-bar').checked = sec.show_mobile_bar !== false;
+  }
+
+  function saveSectionsToCloud() {
+    if (!BSAdmin.checkPermission('save_content')) {
+      BSAdmin.showToast('Peran Anda tidak memiliki izin untuk menyimpan seksi.', 'warning');
+      return;
+    }
+    var sections = {
+      show_review:          $id('adm-sec-review') ? $id('adm-sec-review').checked : true,
+      show_direct_feedback: $id('adm-sec-feedback') ? $id('adm-sec-feedback').checked : true,
+      show_wa:              $id('adm-sec-wa') ? $id('adm-sec-wa').checked : true,
+      show_outlets:         $id('adm-sec-outlets') ? $id('adm-sec-outlets').checked : true,
+      show_promotions:      $id('adm-sec-promos') ? $id('adm-sec-promos').checked : true,
+      show_social:          $id('adm-sec-social') ? $id('adm-sec-social').checked : true,
+      show_final_cta:       $id('adm-sec-final-cta') ? $id('adm-sec-final-cta').checked : true,
+      show_mobile_bar:      $id('adm-sec-mobile-bar') ? $id('adm-sec-mobile-bar').checked : true
+    };
+    BSAdmin.state.configData.guest_sections = sections;
+
+    var btn = $id('adm-save-sections-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+    BSAdmin.updateSyncStatus('saving');
+
+    window.BSApi && BSApi.saveAllAdminData({ config: { guest_sections: sections } }).then(function () {
+      if (window.BSConfig) BSConfig.clearCache();
+      BSAdmin.updateSyncStatus('saved');
+      BSAdmin.showToast('Visibilitas seksi halaman tamu berhasil disimpan ke server.', 'success');
+    }).catch(function (err) {
+      BSAdmin.updateSyncStatus('failed', err.message, saveSectionsToCloud);
+      BSAdmin.showToast('Gagal menyimpan seksi: ' + err.message, 'error');
+    }).finally(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = icon('save', 14) + ' <span>Simpan Visibilitas Seksi</span>';
+      }
+    });
   }
 
   function renderSalesWa() {
@@ -341,7 +399,8 @@
           '<td>' + statusBadge + '</td>' +
           '<td class="adm-actions">' +
             '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditSource(\'' + esc(s.code) + '\')">' + icon('edit', 13) + ' <span>Edit</span></button>' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeleteSource(\'' + esc(s.code) + '\')">' + icon('trash', 13) + ' <span>Hapus</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminDeactivate(\'' + esc(s.code) + '\')">' + icon('power', 13) + ' <span>' + (s.active ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeleteSource(\'' + esc(s.code) + '\')">' + icon('trash', 13) + '</button>' +
           '</td>' +
         '</tr>';
       }).join('');
@@ -358,11 +417,7 @@
     BSAdmin.applyRoleRestrictions && BSAdmin.applyRoleRestrictions();
   }
 
-  /* ─────────────────────────────────────────────────────────────
-   * 5. Pratinjau Konten Live Sebelum Publikasi (?preview=1 — FR-CMS-08)
-   * ───────────────────────────────────────────────────────────── */
   function openDraftPreview() {
-    // Jika modul CMS appearance aktif, kumpulkan nilai draft terkini dari form CMS
     if (BSAdmin.appearance && typeof BSAdmin.appearance.collectDraftToState === 'function') {
       BSAdmin.appearance.collectDraftToState();
     }
@@ -452,19 +507,7 @@
 
         closeOutletModal();
         renderOutlets();
-
-        function saveOutlets() {
-          BSAdmin.updateSyncStatus('saving');
-          window.BSApi && BSApi.saveAllAdminData({ config: { outlets: BSAdmin.state.outlets } }).then(function () {
-            if (window.BSConfig) BSConfig.clearCache();
-            BSAdmin.updateSyncStatus('saved');
-            BSAdmin.showToast('Daftar gerai berhasil disimpan ke cloud.', 'success');
-          }).catch(function (err) {
-            BSAdmin.updateSyncStatus('failed', err.message, saveOutlets);
-            BSAdmin.showToast('Gagal menyimpan gerai: ' + err.message, 'error');
-          });
-        }
-        saveOutlets();
+        saveOutletsToCloud('Data gerai "' + name + '" berhasil disimpan otomatis ke server.');
       });
     }
 
@@ -518,53 +561,20 @@
 
         closePromoModal();
         renderPromos();
-
-        function savePromos() {
-          BSAdmin.updateSyncStatus('saving');
-          window.BSApi && BSApi.saveAllAdminData({ config: { promotions: BSAdmin.state.promos } }).then(function () {
-            if (window.BSConfig) BSConfig.clearCache();
-            BSAdmin.updateSyncStatus('saved');
-            BSAdmin.showToast('Daftar promosi berhasil disimpan ke cloud.', 'success');
-          }).catch(function (err) {
-            BSAdmin.updateSyncStatus('failed', err.message, savePromos);
-            BSAdmin.showToast('Gagal menyimpan promosi: ' + err.message, 'error');
-          });
-        }
-        savePromos();
+        savePromosToCloud('Promosi "' + name + '" berhasil disimpan otomatis ke server.');
       });
     }
 
-    if ($id('adm-save-sections-btn')) {
-      $id('adm-save-sections-btn').addEventListener('click', function () {
-        if (!BSAdmin.checkPermission('save_content')) {
-          BSAdmin.showToast('Peran Anda tidak memiliki izin untuk menyimpan seksi.', 'warning');
-          return;
-        }
-        var sections = {
-          show_review:          $id('adm-sec-review') ? $id('adm-sec-review').checked : true,
-          show_direct_feedback: $id('adm-sec-feedback') ? $id('adm-sec-feedback').checked : true,
-          show_wa:              $id('adm-sec-wa') ? $id('adm-sec-wa').checked : true,
-          show_outlets:         $id('adm-sec-outlets') ? $id('adm-sec-outlets').checked : true,
-          show_promotions:      $id('adm-sec-promos') ? $id('adm-sec-promos').checked : true,
-          show_social:          $id('adm-sec-social') ? $id('adm-sec-social').checked : true,
-          show_final_cta:       $id('adm-sec-final-cta') ? $id('adm-sec-final-cta').checked : true,
-          show_mobile_bar:      $id('adm-sec-mobile-bar') ? $id('adm-sec-mobile-bar').checked : true
-        };
-        BSAdmin.state.configData.guest_sections = sections;
+    // Auto-save saat checkbox visibilitas seksi diubah maupun saat tombol Simpan diklik (FR-CRUD-AUTO)
+    ['adm-sec-review', 'adm-sec-feedback', 'adm-sec-wa', 'adm-sec-outlets', 'adm-sec-promos', 'adm-sec-social', 'adm-sec-final-cta', 'adm-sec-mobile-bar'].forEach(function (chkId) {
+      var chk = $id(chkId);
+      if (chk) {
+        chk.addEventListener('change', saveSectionsToCloud);
+      }
+    });
 
-        var btn = this;
-        btn.disabled = true;
-        btn.textContent = 'Menyimpan…';
-        window.BSApi && BSApi.saveAllAdminData({ config: { guest_sections: sections } }).then(function () {
-          if (window.BSConfig) BSConfig.clearCache();
-          BSAdmin.showToast('Visibilitas 8 seksi halaman tamu berhasil diperbarui.', 'success');
-        }).catch(function (err) {
-          BSAdmin.showToast('Gagal menyimpan seksi: ' + err.message, 'error');
-        }).finally(function () {
-          btn.disabled = false;
-          btn.innerHTML = icon('save', 14) + ' <span>Simpan Visibilitas Seksi</span>';
-        });
-      });
+    if ($id('adm-save-sections-btn')) {
+      $id('adm-save-sections-btn').addEventListener('click', saveSectionsToCloud);
     }
 
     if ($id('adm-add-sales-wa-btn')) {
@@ -581,7 +591,8 @@
           BSAdmin.showToast('Peran Anda tidak memiliki izin untuk mengubah nomor WhatsApp.', 'warning');
           return;
         }
-        var num = ($id('adm-wa-global-num') ? $id('adm-wa-global-num').value : '').trim();
+        var num = ($id('adm-wa-global-num') ? $id('adm-wa-global-num').value : '').replace(/[^0-9]/g, '');
+        if (num.indexOf('08') === 0) num = '62' + num.substring(1);
         var stm = ($id('adm-wa-staff-tmpl') ? $id('adm-wa-staff-tmpl').value : '').trim();
         var gtm = ($id('adm-wa-gen-tmpl') ? $id('adm-wa-gen-tmpl').value : '').trim();
 
@@ -600,10 +611,13 @@
         var btn = this;
         btn.disabled = true;
         btn.textContent = 'Menyimpan…';
+        BSAdmin.updateSyncStatus('saving');
         window.BSApi && BSApi.saveAllAdminData({ config: { whatsapp_settings: waSettings } }).then(function () {
           if (window.BSConfig) BSConfig.clearCache();
+          BSAdmin.updateSyncStatus('saved');
           BSAdmin.showToast('Pengaturan WhatsApp global berhasil disimpan.', 'success');
         }).catch(function (err) {
+          BSAdmin.updateSyncStatus('failed', err.message);
           BSAdmin.showToast('Gagal: ' + err.message, 'error');
         }).finally(function () {
           btn.disabled = false;

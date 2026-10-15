@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Portal Manajemen — Bumi Surabaya City Resort v6.3</title>
+  <title>Portal Manajemen — Bumi Surabaya City Resort v6.4</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,7 +37,7 @@
       </div>
       <div class="adm-login-badge">PORTAL MANAJEMEN RESOR</div>
       <h1>Bumi Surabaya</h1>
-      <p>Digital Guest Experience &amp; Attribution Platform v6.3</p>
+      <p>Digital Guest Experience &amp; Attribution Platform v6.4</p>
     </div>
 
     <div id="adm-lockout-msg" class="adm-alert adm-alert-danger" style="display:none;"></div>
@@ -144,7 +144,7 @@
     <div class="adm-sidebar-header">
       <div class="adm-sidebar-logo">
         <img src="../assets/images/logo-hotel.png" alt="Bumi Surabaya" class="adm-sidebar-brand-img" width="150">
-        <span class="adm-sidebar-ver">v6.3</span>
+        <span class="adm-sidebar-ver">v6.4</span>
       </div>
       <button id="adm-sidebar-close" class="adm-sidebar-close" aria-label="Tutup sidebar">✕</button>
     </div>
@@ -297,10 +297,10 @@
         <span id="adm-health-status" class="adm-health-badge adm-health-online"><span class="adm-status-dot-sm"></span> Backend Siap</span>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Frontend:</span> <strong id="adm-health-frontend-ver">v6.3.0-phase3</strong>
+        <span class="adm-health-label">Frontend:</span> <strong id="adm-health-frontend-ver">v6.4.0-phase4</strong>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Backend:</span> <strong id="adm-health-backend-ver">v6.3.0-phase3</strong>
+        <span class="adm-health-label">Backend:</span> <strong id="adm-health-backend-ver">v6.4.0-phase4</strong>
       </div>
       <div class="adm-health-item">
         <span class="adm-health-label">Waktu Server:</span> <span id="adm-health-server-time">—</span>
@@ -331,8 +331,14 @@
             <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" data-preset="all_30d">Semua Sumber (30 Hari)</button>
             <button type="button" class="adm-btn adm-btn-xs adm-btn-gold" id="adm-load-fav-btn" style="display:none;">Muat Filter Tersimpan</button>
           </div>
-          <div>
-            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-save-fav-btn" title="Simpan kombinasi periode dan filter saat ini">Simpan Filter Saat Ini</button>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;">
+            <span style="font-size:0.76rem;font-weight:600;color:var(--charcoal-muted);">Rentang Tanggal:</span>
+            <input type="date" id="adm-date-from" class="adm-input" style="width:auto;padding:4px 8px;font-size:0.76rem;" aria-label="Dari tanggal">
+            <span style="font-size:0.75rem;color:var(--charcoal-muted);">s/d</span>
+            <input type="date" id="adm-date-to" class="adm-input" style="width:auto;padding:4px 8px;font-size:0.76rem;" aria-label="Sampai tanggal">
+            <button type="button" class="adm-btn adm-btn-xs adm-btn-primary" id="adm-date-apply-btn">Terapkan</button>
+            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-date-reset-btn">Reset</button>
+            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-save-fav-btn" title="Simpan kombinasi periode dan filter saat ini">Simpan Filter</button>
           </div>
         </div>
       </div>
@@ -499,6 +505,35 @@
           </table>
         </div>
       </div>
+
+      <!-- Tabel Ringkasan Historis Bulanan (MonthlyAggregates — FR-V64-07) -->
+      <div class="adm-card" style="margin-top:20px;">
+        <div class="adm-card-header">
+          <div>
+            <h2 class="adm-card-title">Ringkasan Historis Bulanan (Monthly Aggregates)</h2>
+            <p class="adm-card-subtitle">Rekapitulasi performa bulanan dari lembar <code>MonthlyAggregates</code> dan agregasi bulan berjalan</p>
+          </div>
+        </div>
+        <div class="adm-table-wrap">
+          <table class="adm-table" id="adm-monthly-aggregates-table" aria-label="Tabel ringkasan historis bulanan">
+            <thead>
+              <tr>
+                <th>Periode Bulan</th>
+                <th class="bs-num">Total Event</th>
+                <th class="bs-num">Event Valid</th>
+                <th class="bs-num">Kunjungan</th>
+                <th class="bs-num">Klik Review</th>
+                <th class="bs-num">Klik WhatsApp</th>
+                <th class="bs-num">Skor Rata-Rata</th>
+                <th>Status Arsip</th>
+              </tr>
+            </thead>
+            <tbody id="adm-monthly-aggregates-tbody">
+              <tr><td colspan="8" class="bs-empty">Memuat ringkasan bulanan…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section><!-- #tab-dashboard -->
 
 
@@ -512,8 +547,11 @@
             <h2 class="adm-card-title">Manajemen Staf, Sales &amp; Titik NFC</h2>
             <p class="adm-card-subtitle">Kelola penugasan personel, kartu NFC fisik, rotasi kode URL, dan status aktif</p>
           </div>
-          <div class="adm-card-actions">
-            <button id="adm-add-source-btn" class="adm-btn adm-btn-primary">+ Tambah Staf / Titik</button>
+          <div class="adm-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="file" id="adm-import-sources-file" accept=".csv,text/csv" style="display:none;">
+            <button type="button" id="adm-import-sources-csv-btn" class="adm-btn adm-btn-secondary adm-btn-mutate">Impor CSV</button>
+            <button type="button" id="adm-export-sources-csv-btn" class="adm-btn adm-btn-secondary">Ekspor CSV</button>
+            <button type="button" id="adm-add-source-btn" class="adm-btn adm-btn-primary adm-btn-mutate">+ Tambah Staf / Titik</button>
           </div>
         </div>
 
@@ -928,10 +966,20 @@
             <h2 class="adm-card-title" style="font-size:1.1rem;">CMS Pengelolaan Penuh Isi Tampilan Halaman Tamu</h2>
             <p class="adm-card-subtitle">Kelola 100% teks, judul seksi, label tombol, tautan, gambar, footer, dan modal halaman tamu (Tone warna &amp; layout halaman tamu dikunci permanen).</p>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="button" class="adm-btn adm-btn-secondary" id="adm-cms-reset-btn">Kembalikan Teks Standar</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <div style="display:flex;align-items:center;gap:6px;background:#f7f5f0;padding:4px 10px;border-radius:6px;border:1px solid var(--border-light);">
+              <label for="adm-cms-lang-mode" style="font-size:0.75rem;font-weight:600;color:var(--deep-green);margin:0;">Mode Bahasa Tamu:</label>
+              <select id="adm-cms-lang-mode" class="adm-select" style="width:auto;padding:4px 8px;font-size:0.76rem;">
+                <option value="auto">Otomatis Deteksi Peramban (ID / EN)</option>
+                <option value="id">Kunci Bahasa Indonesia (ID)</option>
+                <option value="en">Kunci Bahasa Inggris (EN)</option>
+              </select>
+            </div>
+            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" id="adm-cms-preset-id-btn" title="Isi seluruh teks CMS dengan Bahasa Indonesia dan simpan ke server">Preset Bahasa Indonesia</button>
+            <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" id="adm-cms-preset-en-btn" title="Isi seluruh teks CMS dengan Bahasa Inggris dan simpan ke server">Preset English</button>
+            <button type="button" class="adm-btn adm-btn-secondary adm-btn-mutate" id="adm-cms-reset-btn">Reset Default</button>
             <button type="button" class="adm-btn adm-btn-secondary" id="adm-cms-preview-btn">Pratinjau Draft Tamu</button>
-            <button type="button" class="adm-btn adm-btn-gold" id="adm-app-save-btn">Simpan Seluruh Konten Halaman Tamu</button>
+            <button type="button" class="adm-btn adm-btn-gold adm-btn-mutate" id="adm-app-save-btn">Simpan Seluruh Konten Halaman Tamu</button>
           </div>
         </div>
         <div class="adm-cms-zone-nav" role="tablist" aria-label="Filter zona halaman tamu">
@@ -1061,6 +1109,9 @@
           <label for="adm-cms-hero-scroll-hint">Teks Petunjuk Gulir Bawah Hero (Scroll Hint)</label>
           <input type="text" id="adm-cms-hero-scroll-hint" class="adm-input" placeholder="Scroll to explore">
         </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;">
+          <button type="button" class="adm-btn adm-btn-gold adm-cms-save-zone-btn adm-btn-mutate">Simpan Perubahan Zona Ini ke Cloud</button>
+        </div>
       </div>
 
       <!-- ZONA 2: GOOGLE REVIEW & DIRECT FEEDBACK (FR-CMS-03) -->
@@ -1142,6 +1193,9 @@
           <label for="adm-cms-fb-thanks-txt">Pesan Konfirmasi Terima Kasih Setelah Feedback Terkirim</label>
           <input type="text" id="adm-cms-fb-thanks-txt" class="adm-input" placeholder="Thank you! Your feedback means a lot to us.">
         </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;">
+          <button type="button" class="adm-btn adm-btn-gold adm-cms-save-zone-btn adm-btn-mutate">Simpan Perubahan Zona Ini ke Cloud</button>
+        </div>
       </div>
 
       <!-- ZONA 3: HEADER & TEMPLATE SEKSI GERAI F&B DAN PROMOSI (FR-CMS-04) -->
@@ -1193,6 +1247,9 @@
         <div class="adm-form-group">
           <label for="adm-cms-promos-wa-tpl">Template Pesan WhatsApp Promosi (Mendukung <code>{promo_name}</code> &amp; <code>{outlet_name}</code>)</label>
           <input type="text" id="adm-cms-promos-wa-tpl" class="adm-input" placeholder="Hello Bumi Surabaya, I am interested in the promotion: {promo_name} at {outlet_name}. Please share reservation details.">
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;">
+          <button type="button" class="adm-btn adm-btn-gold adm-cms-save-zone-btn adm-btn-mutate">Simpan Perubahan Zona Ini ke Cloud</button>
         </div>
       </div>
 
@@ -1259,6 +1316,9 @@
             <label for="adm-cms-wap-fb-btn">Label Tombol Reservasi Fallback</label>
             <input type="text" id="adm-cms-wap-fb-btn" class="adm-input" placeholder="Chat Reservation">
           </div>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;">
+          <button type="button" class="adm-btn adm-btn-gold adm-cms-save-zone-btn adm-btn-mutate">Simpan Perubahan Zona Ini ke Cloud</button>
         </div>
       </div>
 
@@ -1390,7 +1450,7 @@
           </div>
           <div class="adm-form-group">
             <label for="adm-cms-ftr-version">Teks Tag Versi di Bawah Footer</label>
-            <input type="text" id="adm-cms-ftr-version" class="adm-input" placeholder="Digital Guest Experience v6.3">
+            <input type="text" id="adm-cms-ftr-version" class="adm-input" placeholder="Digital Guest Experience v6.4">
           </div>
         </div>
 
@@ -1402,6 +1462,9 @@
               <span>Matikan jika Anda ingin menyembunyikan pintasan login admin dari footer halaman tamu</span>
             </div>
           </label>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;">
+          <button type="button" class="adm-btn adm-btn-gold adm-cms-save-zone-btn adm-btn-mutate">Simpan Perubahan Zona Ini ke Cloud</button>
         </div>
       </div>
 
@@ -1472,6 +1535,9 @@
             <input type="text" id="adm-cms-prv-btn" class="adm-input" placeholder="I Understand">
           </div>
         </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;">
+          <button type="button" class="adm-btn adm-btn-gold adm-cms-save-zone-btn adm-btn-mutate">Simpan Perubahan Zona Ini ke Cloud</button>
+        </div>
       </div>
 
     </section><!-- #tab-appearance -->
@@ -1531,7 +1597,42 @@
           </div>
         </div>
 
-        <button id="adm-ft-save-btn" class="adm-btn adm-btn-gold">Simpan &amp; Sinkronkan Threshold</button>
+        <button id="adm-ft-save-btn" class="adm-btn adm-btn-gold adm-btn-mutate">Simpan &amp; Sinkronkan Threshold</button>
+      </div>
+
+      <!-- Notifikasi Instan Feedback Rating Rendah (FR-V64-02) -->
+      <div class="adm-card" style="max-width:680px;margin:20px auto 0;">
+        <div class="adm-card-header">
+          <div>
+            <h2 class="adm-card-title">Notifikasi Instan Feedback Rating Rendah (&le; 3 Bintang)</h2>
+            <p class="adm-card-subtitle">Kirim peringatan otomatis ke email Duty Manager dan/atau Webhook saat tamu memberikan rating 1–3 bintang</p>
+          </div>
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-cfg-alert-email">Alamat Email Peringatan Manajemen (Pisahkan dengan koma jika lebih dari satu)</label>
+          <input type="text" id="adm-cfg-alert-email" class="adm-input" placeholder="Contoh: dutymanager@bumisurabaya.com, gm@bumisurabaya.com">
+          <span class="adm-field-hint">Jika dikosongkan, sistem menggunakan properti skrip <code>EMAIL_MANAJEMEN</code> di Google Apps Script.</span>
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-cfg-alert-webhook">URL Webhook Notifikasi Instan (Opsional — Slack / Google Chat / WA Gateway)</label>
+          <input type="url" id="adm-cfg-alert-webhook" class="adm-input" placeholder="https://hooks.slack.com/services/... atau endpoint webhook WA">
+        </div>
+        <button type="button" id="adm-cfg-alert-save-btn" class="adm-btn adm-btn-gold adm-btn-mutate">Simpan Pengaturan Notifikasi</button>
+      </div>
+
+      <!-- Cadangan & Pemulihan Konfigurasi JSON 1-Klik (FR-V64-05) -->
+      <div class="adm-card" style="max-width:680px;margin:20px auto 0;">
+        <div class="adm-card-header">
+          <div>
+            <h2 class="adm-card-title">Cadangan &amp; Pemulihan Konfigurasi Sistem 1-Klik (JSON)</h2>
+            <p class="adm-card-subtitle">Unduh salinan lengkap seluruh konfigurasi CMS, gerai, promosi, daftar sumber, dan perangkat staf atau pulihkan dari berkas JSON</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <button type="button" id="adm-cfg-backup-export-btn" class="adm-btn adm-btn-secondary">Unduh Cadangan Lengkap (.json)</button>
+          <input type="file" id="adm-cfg-backup-file-input" accept=".json,application/json" style="display:none;">
+          <button type="button" id="adm-cfg-backup-import-btn" class="adm-btn adm-btn-gold adm-btn-mutate">Pulihkan dari Berkas JSON &amp; Simpan Otomatis</button>
+        </div>
       </div>
     </section><!-- #tab-config -->
 
@@ -1575,8 +1676,72 @@
             <li>Akun aktif: <strong id="adm-acc-current-user">admin</strong></li>
             <li>Otentikasi: Session Token Kriptografis Server-Side (Masa berlaku 6 jam)</li>
             <li>Hashing Kredensial: Salted Iterative SHA-256 (1.000 putaran per pengguna)</li>
-            <li>Versi Sistem: <strong>Digital Guest Experience v6.3</strong></li>
+            <li>Versi Sistem: <strong>Digital Guest Experience v6.4</strong></li>
           </ul>
+        </div>
+      </div>
+
+      <!-- Manajemen Pengguna & Peran RBAC Multi-Admin (FR-V64-03) -->
+      <div class="adm-card" id="adm-user-mgmt-card" style="max-width:880px;margin:20px auto 0;">
+        <div class="adm-card-header">
+          <div>
+            <h2 class="adm-card-title">Manajemen Akun Pengguna &amp; Hak Akses Peran (RBAC)</h2>
+            <p class="adm-card-subtitle">Tambah akun baru, ubah peran akses (Super Admin, Manager, Editor Konten, Analis), atau reset kata sandi langsung ke lembar <code>Users</code></p>
+          </div>
+          <button type="button" id="adm-users-refresh-btn" class="adm-btn adm-btn-secondary">Perbarui Daftar Akun</button>
+        </div>
+
+        <form id="adm-user-form" style="background:#faf9f6;padding:16px;border-radius:8px;border:1px solid var(--border-light);margin-bottom:18px;" novalidate>
+          <h4 style="font-size:0.88rem;margin:0 0 12px 0;color:var(--deep-green);">Tambah atau Perbarui Akun Pengguna</h4>
+          <div class="adm-two-col-form">
+            <div class="adm-form-group">
+              <label for="adm-user-username">Username <span class="adm-required">*</span></label>
+              <input type="text" id="adm-user-username" class="adm-input" placeholder="Contoh: manager_fnb atau editor_cms" required>
+            </div>
+            <div class="adm-form-group">
+              <label for="adm-user-role">Peran Hak Akses (Role) <span class="adm-required">*</span></label>
+              <select id="adm-user-role" class="adm-input" required>
+                <option value="manager">Manager Operasional (Sumber, NFC, Gerai, Promo, Feedback)</option>
+                <option value="content_editor">Editor Konten (Khusus CMS Halaman Tamu, Gerai &amp; Promo)</option>
+                <option value="analyst_readonly">Analis Data (Hanya Baca Analitik &amp; Audit)</option>
+                <option value="super_admin">Super Administrator (Akses Penuh Seluruh Sistem)</option>
+              </select>
+            </div>
+          </div>
+          <div class="adm-two-col-form">
+            <div class="adm-form-group">
+              <label for="adm-user-password">Kata Sandi Awal / Reset Kata Sandi</label>
+              <input type="password" id="adm-user-password" class="adm-input" minlength="8" placeholder="Minimal 8 karakter (wajib untuk akun baru)">
+            </div>
+            <div class="adm-form-group" style="display:flex;flex-direction:column;justify-content:center;gap:8px;padding-top:18px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.82rem;cursor:pointer;">
+                <input type="checkbox" id="adm-user-active" checked> Akun Aktif (Dapat Login)
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.82rem;cursor:pointer;">
+                <input type="checkbox" id="adm-user-must-change" checked> Wajib Ganti Kata Sandi Saat Login Berikutnya
+              </label>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+            <button type="submit" id="adm-user-submit-btn" class="adm-btn adm-btn-gold adm-btn-mutate">Simpan Akun ke Server</button>
+          </div>
+        </form>
+
+        <div class="adm-table-wrap">
+          <table class="adm-table" aria-label="Daftar akun pengguna RBAC">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Peran (Role)</th>
+                <th>Status Akun</th>
+                <th>Terakhir Diperbarui</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="adm-users-tbody">
+              <tr><td colspan="5" class="bs-empty">Klik "Perbarui Daftar Akun" untuk memuat pengguna dari server.</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section><!-- #tab-account -->
@@ -1602,8 +1767,10 @@
               <option value="FEEDBACK_DENIED">FEEDBACK_DENIED</option>
               <option value="BREAK_GLASS_RESET">BREAK_GLASS_RESET</option>
               <option value="SETUP_ADMIN">SETUP_ADMIN</option>
+              <option value="LOGOUT">LOGOUT</option>
               <option value="CREATE_USER">CREATE_USER</option>
               <option value="UPDATE_USER">UPDATE_USER</option>
+              <option value="DELETE_USER">DELETE_USER</option>
             </select>
             <input type="text" id="adm-audit-search" class="adm-input" placeholder="Cari aktor / objek / detail..." style="width:200px;padding:6px 10px;font-size:0.8rem;">
             <span id="adm-audit-count-info" style="font-size:0.78rem;color:var(--charcoal-muted);"></span>

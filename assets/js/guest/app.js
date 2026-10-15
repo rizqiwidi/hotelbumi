@@ -1,15 +1,13 @@
 /**
- * BUMI SURABAYA v6.3
- * app.js — Logika presentasi tampilan tamu & Full Guest Page CMS Renderer (FR-CMS-01 s/d FR-CMS-07, FR-P2-01)
+ * BUMI SURABAYA v6.4
+ * app.js — Logika presentasi tampilan tamu, Full Guest Page CMS & Dwibahasa Otomatis ID/EN (FR-CMS-01 s/d FR-CMS-07, FR-V64-06)
  *
  * KONTRAK KERAS: Tidak mengubah tone warna ataupun tata letak halaman tamu (guest.css).
- * Hanya menyuntikkan teks, tautan, gambar, dan visibilitas seksi secara aman ke DOM yang sudah ada.
  */
 
 (function(window, document) {
   'use strict';
 
-  // ── Utilitas DOM & Sanitasi ──────────────────────────────
   function $(sel) { return document.querySelector(sel); }
   function $$(sel){ return document.querySelectorAll(sel); }
   function setText(el, txt) { if (el && txt !== undefined && txt !== null) el.textContent = txt; }
@@ -43,10 +41,33 @@
     return clean;
   }
 
-  // ── State ─────────────────────────────────────────────────
   var _config    = null;
   var _sources   = [];
   var _sourceObj = null;
+
+  /**
+   * Resolusi bahasa aktif halaman tamu (FR-V64-06):
+   * - Query param ?lang=id atau ?lang=en (prioritas tertinggi untuk pengujian/tautan langsung)
+   * - general.language_mode === 'id' -> Bahasa Indonesia
+   * - general.language_mode === 'en' -> Bahasa Inggris
+   * - general.language_mode === 'auto' -> deteksi navigator.language (id* -> 'id', lainnya -> 'en')
+   */
+  function resolveActiveLang() {
+    try {
+      var qLang = (new URLSearchParams(window.location.search).get('lang') || '').toLowerCase().trim();
+      if (qLang === 'id' || qLang === 'en') return qLang;
+    } catch (_) {}
+
+    var gen = (_config && _config.general) || (window.BSConfig && BSConfig.DEFAULTS && BSConfig.DEFAULTS.general) || {};
+    var mode = String(gen.language_mode || 'en').toLowerCase();
+    if (mode === 'id') return 'id';
+    if (mode === 'en') return 'en';
+    if (mode === 'auto') {
+      var navLang = String((navigator && (navigator.language || navigator.userLanguage)) || 'en').toLowerCase();
+      return navLang.indexOf('id') === 0 ? 'id' : 'en';
+    }
+    return 'en';
+  }
 
   function getMergedSection(secName) {
     var def = (window.BSConfig && BSConfig.DEFAULTS && BSConfig.DEFAULTS[secName]) || {};
@@ -54,7 +75,23 @@
     if (Array.isArray(def) || Array.isArray(act)) {
       return (_config && Array.isArray(_config[secName])) ? _config[secName] : def;
     }
-    return Object.assign({}, def, act);
+    var lang = resolveActiveLang();
+    var presetId = (lang === 'id' && window.BSConfig && BSConfig.PRESET_ID && BSConfig.PRESET_ID[secName])
+      ? BSConfig.PRESET_ID[secName]
+      : {};
+    // Jika mode auto dan bahasa peramban adalah 'id', gunakan preset ID sebagai dasar,
+    // namun tetap izinkan kustomisasi eksplisit admin dari _config[secName]
+    var base = Object.assign({}, def, presetId);
+    if (lang === 'id' && (_config && _config.general && _config.general.language_mode === 'auto')) {
+      var customOverrides = {};
+      Object.keys(act).forEach(function(k) {
+        if (act[k] !== undefined && act[k] !== '' && JSON.stringify(act[k]) !== JSON.stringify(def[k])) {
+          customOverrides[k] = act[k];
+        }
+      });
+      return Object.assign({}, base, customOverrides);
+    }
+    return Object.assign({}, base, act);
   }
 
   function findSource(code) {
@@ -106,7 +143,6 @@
     return sanitizeUrl(outletUrl || (rev && rev.review_url) || gen.google_review_url || ARUMANIS_REVIEW_URL);
   }
 
-  // ── Helper render sapaan kontekstual dengan dukungan variabel ──
   function renderWelcomeGreeting(welcomeEl, template, sourceObj, hotelName) {
     if (!welcomeEl) return;
     welcomeEl.textContent = '';
@@ -133,7 +169,7 @@
         .replace(/\{outlet\}/g, sOutlet)
         .replace(/\{outlet_name\}/g, sOutlet)
         .replace(/\{hotel_name\}/g, hotelName)
-        .replace(/\s+from\s+\./g, '.')
+        .replace(/\s+(from|dari)\s+\./g, '.')
         .replace(/\s{2,}/g, ' ');
       welcomeEl.appendChild(document.createTextNode(rest));
     } else if (tpl.indexOf('{outlet_name}') !== -1 || tpl.indexOf('{outlet}') !== -1) {
@@ -152,7 +188,7 @@
       welcomeEl.appendChild(strongStaff);
       if (sRole) welcomeEl.appendChild(document.createTextNode(' (' + sRole + ')'));
       if (sourceObj.outlet) {
-        welcomeEl.appendChild(document.createTextNode(' from '));
+        welcomeEl.appendChild(document.createTextNode(' — '));
         var emOutlet = document.createElement('em');
         emOutlet.textContent = sourceObj.outlet;
         welcomeEl.appendChild(emOutlet);
@@ -163,7 +199,6 @@
     }
   }
 
-  // ── Render hero, loading screen & sapaan (FR-CMS-02) ──────────
   function renderHero() {
     var gen = getMergedSection('general');
     var app = getMergedSection('appearance');
@@ -172,7 +207,6 @@
     var sec = getMergedSection('guest_sections');
     var gc  = getMergedSection('guest_content');
 
-    // Meta description & Document title
     if (gen.hotel_name) {
       document.title = gen.hotel_name + ' — Digital Guest Experience';
     }
@@ -181,11 +215,9 @@
       metaDesc.setAttribute('content', gen.description);
     }
 
-    // Loading screen texts
     setText($('#bs-loading-title'), gc.loading_title || gen.hotel_name || 'Bumi Surabaya City Resort');
     setText($('#bs-loading-sub'),   gc.loading_subtitle || 'Preparing your experience…');
 
-    // Logo hotel (Hero & Footer)
     var logoPath = gen.logo_url || 'assets/images/logo-hotel.png';
     var resolvedLogo = (window.BSConfig && BSConfig.resolveAsset) ? BSConfig.resolveAsset(logoPath) : logoPath;
     var safeLogo = sanitizeUrl(resolvedLogo);
@@ -196,13 +228,11 @@
       if (footerLogo) { footerLogo.src = safeLogo; footerLogo.alt = gen.hotel_name || 'Bumi Surabaya City Resort'; }
     }
 
-    // Nama hotel & judul hero dinamis
     var heroTitle = app.hero_text || gen.hotel_name || 'Bumi Surabaya City Resort';
     setText($('#bs-hotel-name'), heroTitle);
     setText($('#bs-subtitle'), app.hero_subtitle || '');
     setText($('#bs-scroll-hint-text'), gc.hero_scroll_hint || 'Scroll to explore');
 
-    // Sapaan personal berdasarkan source
     var src = window.BSTracker ? BSTracker.getSource() : 'general';
     _sourceObj = findSource(src);
 
@@ -241,7 +271,6 @@
       hide(staffBadgeEl);
     }
 
-    // Hero background
     var hero = $('.bs-hero');
     if (hero) {
       if (app.hero_bg_url) {
@@ -257,7 +286,6 @@
       }
     }
 
-    // Tombol Google Review
     var reviewBtn   = $('#bs-btn-review');
     var mobReview   = $('.bs-mob-review');
     var finalReview = $('#bs-final-review');
@@ -283,7 +311,6 @@
       if (sec && sec.show_review === false) hide(mobReview); else show(mobReview);
     }
 
-    // Tombol WhatsApp
     var waNum = '';
     var waMsg = '';
     if (_sourceObj && _sourceObj.type === 'sales' && _sourceObj.whatsapp && cleanPhone(_sourceObj.whatsapp)) {
@@ -332,7 +359,6 @@
     });
   }
 
-  // ── Render seksi Google Review & Direct Feedback (FR-CMS-03) ──
   function renderReviewSection() {
     var cfg = getMergedSection('review_settings');
     var sec = getMergedSection('guest_sections');
@@ -347,7 +373,7 @@
 
     var promptEl = el.querySelector('#bs-review-prompt');
     if (promptEl) {
-      promptEl.textContent = cfg.review_prompt || gc.review_card_prompt || BSConfig.DEFAULTS.review_settings.review_prompt;
+      promptEl.textContent = gc.review_card_prompt || cfg.review_prompt || BSConfig.DEFAULTS.review_settings.review_prompt;
     }
 
     var reviewLink = el.querySelector('#bs-review-link');
@@ -358,7 +384,6 @@
       if (linkLabel) linkLabel.textContent = linkText; else reviewLink.textContent = linkText;
     }
 
-    // Direct Feedback visibility & labels
     var fbToggle = $('#bs-feedback-toggle');
     var fbWrap   = $('#bs-feedback-form-wrap');
     if (sec && sec.show_direct_feedback === false) {
@@ -388,7 +413,6 @@
     show(el);
   }
 
-  // ── Render promosi (FR-CMS-04) ────────────────────────────────
   function renderPromotions() {
     var promos = getMergedSection('promotions');
     var sec    = getMergedSection('guest_sections');
@@ -482,7 +506,6 @@
     if (section) show(section);
   }
 
-  // ── Render outlet (FR-CMS-04) ─────────────────────────────────
   function renderOutlets() {
     var outlets = getMergedSection('outlets');
     var sec     = getMergedSection('guest_sections');
@@ -571,7 +594,6 @@
     if (section) show(section);
   }
 
-  // ── Render WhatsApp Concierge & WA Picker Modal texts (FR-CMS-05) ──
   function renderWaSection() {
     var sec = getMergedSection('guest_sections');
     var gc  = getMergedSection('guest_content');
@@ -586,7 +608,6 @@
       if (waLinkSpan) waLinkSpan.textContent = gc.wa_btn_label || 'Chat on WhatsApp';
     }
 
-    // Update WA Sales Picker Modal headings
     setText($('#bs-wa-picker-badge'), gc.wa_picker_badge    || 'CHAT WITH US');
     setText($('#bs-wa-picker-title'), gc.wa_picker_title    || 'Choose who to chat with');
     setText($('#bs-wa-picker-sub'),   gc.wa_picker_subtitle || 'Our sales team is ready to help you on WhatsApp. Pick a contact below:');
@@ -596,7 +617,6 @@
     show(el);
   }
 
-  // ── Render sosial media (FR-CMS-06) ───────────────────────────
   function renderSocial() {
     var gen = getMergedSection('general');
     var sec = getMergedSection('guest_sections');
@@ -629,13 +649,11 @@
     }
   }
 
-  // ── Render Final CTA, Mobile Bar, Footer & Privacy Modal (FR-CMS-06 & FR-CMS-07) ──
   function renderFooterAndModals() {
     var gen = getMergedSection('general');
     var sec = getMergedSection('guest_sections');
     var gc  = getMergedSection('guest_content');
 
-    // Final CTA section
     var finalSec = $('#bs-final-section') || $('.bs-final');
     if (finalSec) {
       setText($('#bs-final-heading'), gc.final_cta_title    || 'We Look Forward to Welcoming You Again');
@@ -643,19 +661,17 @@
       if (sec && sec.show_final_cta === false) hide(finalSec); else show(finalSec);
     }
 
-    // Floating Mobile Action Bar
     var mobBar = $('#bs-mobile-bar') || $('.bs-mobile-action-bar');
     if (mobBar) {
       if (sec && sec.show_mobile_bar === false) hide(mobBar); else show(mobBar);
     }
 
-    // Footer
     setText($('#bs-hotel-name-footer'),     gen.hotel_name || 'Bumi Surabaya City Resort');
     setText($('#bs-address-footer'),        gen.address    || '');
     setText($('#bs-privacy-link'),          gc.footer_privacy_label   || 'Privacy & Data Use Policy');
     setText($('#bs-footer-admin-link'),     gc.footer_admin_label     || 'Management Portal');
     setText($('#bs-footer-copyright-text'), gc.footer_copyright       || '© 2026 Bumi Surabaya City Resort. All rights reserved.');
-    setText($('#bs-footer-version-tag'),    gc.footer_version_tag     || 'Digital Guest Experience v6.3');
+    setText($('#bs-footer-version-tag'),    gc.footer_version_tag     || 'Digital Guest Experience v6.4');
 
     var adminLink = $('#bs-footer-admin-link') || $('.bs-footer-admin');
     var footerSep = $('#bs-footer-sep')        || $('.bs-footer-sep');
@@ -667,7 +683,6 @@
       show(footerSep);
     }
 
-    // Privacy Policy Modal (FR-CMS-07)
     setText($('#bs-privacy-badge'),          gc.privacy_badge        || 'WORLD-CLASS RESORT PRIVACY STANDARD');
     setText($('#bs-privacy-title'),          gc.privacy_title        || 'Guest Privacy & Data Use Policy');
     setText($('#bs-privacy-lead-bold'),      gc.privacy_lead_bold    || 'Bumi Surabaya City Resort is committed to transparent, secure, and ethical privacy.');
@@ -703,7 +718,6 @@
     renderPrivacyList($('#bs-privacy-b3-list'), gc.privacy_block3_items);
   }
 
-  // ── Direct Feedback (REV-02, FR-P2-01) ───────────────────────
   var _feedbackInitialized = false;
   function initDirectFeedback() {
     if (_feedbackInitialized) return;
@@ -818,7 +832,6 @@
     });
   }
 
-  // ── Modal Privasi (Escape, Focus Trap & Return) ──────────────
   var _privacyInitialized = false;
   function initPrivacyModal() {
     if (_privacyInitialized) return;
@@ -873,7 +886,6 @@
     });
   }
 
-  // ── Pemilih Sales WhatsApp ala Linktree (REV-04, FR-P2-01, FR-CMS-05) ──
   function getSalesList() {
     var out = [];
     for (var i = 0; i < _sources.length; i++) {
@@ -1028,7 +1040,6 @@
     });
   }
 
-  // ── Binding CTA event tracking ────────────────────────────
   function bindCtaTracking() {
     var reviewBtn   = $('#bs-btn-review');
     var reviewLink  = $('#bs-review-link');
@@ -1044,7 +1055,6 @@
     });
   }
 
-  // ── Render semua ─────────────────────────────────────────
   function renderAll() {
     renderHero();
     renderReviewSection();
@@ -1059,7 +1069,6 @@
     initDirectFeedback();
   }
 
-  // ── Pratinjau Draft Admin (?preview=1) ──────────────────
   function checkPreviewDraft() {
     var isPreview = (new URLSearchParams(window.location.search).get('preview') === '1');
     if (!isPreview) return;
@@ -1093,7 +1102,6 @@
     }
   }
 
-  // ── Inisialisasi utama ────────────────────────────────────
   function init() {
     var gasUrl = window.BSConfig ? BSConfig.getGasUrl() : '';
 
@@ -1133,8 +1141,9 @@
   }
 
   window.BSApp = {
-    getSourceObj: function() { return _sourceObj; },
-    renderAll:    renderAll
+    getSourceObj:      function() { return _sourceObj; },
+    resolveActiveLang: resolveActiveLang,
+    renderAll:         renderAll
   };
 
 })(window, document);
