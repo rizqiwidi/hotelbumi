@@ -1,10 +1,37 @@
 /**
- * BUMI SURABAYA v6.4
+ * BUMI SURABAYA v6.7
  * auth.js — Login session, server-side logout & credentials management (FR-V64-04)
  */
 
 (function(window) {
   'use strict';
+
+  /**
+   * BUG-20 / FR-V67-05: sessionStorage bisa melempar SecurityError (mode privat,
+   * ITP, iframe ketat). Semua akses lewat shim ini; fallback Map di memori.
+   */
+  var _mem = {};
+  function _ss() {
+    try { if (window.sessionStorage) return window.sessionStorage; } catch (_) {}
+    return null;
+  }
+  var store = {
+    getItem: function (k) {
+      var b = _ss();
+      if (b) { try { return b.getItem(k); } catch (_) {} }
+      return Object.prototype.hasOwnProperty.call(_mem, k) ? _mem[k] : null;
+    },
+    setItem: function (k, v) {
+      var b = _ss();
+      if (b) { try { b.setItem(k, v); return; } catch (_) {} }
+      _mem[k] = String(v);
+    },
+    removeItem: function (k) {
+      var b = _ss();
+      if (b) { try { b.removeItem(k); return; } catch (_) {} }
+      delete _mem[k];
+    }
+  };
 
   var TOKEN_KEY       = 'bs_admin_token';
   var ROLE_KEY        = 'bs_admin_role';
@@ -18,26 +45,26 @@
   var LOCKOUT_MS  = 15 * 60 * 1000;  // 15 menit
   var SESSION_TTL = 6 * 60 * 60 * 1000; // 6 jam (sesuai backend GAS)
 
-  function getToken()       { return sessionStorage.getItem(TOKEN_KEY) || ''; }
-  function getRole()        { return sessionStorage.getItem(ROLE_KEY)  || ''; }
-  function getUsername()    { return sessionStorage.getItem(USERNAME_KEY) || 'Administrator'; }
-  function isMustChange()   { return sessionStorage.getItem(MUST_CHANGE_KEY) === 'true'; }
-  function setMustChange(v) { sessionStorage.setItem(MUST_CHANGE_KEY, String(!!v)); }
+  function getToken()       { return store.getItem(TOKEN_KEY) || ''; }
+  function getRole()        { return store.getItem(ROLE_KEY)  || ''; }
+  function getUsername()    { return store.getItem(USERNAME_KEY) || 'Administrator'; }
+  function isMustChange()   { return store.getItem(MUST_CHANGE_KEY) === 'true'; }
+  function setMustChange(v) { store.setItem(MUST_CHANGE_KEY, String(!!v)); }
 
   function isLoggedIn() {
     var token = getToken();
     if (!token) return false;
-    var ts = parseInt(sessionStorage.getItem(LOGIN_TIME) || '0', 10);
+    var ts = parseInt(store.getItem(LOGIN_TIME) || '0', 10);
     if (Date.now() - ts > SESSION_TTL) { logout(); return false; }
     return true;
   }
 
   function saveSession(token, role, username, mustChange) {
-    sessionStorage.setItem(TOKEN_KEY,       token);
-    sessionStorage.setItem(ROLE_KEY,        role || 'super_admin');
-    sessionStorage.setItem(USERNAME_KEY,    username || 'admin');
-    sessionStorage.setItem(MUST_CHANGE_KEY, String(!!mustChange));
-    sessionStorage.setItem(LOGIN_TIME,      String(Date.now()));
+    store.setItem(TOKEN_KEY,       token);
+    store.setItem(ROLE_KEY,        role || 'super_admin');
+    store.setItem(USERNAME_KEY,    username || 'admin');
+    store.setItem(MUST_CHANGE_KEY, String(!!mustChange));
+    store.setItem(LOGIN_TIME,      String(Date.now()));
   }
 
   /**
@@ -56,36 +83,36 @@
         }).catch(function() {});
       } catch (_) {}
     }
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(ROLE_KEY);
-    sessionStorage.removeItem(USERNAME_KEY);
-    sessionStorage.removeItem(MUST_CHANGE_KEY);
-    sessionStorage.removeItem(LOGIN_TIME);
+    store.removeItem(TOKEN_KEY);
+    store.removeItem(ROLE_KEY);
+    store.removeItem(USERNAME_KEY);
+    store.removeItem(MUST_CHANGE_KEY);
+    store.removeItem(LOGIN_TIME);
     if (window.BSConfig) window.BSConfig.clearCache();
   }
 
   function getFailCount() {
-    var ts   = parseInt(sessionStorage.getItem(BF_TS_KEY) || '0', 10);
-    var fails= parseInt(sessionStorage.getItem(BF_KEY)    || '0', 10);
+    var ts   = parseInt(store.getItem(BF_TS_KEY) || '0', 10);
+    var fails= parseInt(store.getItem(BF_KEY)    || '0', 10);
     if (Date.now() - ts > LOCKOUT_MS) {
-      sessionStorage.removeItem(BF_KEY);
-      sessionStorage.removeItem(BF_TS_KEY);
+      store.removeItem(BF_KEY);
+      store.removeItem(BF_TS_KEY);
       return 0;
     }
     return fails;
   }
   function addFail() {
     var fails = getFailCount();
-    sessionStorage.setItem(BF_KEY,    String(fails + 1));
-    sessionStorage.setItem(BF_TS_KEY, String(Date.now()));
+    store.setItem(BF_KEY,    String(fails + 1));
+    store.setItem(BF_TS_KEY, String(Date.now()));
   }
   function resetFails() {
-    sessionStorage.removeItem(BF_KEY);
-    sessionStorage.removeItem(BF_TS_KEY);
+    store.removeItem(BF_KEY);
+    store.removeItem(BF_TS_KEY);
   }
   function isLockedOut() { return getFailCount() >= MAX_FAILS; }
   function remainingLockMs() {
-    var ts = parseInt(sessionStorage.getItem(BF_TS_KEY) || '0', 10);
+    var ts = parseInt(store.getItem(BF_TS_KEY) || '0', 10);
     var remaining = LOCKOUT_MS - (Date.now() - ts);
     return Math.max(0, remaining);
   }

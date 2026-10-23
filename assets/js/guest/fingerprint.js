@@ -65,7 +65,12 @@
    */
   function getOrCreateDeviceId() {
     var key = (window.BSConfig && window.BSConfig.DEVICE_ID_KEY) || 'bs_device_id';
-    var existing = localStorage.getItem(key);
+    var existing = null;
+    try {
+      existing = (window.BSConfig && BSConfig.safeLocal)
+        ? BSConfig.safeLocal.get(key)
+        : localStorage.getItem(key);
+    } catch (_) {}
     if (existing && /^dev_[a-f0-9]{16}$/.test(existing)) {
       return existing;
     }
@@ -80,7 +85,10 @@
       return b.toString(16).padStart(2, '0');
     }).join('');
     var id = 'dev_' + hex;
-    localStorage.setItem(key, id);
+    try {
+      if (window.BSConfig && BSConfig.safeLocal) BSConfig.safeLocal.set(key, id);
+      else localStorage.setItem(key, id);
+    } catch (_) {}
     return id;
   }
 

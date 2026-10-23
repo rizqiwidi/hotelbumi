@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.0
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * backend/Triggers.gs — Cron job terjadwal
  *
  * Dua trigger utama:
@@ -197,7 +197,7 @@ function _getFraudThresholds() {
 function _isPlaceholderIp(ip) {
   if (!ip) return true;
   var s = String(ip).trim().toLowerCase();
-  return s === '' || s === 'client-ip' || s === 'unknown' || s === 'null' || s === 'undefined' || s === '-' || s === '127.0.0.1';
+  return s === '' || s === 'client-ip' || s === 'unknown' || s === 'null' || s === 'undefined' || s === '-' || s === '127.0.0.1' || s === 'unavailable';
 }
 
 /**
@@ -554,7 +554,7 @@ function _buildEmailBody(summary) {
       anomalyHtml,
       '<div style="margin-top:24px;padding:16px;background:#f0ece4;border-radius:8px;">',
         '<p style="margin:0;font-size:13px;color:#888;">',
-          'Email ini dikirim otomatis oleh sistem Digital Guest Experience v6.2 (Fase 2). ',
+          'Email ini dikirim otomatis oleh sistem Digital Guest Experience v6.7. ',
           'Untuk detail lengkap, buka portal admin di: ',
           '<a href="https://rizqiwidi.github.io/hotelbumi/admin/" style="color:#c9a96e;">',
             'Portal Admin Bumi Surabaya',
@@ -584,11 +584,21 @@ function _buildEmailBody(summary) {
  *   Sebelum mengaktifkan trigger penghapusan otomatis permanen,
  *   WAJIB MENDAPATKAN PERSETUJUAN TERTULIS dari pemilik data / manajemen hotel.
  *
- * @param {boolean} [dryRun=false] - jika true, hanya menghitung dan mencatat tanpa menghapus
+ * BUG-27: default kini SIMULASI. Penghapusan permanen hanya berjalan bila
+ * Script Property `RETENSI_MODE` diisi `aktif` atau `dryRun` diisi `false`
+ * secara eksplisit. Sebelumnya pemanggilan tanpa argumen langsung menghapus.
+ *
+ * @param {boolean} [dryRun] - true = hitung saja. Kosong = ikut RETENSI_MODE.
  * @returns {object} ringkasan eksekusi
  */
 function jalankanRetensiData(dryRun) {
-  var isDry = dryRun === true;
+  var isDry;
+  if (typeof dryRun === 'boolean') {
+    isDry = dryRun;
+  } else {
+    var mode = (PropertiesService.getScriptProperties().getProperty('RETENSI_MODE') || '').trim().toLowerCase();
+    isDry = mode !== 'aktif';
+  }
   _log('INFO', 'jalankanRetensiData', 'Pemeriksaan retensi dimulai (dryRun=' + isDry + ')', '');
 
   var ss = getSpreadsheet();
@@ -669,6 +679,24 @@ function jalankanRetensiData(dryRun) {
   }
 
   return result;
+}
+
+/**
+ * Pasang trigger retensi bulanan (BUG-27). Jalankan sekali dari editor Apps
+ * Script. Idempoten: trigger lama dengan fungsi sama dihapus lebih dulu.
+ * Hanya mencetak peringatan bila `RETENSI_MODE` belum `aktif`.
+ */
+function pasangTriggerRetensi() {
+  var existing = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < existing.length; i++) {
+    if (existing[i].getHandlerFunction() === 'jalankanRetensiData') {
+      ScriptApp.deleteTrigger(existing[i]);
+    }
+  }
+  ScriptApp.newTrigger('jalankanRetensiData').timeBased().onMonthDay(1).atHour(3).create();
+  var mode = (PropertiesService.getScriptProperties().getProperty('RETENSI_MODE') || '').trim().toLowerCase();
+  Logger.log('Trigger retensi terpasang (tanggal 1 tiap bulan, 03:00 WIB). Mode saat ini: ' +
+    (mode === 'aktif' ? 'AKTIF — data akan dihapus permanen.' : 'SIMULASI — tidak ada data dihapus.'));
 }
 
 /* ══════════════════════════════════════════════════════════════

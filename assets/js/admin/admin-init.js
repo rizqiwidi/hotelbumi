@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.5
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * admin-init.js — Bootstrapper, Lifecycle, Mobile Drawer Backdrop & Koordinasi Event Portal Admin (FR-P0-03, FR-ADM-01, FR-V65-01)
  */
 
@@ -209,6 +209,8 @@
     });
 
     /* ── 8. Inisialisasi Submodul Domain ── */
+    if (typeof BSAdmin.initActionDelegation === 'function') BSAdmin.initActionDelegation();
+
     if (BSAdmin.sources && typeof BSAdmin.sources.init === 'function') BSAdmin.sources.init();
     if (BSAdmin.content && typeof BSAdmin.content.init === 'function') BSAdmin.content.init();
     if (BSAdmin.appearance && typeof BSAdmin.appearance.init === 'function') BSAdmin.appearance.init();

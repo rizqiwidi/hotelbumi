@@ -1,6 +1,6 @@
-# IMPLEMENTATION NOTES — BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.0 (FASE 0 & FASE 1)
+# IMPLEMENTATION NOTES — BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7 (FASE 0–3)
 
-Dokumen ini mendokumentasikan implementasi lengkap **PRD Fase 0 (P0 — Go-Live Blockers)** dan **PRD Fase 1 (P1 — Kualitas Pengalaman dan Kelengkapan Fungsi)** untuk **Hotel Bumi Surabaya Digital Guest Experience v6.0**.
+Dokumen ini mendokumentasikan implementasi lengkap **PRD Fase 0 (P0 — Go-Live Blockers)** dan **PRD Fase 1 (P1 — Kualitas Pengalaman dan Kelengkapan Fungsi)** untuk **Hotel Bumi Surabaya Digital Guest Experience v6.7**.
 
 ---
 
@@ -213,7 +213,7 @@ Implementasi Fase 2 mencakup penguatan operasional, tata kelola data, jejak audi
 
 ### D. Keandalan Operasional & Sinyal Health (PRD 8.3, 11E)
 - **Sinyal Health di UI Admin**:
-  - Bilah status visual di bawah header menampilkan: Status backend (🟢 Terhubung / 🔴 Terputus), versi frontend statis (`v6.2.0-phase2`), versi backend Apps Script (`v6.2.0-phase2`), waktu server resmi (WIB), dan jumlah antrean event gagal (DLQ count).
+  - Bilah status visual di bawah header menampilkan: Status backend (🟢 Terhubung / 🔴 Terputus), versi frontend statis (`v6.7.0`), versi backend Apps Script (`v6.7.0`), waktu server resmi (WIB), dan jumlah antrean event gagal (DLQ count).
 - **Prosedur Rollback & Smoke Test**:
   - Terdokumentasi langkah rollback Git untuk frontend dan rollback versi deployment Apps Script untuk backend.
   - Checklist 8 butir smoke test pasca-deploy mencakup pengujian halaman tamu, beacon tracking, live draft preview, otorisasi RBAC, log audit, cetak QR, dan fallback offline Chart.js.
@@ -245,7 +245,7 @@ Pemilik/administrator wajib memperbarui file backend di Google Apps Script:
    - Salin seluruh isi file ke editor Apps Script.
    - Menyediakan fungsi `jalankanRetensiData(dryRun)` dan penyelarasan URL footer email mingguan ke GitHub Pages.
 3. **Deploy Versi Baru**:
-   - Di editor Apps Script, klik **Deploy** → **Manage deployments** → **Edit** → pilih **New version** (deskripsi: `v6.2.0-phase2`) → klik **Deploy**.
+   - Di editor Apps Script, klik **Deploy** → **Manage deployments** → **Edit** → pilih **New version** (deskripsi: `v6.7.0`) → klik **Deploy**.
 
 ---
 
@@ -268,3 +268,38 @@ Sesuai PRD Bagian 12 (Keputusan & Pertimbangan Bisnis), item-item berikut telah 
    - *Status Saat Ini*: 4 tata letak siap cetak tersedia di panel Cetak QR Massal (Kartu Nama, Table Tent Lipat A6, Stiker Meja 50x50mm, A4 Grid).
    - *Keputusan yang Dibutuhkan*: Pemilihan jenis material fisik (akrilik tent card, stiker vinyl anti-air, atau ID badge lanyard staf) oleh tim Housekeeping & F&B sebelum pencetakan massal dilakukan.
 
+
+---
+
+## 10. Gelombang W4/W5 — Guest & Aksesibilitas (v6.7)
+
+Ringkasan perubahan setelah audit independen v6.7 (lihat `PRD_Perbaikan_Hotel_Bumi_Surabaya_v6.3.md` §9). Semua perubahan guest-side tanpa build step dan tanpa mengubah palet.
+
+### A. Perbaikan Bug Guest
+- **BUG-25 (`?lang=id`)**: `getMergedSection()` kini menumpuk preset ID di atas `DEFAULTS`, lalu hanya menimpa dengan nilai server yang benar-benar berbeda dari `DEFAULTS`. Teks server berbahasa Inggris tidak lagi mengalahkan preset ID.
+- **BUG-37 (filter promo ganda)**: Filter tanggal hanya di backend (`Code.gs:747-755`, zona `Asia/Jakarta`). Klien hanya menyaring `active !== false`. Verifikasi batas tanggal: `ends_at` hari ini tetap tampil, `starts_at` hari ini tampil, tanggal lampau/masa depan dibuang.
+- **BUG-38 (drift versi)**: Seluruh header modul, `footer_version_tag`, `index.html`, `admin/index.html`, `README.md`, `backend_version`, dan footer email mingguan (`Triggers.gs`) diselaraskan ke `v6.7`.
+- **Fallback gambar**: atribut `onerror` inline (diblokir CSP `script-src` tanpa `'unsafe-inline'`) diganti listener delegasi pada `document` (`data-fallback-img`) di `app.js`. Placeholder emoji memakai atribut `hidden` + aturan CSS eksplisit.
+
+### B. Aksesibilitas (FR-V67-10 s/d FR-V67-12)
+- **Kontras**: token baru `--gold-text: #86682f` (4.77:1 di atas ivory, 5.20:1 di atas putih) dipakai untuk teks emas di latar terang (badge promo, harga, badge modal, label tipe gerai). Emas asli tetap untuk border, latar, dan tombol.
+- **Tap target**: `.bs-star`, `.bs-lang-btn`, `.bs-outlet-action-btn`, `.bs-wa-sales-cta`, `.bs-footer-links a`, `.bs-footer-contact-link` minimal 44×44px. Modal & mobile bar memakai `env(safe-area-inset-*)`.
+- **Semantik**: `<html lang>` mengikuti bahasa yang dirender; `role="radiogroup"` bintang mendukung ArrowLeft/Right/Up/Down + roving tabindex; `role="banner"` pada `<section>` dihapus; `role="list"` tanpa `listitem` dihapus; modal mengunci scroll latar dan memasang `inert` pada `#bs-main`.
+
+### C. Fitur Guest Baru (FR-V67-13 s/d FR-V67-16)
+- **Pemilih bahasa EN/ID** di hero (`#bs-lang-switch`). Pilihan disimpan di `localStorage` (`bs_lang_pref`), menghapus `?lang=` dari URL agar tidak menimpa pilihan, lalu `renderAll()` tanpa reload. Event `lang_switch` dikirim ke tracker.
+- **Kontak footer**: tautan Google Maps (`Get Directions`) dan `tel:+62313545888`, dirender dari `general.address` / `general.phone`. Label peta dapat diubah lewat preset `footer_map_label`; `href` telepon tetap E.164 (`tel:+62313545888`) sementara teksnya diformat `+62 31 354 5888` oleh `formatPhoneDisplay()`. Tautan disembunyikan bila nomor/alamat kosong.
+- **`<noscript>`**: pesan + nomor telepon + WhatsApp, menggantikan spinner abadi.
+- **`og:image` + `og:url` + `twitter:card`** untuk pratinjau tautan.
+- **Banner offline** (`#bs-offline-bar`) yang mengikuti event `online`/`offline`; bergeser di atas mobile action bar.
+
+### D. Admin Portal
+- `.adm-table` diberi `min-width: 640px` (wrapper sudah `overflow-x: auto`) agar tidak terhimpit di tablet.
+- Breakpoint modal baru untuk rentang `481–768px` (dibatasi agar tidak menimpa aturan `≤480px`), dengan `env(safe-area-inset-bottom)` dan `align-items: flex-start` supaya modal panjang tetap bisa digulir.
+
+### E. Verifikasi
+- `node --check` pada seluruh modul `assets/js/**` + `backend/*.gs` (disalin ke `.js`): lolos.
+- Smoke JSDOM: halaman tamu termuat tanpa galat, `inlineHandlers: 0`, pemilih bahasa mengubah `document.documentElement.lang` dan subjudul hero, banner offline bereaksi, fallback gambar memunculkan placeholder, promo filter batas tanggal lolos 6 kasus, kontak footer merender `href` + teks telepon yang benar.
+- `formatPhoneDisplay()` diuji 5 kasus: `+62313545888` -> `+62 31 354 5888`, `08113388523` -> `+62 8113388523`, kosong -> kosong, `+628113388523` -> `+62 8113388523`, nomor non-Indonesia dikembalikan apa adanya.
+- CSS: brace seimbang untuk `admin.css` + `guest.css`.
+- **Belum diverifikasi visual di browser**: Chromium arm64 tidak tersedia di lingkungan ini (`Chrome for Testing does not provide linux/arm64 builds`), jadi bukti visual (kontras nyata, geser banner) belum diambil.

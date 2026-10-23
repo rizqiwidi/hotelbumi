@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.5
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * admin-sources.js — Manajemen sumber, staf hotel, sales WA, rotasi kode, titik NFC, pencarian instan & Impor/Ekspor CSV (FR-CRUD-AUTO, FR-V64-05, FR-V65-02)
  *
  * Setiap aksi CRUD (Tambah, Edit, Rotasi, Aktif/Nonaktif, Hapus, Impor CSV) OTOMATIS tersimpan ke Google Sheets!
@@ -105,10 +105,10 @@
         '<td>' + kartuBadge + '</td>' +
         '<td>' + statusBadge + '</td>' +
         '<td class="adm-actions">' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" title="Edit Sumber" onclick="adminEditSource(\'' + esc(s.code) + '\')">' + icon('edit', 13) + ' <span>Edit</span></button>' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" title="Rotasi Kode URL" onclick="adminRotateSource(\'' + esc(s.code) + '\')">' + icon('rotate', 13) + ' <span>Rotasi</span></button>' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" title="Ubah Status Aktif" onclick="adminDeactivate(\'' + esc(s.code) + '\')">' + icon('power', 13) + ' <span>' + (s.active ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" title="Hapus Sumber" onclick="adminDeleteSource(\'' + esc(s.code) + '\')">' + icon('trash', 13) + '</button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" title="Edit Sumber" data-admin-action="adminEditSource" data-admin-arg="' + esc(JSON.stringify([s.code])) + '">' + icon('edit', 13) + ' <span>Edit</span></button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" title="Rotasi Kode URL" data-admin-action="adminRotateSource" data-admin-arg="' + esc(JSON.stringify([s.code])) + '">' + icon('rotate', 13) + ' <span>Rotasi</span></button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" title="Ubah Status Aktif" data-admin-action="adminDeactivate" data-admin-arg="' + esc(JSON.stringify([s.code])) + '">' + icon('power', 13) + ' <span>' + (s.active ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" title="Hapus Sumber" data-admin-action="adminDeleteSource" data-admin-arg="' + esc(JSON.stringify([s.code])) + '">' + icon('trash', 13) + '</button>' +
         '</td>' +
       '</tr>';
     }).join('');

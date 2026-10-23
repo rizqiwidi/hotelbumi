@@ -1,4 +1,4 @@
-# Bumi Surabaya — Digital Guest Experience v6.0
+# Bumi Surabaya — Digital Guest Experience v6.7
 
 Platform pelacakan tamu dan atribusi staf berbasis **NFC / QR Code** untuk Hotel Bumi Surabaya City Resort.
 
@@ -107,6 +107,9 @@ Ikuti panduan di **[docs/DEPLOY.md](./docs/DEPLOY.md)**:
 - ✅ **Aksesibilitas & Kepatuhan UX**: Navigasi keyboard penuh (`:focus-visible`), modal aksesibel (focus trap, tombol `Escape`, pemulihan fokus), serta kepatuhan `@media (prefers-reduced-motion)` (GUE-14, CNT-06).
 - ✅ **Antrean Offline & Dead-Letter Queue**: Toleransi gangguan sinyal dengan backoff eksponensial, idempotensi `event_id`, dan DLQ (GUE-11).
 - ✅ **Transparansi Privasi**: Penjelasan jujur pemrosesan data teknis pseudonim dan masa retensi data (GUE-13).
+- ✅ **Pemilih Bahasa EN/ID**: Tombol di hero; pilihan tamu disimpan di `localStorage` dan menang atas `language_mode` admin, tanpa reload (FR-V67-14).
+- ✅ **Kontak Langsung**: Tautan Google Maps dan `tel:` di footer, dirender dari `general.address`/`general.phone` (FR-V67-13).
+- ✅ **Fallback Tanpa JS & Offline**: `<noscript>` berisi nomor telepon, banner offline otomatis, dan fallback gambar rusak ke emoji tanpa inline handler (FR-V67-13/15/16).
 
 ### Admin Portal (`/admin/`)
 - ✅ **Status Sinkronisasi Jujur**: Indikator status penyimpanan cloud terpadu (*Belum disimpan*, *Menyimpan...*, *Tersimpan*, *Gagal menyimpan*) dengan tombol **Coba Lagi (Retry)** dan peringatan `beforeunload` saat ada perubahan belum tersimpan (SRC-01 s/d SRC-03).

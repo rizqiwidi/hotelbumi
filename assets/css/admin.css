@@ -1,5 +1,5 @@
 /* ============================================================
-   BUMI SURABAYA — ADMIN PORTAL CSS v6.5 (Anti-Slop Enterprise UI)
+   BUMI SURABAYA — ADMIN PORTAL CSS v6.7 (Anti-Slop Enterprise UI)
    Luxury Hospitality Management System & Analytics Platform
    Deep Emerald (#1a3c2a), Champagne Gold (#c9a96e), Warm Ivory (#f6f5f0)
    ============================================================ */
@@ -737,6 +737,9 @@ body {
 }
 .adm-table {
   width: 100%;
+  /* FR-V67-10 (admin): tanpa min-width, kolom terhimpit di tablet dan sel
+     bertumpuk jadi tidak terbaca. Wrapper .adm-table-wrap sudah scroll-x. */
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 0.84rem;
   text-align: left;
@@ -1496,6 +1499,20 @@ body.adm-mobile-nav-open {
     max-width: 96%;
     padding: 18px 14px;
     margin: 12px auto;
+  }
+}
+
+/* FR-V67-10 (admin): modal perlu bernapas di tablet, bukan hanya ≤480px.
+   Rentang dibatasi >480px agar tidak menimpa aturan 480px di atasnya. */
+@media (min-width: 481px) and (max-width: 768px) {
+  .adm-modal-overlay {
+    padding: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    align-items: flex-start;
+  }
+  .adm-modal-box {
+    padding: 20px 16px;
+    max-height: calc(100vh - 24px);
   }
 }
 

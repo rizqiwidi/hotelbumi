@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * admin-content.js — Manajemen gerai F&B, promosi, 8 toggle visibilitas seksi, sales WA & live draft preview (FR-CRUD-AUTO)
  *
  * Setiap aksi CRUD (Tambah/Edit/Toggle/Hapus Gerai & Promosi, Toggle Visibilitas Seksi, Simpan WA) OTOMATIS tersimpan ke Google Sheets!
@@ -112,9 +112,9 @@
             activeBadge +
           '</div>' +
           '<div class="adm-outlet-card-actions">' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditOutlet(' + idx + ')">' + icon('edit', 13) + ' <span>Edit Detail</span></button>' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminToggleOutlet(' + idx + ')">' + icon('power', 13) + ' <span>' + (isAct ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeleteOutlet(' + idx + ')">' + icon('trash', 13) + ' <span>Hapus</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-admin-action="adminEditOutlet" data-admin-arg="' + idx + '">' + icon('edit', 13) + ' <span>Edit Detail</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-admin-action="adminToggleOutlet" data-admin-arg="' + idx + '">' + icon('power', 13) + ' <span>' + (isAct ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" data-admin-action="adminDeleteOutlet" data-admin-arg="' + idx + '">' + icon('trash', 13) + ' <span>Hapus</span></button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -226,9 +226,9 @@
         '<td>' + esc(p.period || '—') + '</td>' +
         '<td>' + actBadge + '</td>' +
         '<td class="adm-actions">' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditPromo(' + idx + ')">' + icon('edit', 13) + ' <span>Edit</span></button>' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminTogglePromo(' + idx + ')">' + icon('power', 13) + ' <span>' + (isAct ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeletePromo(' + idx + ')">' + icon('trash', 13) + '</button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-admin-action="adminEditPromo" data-admin-arg="' + idx + '">' + icon('edit', 13) + ' <span>Edit</span></button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-admin-action="adminTogglePromo" data-admin-arg="' + idx + '">' + icon('power', 13) + ' <span>' + (isAct ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" data-admin-action="adminDeletePromo" data-admin-arg="' + idx + '">' + icon('trash', 13) + '</button>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -398,9 +398,9 @@
           '<td>' + hours + '</td>' +
           '<td>' + statusBadge + '</td>' +
           '<td class="adm-actions">' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditSource(\'' + esc(s.code) + '\')">' + icon('edit', 13) + ' <span>Edit</span></button>' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminDeactivate(\'' + esc(s.code) + '\')">' + icon('power', 13) + ' <span>' + (s.active ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeleteSource(\'' + esc(s.code) + '\')">' + icon('trash', 13) + '</button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-admin-action="adminEditSource" data-admin-arg="' + esc(JSON.stringify([s.code])) + '">' + icon('edit', 13) + ' <span>Edit</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-admin-action="adminDeactivate" data-admin-arg="' + esc(JSON.stringify([s.code])) + '">' + icon('power', 13) + ' <span>' + (s.active ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" data-admin-action="adminDeleteSource" data-admin-arg="' + esc(JSON.stringify([s.code])) + '">' + icon('trash', 13) + '</button>' +
           '</td>' +
         '</tr>';
       }).join('');

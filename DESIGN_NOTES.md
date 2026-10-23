@@ -1,6 +1,6 @@
-# DESIGN NOTES — BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.0
+# DESIGN NOTES — BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
 
-Dokumen ini mendokumentasikan hasil **Redesign Visual Total** untuk *Hotel Bumi Surabaya Digital Guest Experience v6.0* (Guest Landing Page & Admin Management Portal), daftar aset grafis, kepatuhan kontrak teknis, dan panduan untuk engineer pada tahap implementasi selanjutnya.
+Dokumen ini mendokumentasikan hasil **Redesign Visual Total** untuk *Hotel Bumi Surabaya Digital Guest Experience v6.7* (Guest Landing Page & Admin Management Portal), daftar aset grafis, kepatuhan kontrak teknis, dan panduan untuk engineer pada tahap implementasi selanjutnya.
 
 ---
 

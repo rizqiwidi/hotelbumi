@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.6
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * admin-core.js — Central state manager, SVG icon system (FR-ADM-01), Dynamic Role & Sidebar Menu Visibility (FR-V66-ROLE-MENU) & health signals
  */
 
@@ -406,7 +406,7 @@
       }
     } catch (_) {}
 
-    if (feVerEl) feVerEl.textContent = 'v6.6.0-phase6';
+    if (feVerEl) feVerEl.textContent = 'v6.7.0';
 
     if (backendHealth && backendHealth.backend_version) {
       if (statusEl) {
@@ -447,11 +447,18 @@
       }
       showToast('Mengirim ulang ' + queue.length + ' event tertunda ke server…', 'info');
       Promise.all(queue.map(function (ev) {
-        return fetch(gasUrl, {
+        // BUG-17: entri DLQ berbentuk {id, event_id, payload, reason, ...};
+        // yang dikirim harus payload aslinya, bukan pembungkusnya. Payload sudah
+        // membawa action:'log_event'; default hanya dipakai bila field hilang.
+        var inner = (ev && ev.payload) ? ev.payload : ev;
+        var body = Object.assign({ action: 'log_event' }, inner);
+        return fetch((ev && ev.gasUrl) || gasUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(Object.assign({ action: 'track' }, ev))
-        }).then(function (r) { return r.ok; }).catch(function () { return false; });
+          body: JSON.stringify(body)
+        }).then(function (r) {
+          return r.ok ? r.json().then(function (j) { return j && j.ok !== false; }).catch(function () { return true; }) : false;
+        }).catch(function () { return false; });
       })).then(function (results) {
         var remaining = queue.filter(function (_, idx) { return !results[idx]; });
         if (remaining.length === 0) {
@@ -724,6 +731,42 @@
     });
   }
   BSAdmin.loadDashboard = loadDashboard;
+
+
+  /* ─────────────────────────────────────────────────────────────
+   * Delegasi klik untuk atribut data-admin-action (BUG-22 / FR-V67-07).
+   * Menggantikan handler inline onclick yang diblokir CSP.
+   * Nama aksi = nama fungsi window.adminXxx; argumen di data-admin-arg.
+   * ───────────────────────────────────────────────────────────── */
+  var ACTION_ALLOWLIST = {
+    adminEditOutlet: 1, adminToggleOutlet: 1, adminDeleteOutlet: 1,
+    adminEditPromo: 1, adminTogglePromo: 1, adminDeletePromo: 1,
+    adminEditSource: 1, adminRotateSource: 1, adminDeactivate: 1, adminDeleteSource: 1,
+    adminRemoveStaffDevice: 1, adminMarkDevice: 1,
+    adminEditRoleMenu: 1, adminDeleteRole: 1,
+    adminPopulateUserEdit: 1, adminToggleUserActive: 1, adminDeleteUser: 1
+  };
+
+  function initActionDelegation() {
+    document.addEventListener('click', function (e) {
+      var el = e.target && e.target.closest ? e.target.closest('[data-admin-action]') : null;
+      if (!el) return;
+      var name = el.getAttribute('data-admin-action');
+      if (!ACTION_ALLOWLIST[name] || typeof window[name] !== 'function') return;
+      e.preventDefault();
+      var raw = el.getAttribute('data-admin-arg');
+      if (raw === null || raw === '') {
+        window[name]();
+      } else {
+        var args;
+        try { args = JSON.parse(raw); } catch (_) { args = raw; }
+        // Atribut numerik tunggal (mis. data-admin-arg="3") harus tetap jadi [3].
+        if (!Array.isArray(args)) args = [args];
+        window[name].apply(null, args);
+      }
+    });
+  }
+  BSAdmin.initActionDelegation = initActionDelegation;
 
   window.BSAdmin = BSAdmin;
 

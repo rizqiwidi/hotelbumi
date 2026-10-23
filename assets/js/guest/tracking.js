@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v6.3
+ * BUMI SURABAYA v6.7
  * tracking.js — Event tracker, session storage, beacon unload
  *
  * Menangani:
@@ -26,6 +26,32 @@
   var _scrollMax    = 0;
   var _lastBeaconTs = 0;       // Cooldown guard untuk mencegah pengiriman beacon ganda (FR-P1-02)
 
+  /**
+   * Akses sessionStorage yang tidak melempar (BUG-20 / FR-V67-05).
+   * Memakai BSConfig.safeSession bila tersedia; fallback Map memori.
+   */
+  var _mem = {};
+  function sget(k) {
+    try {
+      if (window.BSConfig && BSConfig.safeSession) return BSConfig.safeSession.get(k);
+      return sessionStorage.getItem(k);
+    } catch (_) {
+      return Object.prototype.hasOwnProperty.call(_mem, k) ? _mem[k] : null;
+    }
+  }
+  function sset(k, v) {
+    try {
+      if (window.BSConfig && BSConfig.safeSession) { BSConfig.safeSession.set(k, v); return; }
+      sessionStorage.setItem(k, v); return;
+    } catch (_) { _mem[k] = String(v); }
+  }
+  function sremove(k) {
+    try {
+      if (window.BSConfig && BSConfig.safeSession) { BSConfig.safeSession.remove(k); return; }
+      sessionStorage.removeItem(k); return;
+    } catch (_) { delete _mem[k]; }
+  }
+
   // Kunci sessionStorage untuk deduplikasi
   var VISIT_SENT_KEY = 'bs_visit_sent';
 
@@ -39,10 +65,10 @@
   function getSessionId() {
     if (_sessionId) return _sessionId;
     var key = 'bs_session_id';
-    var existing = sessionStorage.getItem(key);
+    var existing = sget(key);
     if (existing) { _sessionId = existing; return _sessionId; }
     _sessionId = makeSessionId();
-    sessionStorage.setItem(key, _sessionId);
+    sset(key, _sessionId);
     return _sessionId;
   }
 
@@ -71,7 +97,7 @@
 
       // Simpan ke sessionStorage dengan timestamp pembaruan
       try {
-        sessionStorage.setItem(cfgKey, JSON.stringify({
+        sset(cfgKey, JSON.stringify({
           code: _source,
           type: _sourceType,
           ts: Date.now()
@@ -82,7 +108,7 @@
 
     // 2. Prioritas Kedua: Sesi aktif tersimpan (jika dalam batas TTL 30 menit)
     try {
-      var saved = sessionStorage.getItem(cfgKey);
+      var saved = sget(cfgKey);
       if (saved) {
         var p = JSON.parse(saved);
         var age = Date.now() - (Number(p.ts) || 0);
@@ -91,11 +117,11 @@
           _sourceType = p.type || 'general';
           // Perbarui timestamp interaksi sesi (sliding inactivity window)
           p.ts = Date.now();
-          sessionStorage.setItem(cfgKey, JSON.stringify(p));
+          sset(cfgKey, JSON.stringify(p));
           return;
         } else {
           // Kedaluwarsa: hapus atribusi sesi yang sudah kadaluarsa
-          sessionStorage.removeItem(cfgKey);
+          sremove(cfgKey);
         }
       }
     } catch(e) {}
@@ -248,7 +274,7 @@
     resolveSource();
 
     // Cek apakah visit sudah terkirim dalam sesi ini (deduplikasi)
-    _visitSent = sessionStorage.getItem(VISIT_SENT_KEY) === '1';
+    _visitSent = sget(VISIT_SENT_KEY) === '1';
 
     // Mulai dwell timer
     startDwellTimer();
@@ -275,7 +301,7 @@
 
     // Kirim visit event (deduplikasi: hanya sekali per sesi)
     if (!_visitSent && _gasUrl) {
-      sessionStorage.setItem(VISIT_SENT_KEY, '1');
+      sset(VISIT_SENT_KEY, '1');
       _visitSent = true;
       var payload = buildPayload('visit');
       sendEvent(payload);

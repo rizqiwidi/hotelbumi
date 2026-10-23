@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * admin-reports.js — Analitik, Filter Rentang Tanggal Kustom, MonthlyAggregates, Ekspor CSV & Cetak QR Massal (FR-P1-05, FR-V64-07)
  */
 

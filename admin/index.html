@@ -2,9 +2,12 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
+  <!-- CSP (BUG-22 / FR-V67-07). Tanpa inline script/handler; atribut style=""
+       masih dipakai sehingga 'unsafe-inline' diizinkan untuk CSS saja. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Portal Manajemen — Bumi Surabaya City Resort v6.6</title>
+  <title>Portal Manajemen — Bumi Surabaya City Resort v6.7</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,7 +40,7 @@
       </div>
       <div class="adm-login-badge">PORTAL MANAJEMEN RESOR</div>
       <h1>Bumi Surabaya</h1>
-      <p>Digital Guest Experience &amp; Attribution Platform v6.6</p>
+      <p>Digital Guest Experience &amp; Attribution Platform v6.7</p>
     </div>
 
     <div id="adm-lockout-msg" class="adm-alert adm-alert-danger" style="display:none;"></div>
@@ -144,7 +147,7 @@
     <div class="adm-sidebar-header">
       <div class="adm-sidebar-logo">
         <img src="../assets/images/logo-hotel.png" alt="Bumi Surabaya" class="adm-sidebar-brand-img" width="150">
-        <span class="adm-sidebar-ver">v6.6</span>
+        <span class="adm-sidebar-ver">v6.7</span>
       </div>
       <button id="adm-sidebar-close" class="adm-sidebar-close" aria-label="Tutup sidebar">✕</button>
     </div>
@@ -298,10 +301,10 @@
         <span id="adm-health-status" class="adm-health-badge adm-health-online"><span class="adm-status-dot-sm"></span> Backend Siap</span>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Frontend:</span> <strong id="adm-health-frontend-ver">v6.6.0-phase6</strong>
+        <span class="adm-health-label">Frontend:</span> <strong id="adm-health-frontend-ver">v6.7.0</strong>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Backend:</span> <strong id="adm-health-backend-ver">v6.6.0-phase6</strong>
+        <span class="adm-health-label">Backend:</span> <strong id="adm-health-backend-ver">v6.7.0</strong>
       </div>
       <div class="adm-health-item">
         <span class="adm-health-label">Waktu Server:</span> <span id="adm-health-server-time">—</span>
@@ -555,7 +558,7 @@
             <p class="adm-card-subtitle">Kelola penugasan personel, kartu NFC fisik, rotasi kode URL, dan status aktif</p>
           </div>
           <div class="adm-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <input type="file" id="adm-import-sources-file" accept=".csv,text/csv" style="display:none;">
+            <input type="file" id="adm-import-sources-file" accept=".csv,text/csv" style="display:none;" aria-label="Berkas CSV sumber staf">
             <button type="button" id="adm-import-sources-csv-btn" class="adm-btn adm-btn-secondary adm-btn-mutate">Impor CSV</button>
             <button type="button" id="adm-export-sources-csv-btn" class="adm-btn adm-btn-secondary">Ekspor CSV</button>
             <button type="button" id="adm-add-source-btn" class="adm-btn adm-btn-primary adm-btn-mutate">+ Tambah Staf / Titik</button>
@@ -651,9 +654,9 @@
         </div>
 
         <form id="adm-staff-device-form" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
-          <input type="text" id="adm-sd-device-id" class="adm-input" placeholder="Device ID (UUID / Hash)" style="flex:2;min-width:200px;" required>
-          <input type="text" id="adm-sd-staff-code" class="adm-input" placeholder="Kode Sumber Staf (mis. staff-budi)" style="flex:1;min-width:140px;" required>
-          <input type="text" id="adm-sd-label" class="adm-input" placeholder="Keterangan perangkat (mis. HP Operasional)" style="flex:1;min-width:140px;">
+          <input type="text" id="adm-sd-device-id" class="adm-input" placeholder="Device ID (UUID / Hash)" style="flex:2;min-width:200px;" aria-label="Device ID perangkat" required>
+          <input type="text" id="adm-sd-staff-code" class="adm-input" placeholder="Kode Sumber Staf (mis. staff-budi)" style="flex:1;min-width:140px;" aria-label="Kode sumber staf" required>
+          <input type="text" id="adm-sd-label" class="adm-input" placeholder="Keterangan perangkat (mis. HP Operasional)" style="flex:1;min-width:140px;" aria-label="Keterangan perangkat">
           <button type="submit" class="adm-btn adm-btn-primary" id="adm-sd-submit-btn">+ Daftarkan Perangkat</button>
         </form>
 
@@ -784,7 +787,7 @@
         <div class="adm-form-group">
           <label>URL Atribusi Kartu</label>
           <div style="display:flex;gap:8px;align-items:center;">
-            <input type="text" id="adm-nfc-url-preview" class="adm-input" readonly
+            <input type="text" id="adm-nfc-url-preview" class="adm-input" readonly aria-label="Pratinjau URL NFC"
                    style="flex:1;background:#f5f5f5;" placeholder="Pilih sumber untuk melihat URL">
             <button id="adm-nfc-copy-btn" class="adm-btn adm-btn-secondary" aria-label="Salin URL">Salin URL</button>
           </div>
@@ -837,20 +840,20 @@
             <p class="adm-card-subtitle">Cetak atribut staf, stiker meja 50x50mm, tent card lipat A6, atau lembar grid A4</p>
           </div>
           <div class="adm-card-actions" style="flex-wrap:wrap;gap:8px;align-items:center;">
-            <select class="adm-select" id="adm-print-format-select" style="width:auto;">
+            <select class="adm-select" id="adm-print-format-select" style="width:auto;" aria-label="Format cetak kartu">
               <option value="card">Kartu Nama (85 x 55 mm)</option>
               <option value="tent">Tent Card Meja A6 Lipat (105 x 148 mm)</option>
               <option value="sticker">Stiker Meja Compact (50 x 50 mm)</option>
               <option value="a4grid">Lembar A4 Grid (8 Kartu / Halaman)</option>
             </select>
-            <select class="adm-select" id="adm-bulk-filter-select" style="width:auto;">
+            <select class="adm-select" id="adm-bulk-filter-select" style="width:auto;" aria-label="Filter daftar kartu">
               <option value="all">Semua Tipe Sumber</option>
               <option value="staff">Khusus Staf Hotel</option>
               <option value="sales">Khusus Sales Representative</option>
               <option value="outlet">Khusus Gerai F&amp;B</option>
               <option value="nfc">Khusus Meja / NFC</option>
             </select>
-            <input type="text" id="adm-bulk-search" class="adm-input" placeholder="Cari nama / kode..." style="width:160px;padding:6px 10px;font-size:0.8rem;">
+            <input type="text" id="adm-bulk-search" class="adm-input" placeholder="Cari nama / kode..." style="width:160px;padding:6px 10px;font-size:0.8rem;" aria-label="Cari nama atau kode kartu">
             <label style="display:inline-flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;">
               <input type="checkbox" id="adm-bulk-reprint-only"> Perlu Cetak Ulang
             </label>
@@ -1469,7 +1472,7 @@
           </div>
           <div class="adm-form-group">
             <label for="adm-cms-ftr-version">Teks Tag Versi di Bawah Footer</label>
-            <input type="text" id="adm-cms-ftr-version" class="adm-input" placeholder="Digital Guest Experience v6.6">
+            <input type="text" id="adm-cms-ftr-version" class="adm-input" placeholder="Digital Guest Experience v6.7">
           </div>
         </div>
 
@@ -1649,7 +1652,7 @@
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           <button type="button" id="adm-cfg-backup-export-btn" class="adm-btn adm-btn-secondary">Unduh Cadangan Lengkap (.json)</button>
-          <input type="file" id="adm-cfg-backup-file-input" accept=".json,application/json" style="display:none;">
+          <input type="file" id="adm-cfg-backup-file-input" accept=".json,application/json" style="display:none;" aria-label="Berkas backup JSON">
           <button type="button" id="adm-cfg-backup-import-btn" class="adm-btn adm-btn-gold adm-btn-mutate">Pulihkan dari Berkas JSON &amp; Simpan Otomatis</button>
         </div>
       </div>
@@ -1695,7 +1698,7 @@
             <li>Akun aktif: <strong id="adm-acc-current-user">admin</strong></li>
             <li>Otentikasi: Session Token Kriptografis Server-Side (Masa berlaku 6 jam)</li>
             <li>Hashing Kredensial: Salted Iterative SHA-256 (1.000 putaran per pengguna)</li>
-            <li>Versi Sistem: <strong>Digital Guest Experience v6.6</strong></li>
+            <li>Versi Sistem: <strong>Digital Guest Experience v6.7</strong></li>
           </ul>
         </div>
       </div>
@@ -1870,7 +1873,7 @@
             <p class="adm-card-subtitle">Catatan permanen setiap aktivitas login, penyimpanan konfigurasi, perubahan kata sandi, dan penolakan akses</p>
           </div>
           <div class="adm-card-actions" style="flex-wrap:wrap;gap:8px;align-items:center;">
-            <select class="adm-select" id="adm-audit-filter-action" style="width:auto;">
+            <select class="adm-select" id="adm-audit-filter-action" style="width:auto;" aria-label="Filter jenis aksi audit">
               <option value="all">Semua Tindakan</option>
               <option value="LOGIN">LOGIN</option>
               <option value="MUTATION_SAVE">MUTATION_SAVE (Simpan Data)</option>
@@ -1885,7 +1888,7 @@
               <option value="UPDATE_USER">UPDATE_USER</option>
               <option value="DELETE_USER">DELETE_USER</option>
             </select>
-            <input type="text" id="adm-audit-search" class="adm-input" placeholder="Cari aktor / objek / detail..." style="width:200px;padding:6px 10px;font-size:0.8rem;">
+            <input type="text" id="adm-audit-search" class="adm-input" placeholder="Cari aktor / objek / detail..." style="width:200px;padding:6px 10px;font-size:0.8rem;" aria-label="Cari aktor, objek, atau detail audit">
             <span id="adm-audit-count-info" style="font-size:0.78rem;color:var(--charcoal-muted);"></span>
             <button class="adm-btn adm-btn-secondary" id="adm-audit-refresh-btn">Perbarui Log</button>
           </div>
@@ -2025,7 +2028,7 @@
         </div>
         <div class="adm-form-group" id="adm-src-code-group" style="display:none;">
           <label>Kode URL (Otomatis)</label>
-          <input type="text" id="adm-src-code-preview" class="adm-input" readonly style="background:#f5f5f5;">
+          <input type="text" id="adm-src-code-preview" class="adm-input" readonly style="background:#f5f5f5;" aria-label="Pratinjau kode sumber otomatis">
         </div>
       </div>
       <div class="adm-form-group">

@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v6.4
+ * BUMI SURABAYA v6.7
  * app.js — Logika presentasi tampilan tamu, Full Guest Page CMS & Dwibahasa Otomatis ID/EN (FR-CMS-01 s/d FR-CMS-07, FR-V64-06)
  *
  * KONTRAK KERAS: Tidak mengubah tone warna ataupun tata letak halaman tamu (guest.css).
@@ -34,6 +34,20 @@
     return u;
   }
 
+  /** '+62313545888' -> '+62 31 354 5888' (hanya untuk tampilan; href tetap E.164). */
+  function formatPhoneDisplay(num) {
+    var raw = String(num || '').trim();
+    var digits = cleanPhone(raw);
+    if (!digits) return raw;
+    if (digits.indexOf('62') !== 0) return raw;
+    var rest = digits.slice(2);
+    // Nomor lokal Surabaya diawali 31; sisanya dikelompokkan 3-4 digit.
+    if (rest.indexOf('31') === 0 && rest.length >= 9) {
+      return '+62 31 ' + rest.slice(2, 5) + ' ' + rest.slice(5);
+    }
+    return '+62 ' + rest;
+  }
+
   function cleanPhone(num) {
     if (!num) return '';
     var clean = String(num).replace(/[^0-9]/g, '');
@@ -52,10 +66,18 @@
    * - general.language_mode === 'en' -> Bahasa Inggris
    * - general.language_mode === 'auto' -> deteksi navigator.language (id* -> 'id', lainnya -> 'en')
    */
+  var LANG_PREF_KEY = 'bs_lang_pref';
+
   function resolveActiveLang() {
     try {
       var qLang = (new URLSearchParams(window.location.search).get('lang') || '').toLowerCase().trim();
       if (qLang === 'id' || qLang === 'en') return qLang;
+    } catch (_) {}
+
+    // FR-V67-14: pilihan eksplisit tamu menang atas language_mode admin.
+    try {
+      var saved = localStorage.getItem(LANG_PREF_KEY);
+      if (saved === 'id' || saved === 'en') return saved;
     } catch (_) {}
 
     var gen = (_config && _config.general) || (window.BSConfig && BSConfig.DEFAULTS && BSConfig.DEFAULTS.general) || {};
@@ -79,10 +101,11 @@
     var presetId = (lang === 'id' && window.BSConfig && BSConfig.PRESET_ID && BSConfig.PRESET_ID[secName])
       ? BSConfig.PRESET_ID[secName]
       : {};
-    // Jika mode auto dan bahasa peramban adalah 'id', gunakan preset ID sebagai dasar,
-    // namun tetap izinkan kustomisasi eksplisit admin dari _config[secName]
+    // BUG-25: apa pun sumber bahasanya (?lang=id, language_mode 'id', atau auto),
+    // preset ID harus menang atas teks server yang berbahasa Inggris. Hanya nilai
+    // yang benar-benar berbeda dari DEFAULTS yang dianggap kustomisasi admin.
     var base = Object.assign({}, def, presetId);
-    if (lang === 'id' && (_config && _config.general && _config.general.language_mode === 'auto')) {
+    if (lang === 'id') {
       var customOverrides = {};
       Object.keys(act).forEach(function(k) {
         if (act[k] !== undefined && act[k] !== '' && JSON.stringify(act[k]) !== JSON.stringify(def[k])) {
@@ -428,20 +451,9 @@
 
     if (sec && sec.show_promotions === false) { if (section) hide(section); return; }
 
-    var now = Date.now();
-    var active = (promos || []).filter(function(p) {
-      if (!p || p.active === false) return false;
-      if (p.starts_at) {
-        var startMs = new Date(p.starts_at).getTime();
-        if (!isNaN(startMs) && now < startMs) return false;
-      }
-      var endStr = p.ends_at || p.expires_at;
-      if (endStr) {
-        var endMs = new Date(endStr + (String(endStr).length === 10 ? 'T23:59:59+07:00' : '')).getTime();
-        if (!isNaN(endMs) && now > endMs) return false;
-      }
-      return true;
-    });
+    // BUG-37: filter periode promo hanya di backend (zona waktu WIB, jam server).
+    // Filter ganda dengan jam perangkat membuat promo hilang/tampil tak konsisten.
+    var active = (promos || []).filter(function(p) { return p && p.active !== false; });
 
     if (!active.length) { if (section) hide(section); return; }
 
@@ -460,7 +472,7 @@
       var resolvedImg = p.image_url ? (window.BSConfig ? BSConfig.resolveAsset(p.image_url) : p.image_url) : '';
       var safeImg = resolvedImg ? sanitizeUrl(resolvedImg) : '';
       var imgHtml = safeImg && safeImg !== '#'
-        ? '<img src="' + escapeHtml(safeImg) + '" alt="' + pName + '" loading="lazy" onerror="this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';"><div class="bs-promo-img-placeholder" style="display:none;">' + pEmoji + '</div>'
+        ? '<img src="' + escapeHtml(safeImg) + '" alt="' + pName + '" loading="lazy" data-fallback-img="1"><div class="bs-promo-img-placeholder" hidden>' + pEmoji + '</div>'
         : '<div class="bs-promo-img-placeholder">' + pEmoji + '</div>';
 
       var targetUrl = '';
@@ -542,7 +554,7 @@
       var resolvedImg = o.image_url ? (window.BSConfig ? BSConfig.resolveAsset(o.image_url) : o.image_url) : '';
       var safeImg = resolvedImg ? sanitizeUrl(resolvedImg) : '';
       var imgHtml = safeImg && safeImg !== '#'
-        ? '<img src="' + escapeHtml(safeImg) + '" alt="' + oName + '" loading="lazy" onerror="this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';"><div class="bs-outlet-img-placeholder" style="display:none;">' + oEmoji + '</div>'
+        ? '<img src="' + escapeHtml(safeImg) + '" alt="' + oName + '" loading="lazy" data-fallback-img="1"><div class="bs-outlet-img-placeholder" hidden>' + oEmoji + '</div>'
         : '<div class="bs-outlet-img-placeholder">' + oEmoji + '</div>';
 
       var targetUrl = '';
@@ -668,10 +680,31 @@
 
     setText($('#bs-hotel-name-footer'),     gen.hotel_name || 'Bumi Surabaya City Resort');
     setText($('#bs-address-footer'),        gen.address    || '');
+
+    // FR-V67-13: tautan peta & telepon dirender dari konfigurasi, bukan teks mati.
+    var mapLink = $('#bs-footer-map-link');
+    if (mapLink) {
+      mapLink.href = gen.address
+        ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(gen.address)
+        : 'https://www.google.com/maps/search/?api=1&query=Bumi+Surabaya+City+Resort';
+      mapLink.setAttribute('aria-label', (gc.footer_map_label || 'Get Directions') + ' - ' + (gen.hotel_name || 'Bumi Surabaya City Resort'));
+      setText($('#bs-footer-map-text'), gc.footer_map_label || 'Get Directions');
+    }
+    var telLink = $('#bs-footer-tel-link');
+    var telNum  = cleanPhone(gen.phone || '');
+    if (telLink) {
+      if (telNum) {
+        telLink.href = 'tel:+' + telNum;
+        setText($('#bs-footer-tel-text'), formatPhoneDisplay(gen.phone));
+        show(telLink);
+      } else {
+        hide(telLink);
+      }
+    }
     setText($('#bs-privacy-link'),          gc.footer_privacy_label   || 'Privacy & Data Use Policy');
     setText($('#bs-footer-admin-link'),     gc.footer_admin_label     || 'Management Portal');
     setText($('#bs-footer-copyright-text'), gc.footer_copyright       || '© 2026 Bumi Surabaya City Resort. All rights reserved.');
-    setText($('#bs-footer-version-tag'),    gc.footer_version_tag     || 'Digital Guest Experience v6.4');
+    setText($('#bs-footer-version-tag'),    gc.footer_version_tag     || 'Digital Guest Experience v6.7');
 
     var adminLink = $('#bs-footer-admin-link') || $('.bs-footer-admin');
     var footerSep = $('#bs-footer-sep')        || $('.bs-footer-sep');
@@ -756,6 +789,27 @@
         showError('');
       });
     });
+
+    // FR-V67-12: role="radiogroup" wajib mendukung navigasi panah (WAI-ARIA).
+    stars.forEach(function(star, idx) {
+      star.addEventListener('keydown', function(ev) {
+        var delta = (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') ? 1
+                  : (ev.key === 'ArrowLeft'  || ev.key === 'ArrowUp')   ? -1 : 0;
+        if (!delta) return;
+        ev.preventDefault();
+        var next = stars[(idx + delta + stars.length) % stars.length];
+        next.focus();
+        next.click();
+      });
+    });
+
+    // Roving tabindex: satu titik Tab untuk seluruh grup bintang.
+    function syncRoving() {
+      var chosen = rating > 0 ? rating - 1 : 0;
+      stars.forEach(function(s, i) { s.setAttribute('tabindex', i === chosen ? '0' : '-1'); });
+    }
+    syncRoving();
+    stars.forEach(function(s) { s.addEventListener('focus', syncRoving); });
 
     function throttleKey() {
       var d = new Date();
@@ -847,12 +901,14 @@
       _previousActiveElement = document.activeElement;
       overlay.classList.add('active');
       overlay.setAttribute('aria-hidden', 'false');
+      lockBackground(true);
       if (closeBtn) closeBtn.focus();
     }
 
     function closeModal() {
       overlay.classList.remove('active');
       overlay.setAttribute('aria-hidden', 'true');
+      lockBackground(false);
       if (_previousActiveElement && typeof _previousActiveElement.focus === 'function') {
         _previousActiveElement.focus();
       }
@@ -985,6 +1041,22 @@
     }
   }
 
+  /**
+   * FR-V67-12: saat modal terbuka, latar harus tidak bisa di-scroll maupun difokus.
+   * `inert` didukung Chrome 102+/Safari 15.5+; browser lama cukup scroll-lock.
+   */
+  var _scrollLocks = 0;
+  function lockBackground(on) {
+    var main = document.getElementById('bs-main');
+    _scrollLocks = Math.max(0, _scrollLocks + (on ? 1 : -1));
+    var locked = _scrollLocks > 0;
+    document.body.style.overflow = locked ? 'hidden' : '';
+    if (main) {
+      if (locked) main.setAttribute('inert', '');
+      else main.removeAttribute('inert');
+    }
+  }
+
   var _waPickerPreviousActive = null;
 
   function openWaPicker() {
@@ -994,6 +1066,7 @@
     _waPickerPreviousActive = document.activeElement;
     overlay.classList.add('active');
     overlay.setAttribute('aria-hidden', 'false');
+    lockBackground(true);
     var closeBtn = $('#bs-wa-picker-close');
     if (closeBtn) closeBtn.focus();
   }
@@ -1003,6 +1076,7 @@
     if (!overlay) return;
     overlay.classList.remove('active');
     overlay.setAttribute('aria-hidden', 'true');
+    lockBackground(false);
     if (_waPickerPreviousActive && typeof _waPickerPreviousActive.focus === 'function') {
       _waPickerPreviousActive.focus();
     }
@@ -1055,7 +1129,80 @@
     });
   }
 
+  /**
+   * FR-V67-14: tombol EN/ID di hero. Menyimpan preferensi tamu lalu render ulang
+   * seluruh halaman dengan bahasa tersebut (tanpa reload, agar atribusi sesi utuh).
+   */
+  var _langSwitchInitialized = false;
+  function initLangSwitch() {
+    if (_langSwitchInitialized) return;
+    var btns = $$('.bs-lang-btn');
+    if (!btns || !btns.length) return;
+    _langSwitchInitialized = true;
+
+    function paint() {
+      var active = resolveActiveLang();
+      btns.forEach(function(b) {
+        b.setAttribute('aria-pressed', b.getAttribute('data-lang') === active ? 'true' : 'false');
+      });
+    }
+
+    btns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var next = btn.getAttribute('data-lang');
+        if (!next || next === resolveActiveLang()) return;
+        try { localStorage.setItem(LANG_PREF_KEY, next); } catch (_) {}
+        // Bersihkan ?lang= agar preferensi baru tidak ditimpa query string lama.
+        try {
+          var u = new URL(window.location.href);
+          if (u.searchParams.has('lang')) {
+            u.searchParams.delete('lang');
+            window.history.replaceState(null, '', u.toString());
+          }
+        } catch (_) {}
+        paint();
+        renderAll();
+        if (window.BSTracker) BSTracker.track('lang_switch', { lang: next });
+      });
+    });
+
+    paint();
+  }
+
+  /**
+   * FR-V67-15: gambar promo/outlet yang gagal dimuat harus jatuh ke placeholder emoji.
+   * Sebelumnya memakai atribut onerror inline yang diblokir CSP (script-src tanpa 'unsafe-inline'),
+   * sehingga gambar rusak tampil sebagai kotak kosong.
+   */
+  var _imgFallbackBound = false;
+  function bindImageFallbacks() {
+    if (_imgFallbackBound) return;
+    _imgFallbackBound = true;
+    document.addEventListener('error', function(e) {
+      var img = e.target;
+      if (!img || img.tagName !== 'IMG' || !img.hasAttribute('data-fallback-img')) return;
+      img.style.display = 'none';
+      var ph = img.nextElementSibling;
+      if (ph) ph.hidden = false;
+    }, true);
+  }
+
+  /** FR-V67-16: indikator koneksi agar tamu tahu kenapa data/feedback tidak terkirim. */
+  function initOfflineBanner() {
+    var bar = $('#bs-offline-bar');
+    if (!bar) return;
+    function paint() {
+      bar.hidden = navigator.onLine !== false;
+    }
+    window.addEventListener('online', paint);
+    window.addEventListener('offline', paint);
+    paint();
+  }
+
   function renderAll() {
+    // FR-V67-12: <html lang> harus mengikuti bahasa yang benar-benar dirender,
+    // supaya screen reader tidak membaca teks Indonesia dengan fonetik Inggris.
+    try { document.documentElement.lang = resolveActiveLang(); } catch (_) {}
     renderHero();
     renderReviewSection();
     renderPromotions();
@@ -1067,6 +1214,9 @@
     initPrivacyModal();
     initWaPicker();
     initDirectFeedback();
+    initLangSwitch();
+    bindImageFallbacks();
+    initOfflineBanner();
   }
 
   function checkPreviewDraft() {
@@ -1143,6 +1293,7 @@
   window.BSApp = {
     getSourceObj:      function() { return _sourceObj; },
     resolveActiveLang: resolveActiveLang,
+    initLangSwitch:    initLangSwitch,
     renderAll:         renderAll
   };
 

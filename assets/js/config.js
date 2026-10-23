@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * config.js — Konstanta dasar, fallback defaults, skema penuh Guest CMS & Kamus Dwibahasa ID/EN (FR-CMS-01 s/d FR-CMS-08, FR-V64-06)
  * Hanya berisi nilai publik yang aman; TIDAK ada token/rahasia.
  */
@@ -7,7 +7,7 @@
 (function(window) {
   'use strict';
 
-  /** URL backend Google Apps Script produksi v6.4 */
+  /** URL backend Google Apps Script produksi v6.7 */
   var GAS_URL = 'https://script.google.com/macros/s/AKfycbwrx5XUk37A3uhIpqNjKR9u87Z5hfg6LcBBVkUKFfgKi16YZPrde37ks7r4IsHu__cL/exec';
 
   var GAS_URL_KEY        = 'bs_gas_url';
@@ -17,6 +17,43 @@
   var SESSION_SOURCE_KEY = 'bs_session_source';
   var DEVICE_ID_KEY      = 'bs_device_id';
   var RETRY_QUEUE_KEY    = 'bs_retry_queue';
+
+  /**
+   * Akses storage yang tidak pernah melempar (BUG-20 / FR-V67-05).
+   * Browser dengan storage diblokir (mode privat, ITP, iframe ketat) melempar
+   * SecurityError pada getItem/setItem — sebelumnya itu membatalkan
+   * loadConfig() sehingga #bs-loading tidak pernah hilang.
+   * Fallback: Map dalam memori, cukup untuk satu siklus hidup tab.
+   */
+  var _memStore = {};
+  function _mkStore(getBacking) {
+    return {
+      get: function(k) {
+        try {
+          var b = getBacking();
+          if (b) return b.getItem(k);
+        } catch (_) {}
+        return Object.prototype.hasOwnProperty.call(_memStore, k) ? _memStore[k] : null;
+      },
+      set: function(k, v) {
+        try {
+          var b = getBacking();
+          if (b) { b.setItem(k, v); return; }
+        } catch (_) {}
+        _memStore[k] = String(v);
+      },
+      remove: function(k) {
+        try {
+          var b = getBacking();
+          if (b) { b.removeItem(k); return; }
+        } catch (_) {}
+        delete _memStore[k];
+      }
+    };
+  }
+
+  var safeSession = _mkStore(function() { return window.sessionStorage; });
+  var safeLocal   = _mkStore(function() { return window.localStorage; });
 
   /** Kamus Preset Bahasa Indonesia untuk Halaman Tamu (FR-V64-06) */
   var PRESET_ID = {
@@ -85,9 +122,10 @@
       mobile_bar_wa_label:      'WhatsApp',
       footer_privacy_label:     'Kebijakan Privasi & Penggunaan Data',
       footer_admin_label:       'Management Portal',
+      footer_map_label:         'Petunjuk Arah',
       footer_show_admin_link:   true,
       footer_copyright:         '© 2026 Bumi Surabaya City Resort. Seluruh hak cipta dilindungi.',
-      footer_version_tag:       'Digital Guest Experience v6.4',
+      footer_version_tag:       'Digital Guest Experience v6.7',
 
       privacy_badge:            'STANDAR PRIVASI RESOR KELAS DUNIA',
       privacy_title:            'Kebijakan Privasi & Penggunaan Data Tamu',
@@ -250,9 +288,10 @@
       mobile_bar_wa_label:      'WhatsApp',
       footer_privacy_label:     'Privacy & Data Use Policy',
       footer_admin_label:       'Management Portal',
+      footer_map_label:         'Get Directions',
       footer_show_admin_link:   true,
       footer_copyright:         '© 2026 Bumi Surabaya City Resort. All rights reserved.',
-      footer_version_tag:       'Digital Guest Experience v6.4',
+      footer_version_tag:       'Digital Guest Experience v6.7',
 
       privacy_badge:            'WORLD-CLASS RESORT PRIVACY STANDARD',
       privacy_title:            'Guest Privacy & Data Use Policy',
@@ -391,16 +430,39 @@
   var _activeConfig = null;
   var _activeSources = [];
 
+  /** Umur cache konfigurasi publik — samakan dengan PUBLIC_CONFIG_CACHE_TTL backend (FR-V64-01). */
+  var CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
+
+  /**
+   * BUG-33: backend kini hanya mengirim daftar sales + satu sumber yang sedang
+   * dipakai. Kode sumber diambil dari tracker (sudah resolve ?source= sebelum
+   * loadConfig dipanggil) dan ikut jadi bagian kunci cache.
+   */
+  function _currentSourceCode() {
+    try {
+      var s = (window.BSTracker && window.BSTracker.getSource && window.BSTracker.getSource()) || '';
+      s = String(s).trim().toLowerCase();
+      return s && s !== 'general' ? s : '';
+    } catch (e) { return ''; }
+  }
+
   function loadConfig(gasUrl, onSuccess, onError) {
-    var cached = sessionStorage.getItem(CONFIG_CACHE_KEY);
+    var srcCode   = _currentSourceCode();
+    var cacheKey  = CONFIG_CACHE_KEY + (srcCode ? ':' + srcCode : '');
+    // BUG-26: cache tanpa TTL membuat tamu melihat konten basi sepanjang tab hidup.
+    var cached = safeSession.get(cacheKey);
     if (cached) {
       try {
         var parsed = JSON.parse(cached);
-        _activeConfig  = parsed.config  || {};
-        _activeSources = parsed.sources || [];
-        if (typeof onSuccess === 'function') onSuccess(_activeConfig, _activeSources);
-        return;
+        var age = Date.now() - (Number(parsed.ts) || 0);
+        if (parsed.config && age >= 0 && age < CONFIG_CACHE_TTL_MS) {
+          _activeConfig  = parsed.config;
+          _activeSources = parsed.sources || [];
+          if (typeof onSuccess === 'function') onSuccess(_activeConfig, _activeSources);
+          return;
+        }
       } catch(e) {}
+      safeSession.remove(cacheKey);
     }
 
     if (!gasUrl) {
@@ -410,15 +472,18 @@
       return;
     }
 
-    var url = gasUrl + '?action=get_config&_=' + Date.now();
+    var url = gasUrl + '?action=get_config&_=' + Date.now() +
+              (srcCode ? '&source=' + encodeURIComponent(srcCode) : '');
     fetch(url)
       .then(function(r) { return r.json(); })
       .then(function(resp) {
         if (resp.ok) {
           _activeConfig  = resp.config  || {};
           _activeSources = resp.sources || [];
-          sessionStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify({ config: _activeConfig, sources: _activeSources }));
-          sessionStorage.setItem(CONFIG_VERSION_KEY, String(resp.version || Date.now()));
+          safeSession.set(cacheKey, JSON.stringify({
+            config: _activeConfig, sources: _activeSources, ts: Date.now()
+          }));
+          safeSession.set(CONFIG_VERSION_KEY, String(resp.version || Date.now()));
           if (typeof onSuccess === 'function') onSuccess(_activeConfig, _activeSources);
         } else {
           throw new Error(resp.error || 'get_config failed');
@@ -445,16 +510,26 @@
   }
 
   function clearCache() {
-    sessionStorage.removeItem(CONFIG_CACHE_KEY);
-    sessionStorage.removeItem(CONFIG_VERSION_KEY);
+    // Cache dikunci per sumber (?source=), jadi bersihkan semua variannya.
+    safeSession.remove(CONFIG_CACHE_KEY);
+    try {
+      var ss = window.sessionStorage;
+      var doomed = [];
+      for (var i = 0; i < ss.length; i++) {
+        var k = ss.key(i);
+        if (k && k.indexOf(CONFIG_CACHE_KEY + ':') === 0) doomed.push(k);
+      }
+      for (var j = 0; j < doomed.length; j++) ss.removeItem(doomed[j]);
+    } catch (_) {}
+    safeSession.remove(CONFIG_VERSION_KEY);
   }
 
   function getGasUrl() {
-    return localStorage.getItem(GAS_URL_KEY) || GAS_URL;
+    return safeLocal.get(GAS_URL_KEY) || GAS_URL;
   }
 
   function setGasUrl(url) {
-    localStorage.setItem(GAS_URL_KEY, url);
+    safeLocal.set(GAS_URL_KEY, url);
   }
 
   function appRoot() {
@@ -480,6 +555,8 @@
     DEVICE_ID_KEY:       DEVICE_ID_KEY,
     RETRY_QUEUE_KEY:     RETRY_QUEUE_KEY,
     SOURCE_CACHE_KEY:    SOURCE_CACHE_KEY,
+    safeSession:         safeSession,
+    safeLocal:           safeLocal,
     loadConfig:          loadConfig,
     get:                 get,
     clearCache:          clearCache,

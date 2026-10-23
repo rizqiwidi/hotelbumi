@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v6.3
+ * BUMI SURABAYA v6.7
  * anti-fraud.js — Anti-Fraud Engine (8 rules, FR-P0-06 & FR-P1-01)
  *
  * Rules:
@@ -260,7 +260,7 @@
   function isPlaceholderIp(ip) {
     if (!ip) return true;
     var s = String(ip).trim().toLowerCase();
-    return s === '' || s === 'client-ip' || s === 'unknown' || s === 'null' || s === 'undefined' || s === '-' || s === '127.0.0.1';
+    return s === '' || s === 'client-ip' || s === 'unknown' || s === 'null' || s === 'undefined' || s === '-' || s === '127.0.0.1' || s === 'unavailable';
   }
 
   /**

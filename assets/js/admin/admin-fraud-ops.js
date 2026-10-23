@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.6
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * admin-fraud-ops.js — Audit Anomali, Perangkat Staf, Alert & Backup Konfigurasi, Manajemen Role & Visibilitas Menu Sidebar, serta Manajemen Akun RBAC (FR-P0-03, FR-P0-06, FR-V64-02, FR-V64-03, FR-V64-05, FR-V66-ROLE-MENU)
  */
 
@@ -98,7 +98,7 @@
         '<td><code style="font-size:0.75rem;">' + esc(mIp) + '</code></td>' +
         '<td><span class="adm-badge-err">' + esc(flags) + '</span></td>' +
         '<td>' +
-          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminMarkDevice(\'' + esc(ev.device_id || '') + '\',\'' + esc(ev.source || '') + '\')">' + icon('shield', 13) + ' <span>Tandai HP Staf</span></button>' +
+          '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-admin-action="adminMarkDevice" data-admin-arg="' + esc(JSON.stringify([ev.device_id || '', ev.source || ''])) + '">' + icon('shield', 13) + ' <span>Tandai HP Staf</span></button>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -120,7 +120,7 @@
         '<td><strong>' + esc(dev.staff_code || '—') + '</strong></td>' +
         '<td>' + esc(dev.label || '—') + '</td>' +
         '<td class="bs-num" style="font-size:0.78rem;text-align:left;">' + esc(regTs) + '</td>' +
-        '<td><button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminRemoveStaffDevice(' + idx + ')">' + icon('trash', 13) + ' <span>Hapus</span></button></td>' +
+        '<td><button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" data-admin-action="adminRemoveStaffDevice" data-admin-arg="' + idx + '">' + icon('trash', 13) + ' <span>Hapus</span></button></td>' +
       '</tr>';
     }).join('');
 
@@ -239,8 +239,9 @@
     if ($id('adm-ft-low-dwell')) $id('adm-ft-low-dwell').value = Math.round((ft.low_dwell_ms || 5000) / 1000);
     if ($id('adm-ft-hopping'))   $id('adm-ft-hopping').value   = ft.hopping_sources || 4;
 
-    if ($id('adm-cfg-alert-email'))   $id('adm-cfg-alert-email').value   = (state.configData && state.configData.alert_email) || '';
-    if ($id('adm-cfg-alert-webhook')) $id('adm-cfg-alert-webhook').value = (state.configData && state.configData.alert_webhook_url) || '';
+    var gen = (state.configData && state.configData.general) || {};
+    if ($id('adm-cfg-alert-email'))   $id('adm-cfg-alert-email').value   = gen.alert_email || (state.configData && state.configData.alert_email) || '';
+    if ($id('adm-cfg-alert-webhook')) $id('adm-cfg-alert-webhook').value = gen.alert_webhook_url || (state.configData && state.configData.alert_webhook_url) || '';
   }
 
   function handleSaveFraudThresholds() {
@@ -284,8 +285,14 @@
     var emailVal   = ($id('adm-cfg-alert-email')   ? $id('adm-cfg-alert-email').value   : '').trim();
     var webhookVal = ($id('adm-cfg-alert-webhook') ? $id('adm-cfg-alert-webhook').value : '').trim();
 
-    state.configData.alert_email       = emailVal;
-    state.configData.alert_webhook_url = webhookVal;
+    // BUG-21: kunci kanonik ada di dalam config.general (dibaca backend saat
+    // submit_feedback). Kunci top-level lama dibuang agar tidak ada dua sumber.
+    state.configData.general = Object.assign({}, state.configData.general || {}, {
+      alert_email:       emailVal,
+      alert_webhook_url: webhookVal
+    });
+    delete state.configData.alert_email;
+    delete state.configData.alert_webhook_url;
 
     var btn = $id('adm-cfg-alert-save-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
@@ -542,9 +549,9 @@
       var actionsHtml = isSuper
         ? '<span style="font-size:0.74rem;color:var(--charcoal-muted);">Terkunci (Akses Penuh)</span>'
         : '<div class="adm-action-group">' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminEditRoleMenu(\'' + esc(rk) + '\')">' + icon('edit', 13) + ' <span>Atur Menu</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-admin-action="adminEditRoleMenu" data-admin-arg="' + esc(JSON.stringify([rk])) + '">' + icon('edit', 13) + ' <span>Atur Menu</span></button>' +
             (!isBuiltin
-              ? '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeleteRole(\'' + esc(rk) + '\')" title="Hapus Role Kustom">' + icon('trash', 13) + '</button>'
+              ? '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" data-admin-action="adminDeleteRole" data-admin-arg="' + esc(JSON.stringify([rk])) + '" title="Hapus Role Kustom">' + icon('trash', 13) + '</button>'
               : '') +
           '</div>';
 
@@ -720,7 +727,7 @@
       var statusBadge = u.active !== false
         ? '<span class="adm-badge-ok">Aktif</span>'
         : '<span class="adm-badge-err">Nonaktif</span>';
-      var pwBadge = u.must_change_password
+      var pwBadge = u.must_change
         ? ' <span class="adm-badge-warn" style="font-size:0.68rem;">Wajib Ganti Sandi</span>'
         : '';
       var updatedStr = u.updated_at ? new Date(u.updated_at).toLocaleString('id-ID') : '—';
@@ -732,10 +739,10 @@
         '<td class="bs-num" style="font-size:0.78rem;text-align:left;">' + esc(updatedStr) + '</td>' +
         '<td>' +
           '<div class="adm-action-group">' +
-            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminPopulateUserEdit(\'' + esc(uname) + '\')" title="Edit Peran / Reset Sandi">' + icon('edit', 13) + ' <span>Edit</span></button>' +
+            '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-admin-action="adminPopulateUserEdit" data-admin-arg="' + esc(JSON.stringify([uname])) + '" title="Edit Peran / Reset Sandi">' + icon('edit', 13) + ' <span>Edit</span></button>' +
             (!isSelf
-              ? '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" onclick="adminToggleUserActive(\'' + esc(uname) + '\')">' + icon('power', 13) + ' <span>' + (u.active !== false ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
-                '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" onclick="adminDeleteUser(\'' + esc(uname) + '\')" title="Hapus Akun">' + icon('trash', 13) + '</button>'
+              ? '<button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-admin-action="adminToggleUserActive" data-admin-arg="' + esc(JSON.stringify([uname])) + '">' + icon('power', 13) + ' <span>' + (u.active !== false ? 'Nonaktifkan' : 'Aktifkan') + '</span></button>' +
+                '<button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" data-admin-action="adminDeleteUser" data-admin-arg="' + esc(JSON.stringify([uname])) + '" title="Hapus Akun">' + icon('trash', 13) + '</button>'
               : '') +
           '</div>' +
         '</td>' +
@@ -761,7 +768,7 @@
       $id('adm-user-active').checked = (target.active !== false);
     }
     if ($id('adm-user-must-change')) {
-      $id('adm-user-must-change').checked = Boolean(target.must_change_password);
+      $id('adm-user-must-change').checked = Boolean(target.must_change);
     }
     if ($id('adm-user-username')) $id('adm-user-username').focus();
     BSAdmin.showToast('Mengedit akun "' + target.username + '". Klik Simpan Akun ke Server untuk menyimpan.', 'info');
@@ -779,7 +786,7 @@
       target_username: target.username,
       target_role:     target.role,
       active:          nextActive,
-      must_change_password: Boolean(target.must_change_password)
+      must_change: Boolean(target.must_change)
     }).then(function (resp) {
       if (!resp || !resp.ok) throw new Error((resp && resp.error) || 'Gagal mengubah status akun');
       BSAdmin.updateSyncStatus('saved');
@@ -846,7 +853,7 @@
       target_role:          role,
       new_password:         pw,
       active:               isActive,
-      must_change_password: mustChange
+      must_change: mustChange
     }).then(function (resp) {
       if (!resp || !resp.ok) throw new Error((resp && resp.error) || 'Gagal menyimpan akun');
       BSAdmin.updateSyncStatus('saved');

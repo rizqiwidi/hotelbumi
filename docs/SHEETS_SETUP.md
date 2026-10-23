@@ -1,6 +1,6 @@
-# SHEETS_SETUP.md — Panduan Setup Google Spreadsheet sebagai Database v6.2 (Fase 2)
+# SHEETS_SETUP.md — Panduan Setup Google Spreadsheet sebagai Database v6.7
 
-Dokumen ini menjelaskan struktur skema Google Spreadsheet, konfigurasi hak akses pengguna (RBAC), jejak audit (*AuditLog*), dan pemulihan darurat (*break-glass*) untuk platform **Bumi Surabaya Digital Guest Experience v6.2 (Fase 2)**.
+Dokumen ini menjelaskan struktur skema Google Spreadsheet, konfigurasi hak akses pengguna (RBAC), jejak audit (*AuditLog*), dan pemulihan darurat (*break-glass*) untuk platform **Bumi Surabaya Digital Guest Experience v6.7**.
 
 > [!IMPORTANT]
 > Backend (`Code.gs`) akan secara otomatis membuat tab yang belum ada saat pertama kali dipanggil (termasuk tab `AuditLog` dan kolom `role` pada tab `Users`). Namun pemilik spreadsheet disarankan memverifikasi struktur awal dan membuat akun admin utama via `setupInitialAdmin`.
@@ -15,7 +15,7 @@ Spreadsheet resmi hotel terdiri dari tab-tab berikut:
 |---|---|---|
 | `Config` | Konfigurasi global hotel, visibilitas seksi, outlet, promosi, & ambang batas fraud | Portal Admin / Backend |
 | `Sources` | Master data staf, titik meja, kartu NFC, dan nomor WA sales | Portal Admin (`admin-sources.js`) |
-| `Users` | Kredensial akun admin dan penetapan peran RBAC (7 kolom) | Backend (`Code.gs`) |
+| `Users` | Kredensial akun admin dan penetapan peran RBAC (8 kolom) | Backend (`Code.gs`) |
 | `AuditLog` | Jejak audit mutasi sensitif, login, dan pemulihan darurat | Backend (`Code.gs`) |
 | `StaffDevices` | Daftar perangkat staf hotel untuk pengecualian self-tap (AF-03) | Portal Admin (`admin-fraud-ops.js`) |
 | `Events_YYYY_MM` | Log event interaksi tamu bulanan | Otomatis dibuat backend per bulan |
@@ -28,7 +28,7 @@ Spreadsheet resmi hotel terdiri dari tab-tab berikut:
 
 Tab `Users` menyimpan kredensial pengguna terenkripsi dengan salt kriptografis per-user dan 1.000 iterasi SHA-256 key stretching:
 
-### Struktur Kolom Tab `Users` (7 Kolom — Sesuai `Code.gs`):
+### Struktur Kolom Tab `Users` (8 Kolom — Sesuai `Code.gs`):
 1. `username`: Nama pengguna login unik (case-insensitive).
 2. `password_hash`: String hash password (`pbkdf2_sha256$1000$[digest_hex]`).
 3. `salt`: Salt acak hexadesimal kriptografis (16 karakter).
@@ -40,6 +40,7 @@ Tab `Users` menyimpan kredensial pengguna terenkripsi dengan salt kriptografis p
    - `manager`: Akses manajemen operasional harian (staf, perangkat, outlet, promosi), tanpa izin mengubah threshold fraud atau konfigurasi URL backend.
    - `content_editor`: Terbatas pada pengelolaan gerai F&B, promosi tamu, dan visibilitas seksi.
    - `analyst_readonly`: Hak akses hanya baca (read-only) untuk dashboard dan jejak audit.
+8. `active`: `TRUE` atau `FALSE`. Akun dengan nilai selain `TRUE` ditolak saat login dan sesi aktifnya langsung tidak berlaku. Kolom ini dibuat otomatis; sheet lama tanpa kolom ini dianggap aktif.
 
 ### A. Membuat / Reset Akun Super Admin Pertama:
 Di editor Google Apps Script, jalankan fungsi:
@@ -75,7 +76,7 @@ Tab `AuditLog` mencatat setiap aksi administratif sensitif secara permanen.
 5. `target_object`: Objek sasaran mutasi (`admin_data`, `session`, `user:<username>`, `feedback`, dll.).
 6. `status`: `SUCCESS`, `FAILED`, atau `REJECTED`.
 7. `details`: Ringkasan mutasi (daftar atribut yang diubah, tanpa password/token mentah).
-8. `ip`: Alamat IP klien (disamarkan/masked).
+8. `ip`: Penanda sumber IP. Runtime Web App Apps Script tidak mengekspos IP klien, jadi nilainya selalu `unavailable`. Header `X-Forwarded-For` sengaja tidak dipercaya karena bisa dipalsukan klien.
 
 ---
 
@@ -109,13 +110,14 @@ Apabila kredensial seluruh administrator hilang, terkunci, atau disusupi:
 
 ### Fungsi Retensi Otomatis:
 Di file `backend/Triggers.gs`, tersedia fungsi `jalankanRetensiData(dryRun)`.
-- **Mode Simulasi Default (`dryRun = true`)**:
+- **Default Simulasi**: bila `dryRun` tidak diberikan, mode diambil dari Script Property `RETENSI_MODE`. Nilai selain `aktif` berarti simulasi. Jadi pemanggilan polos dari trigger tidak akan pernah menghapus data tanpa persetujuan eksplisit.
+- **Mode Simulasi**:
   - Memindai tab `Events_YYYY_MM` yang berumur > 12 bulan.
   - Memindai lembar `AuditLog` yang berumur > 12 bulan.
   - Memindai lembar `ScriptLog` yang berumur > 3 bulan.
   - Mencatat laporan simulasi ke `ScriptLog` tanpa menghapus baris fisik.
-- **Pemberitahuan Persetujuan**:
-  - Untuk menjalankan penghapusan fisik, pemilik data harus secara sadar memanggil `jalankanRetensiData(false)` atau menyetujui pemasangan trigger bulanan permanen.
+- **Memasang trigger bulanan**: jalankan `pasangTriggerRetensi()` sekali dari editor Apps Script. Fungsi ini idempoten (trigger lama dihapus lebih dulu) dan mencetak mode aktif di log.
+- **Mengaktifkan penghapusan fisik**: set Script Property `RETENSI_MODE = aktif` setelah persetujuan tertulis dari pemilik data, atau panggil manual `jalankanRetensiData(false)`.
 
 ---
 

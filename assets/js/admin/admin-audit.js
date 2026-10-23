@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.3
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * admin-audit.js — Jejak Audit & Riwayat Mutasi Sensitif (FR-P0-02, FR-ADM-01)
  */
 

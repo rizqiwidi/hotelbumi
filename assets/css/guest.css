@@ -15,6 +15,9 @@
   --charcoal-light: #4a4a4a;
   --white: #ffffff;
   --gold: var(--champagne-gold);
+  /* FR-V67-10: champagne gold asli hanya 2.1:1 di atas ivory/putih (gagal WCAG AA).
+     Token ini khusus TEKS di latar terang; emas asli tetap untuk border/latar/tombol. */
+  --gold-text: #86682f;
   --ink: var(--charcoal);
   --shadow-soft: 0 4px 24px rgba(26, 60, 42, 0.08);
   --shadow-medium: 0 8px 32px rgba(26, 60, 42, 0.12);
@@ -82,6 +85,30 @@ body {
   background: linear-gradient(180deg, var(--deep-green) 0%, var(--deep-green-light) 100%);
   overflow: hidden;
 }
+.bs-offline-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: #7a2b1f; color: #fff; font-size: 0.82rem; text-align: center;
+}
+.bs-offline-bar[hidden] { display: none; }
+/* Mobile action bar menutupi banner; geser banner ke atas saat bar tampil. */
+body:has(#bs-mobile-bar:not(.bs-hidden)) .bs-offline-bar { bottom: 62px; }
+.bs-lang-switch {
+  position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px;
+  z-index: 4; display: flex; gap: 2px;
+  padding: 3px; border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(201,169,110,0.4);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.bs-lang-btn {
+  min-width: 44px; min-height: 44px; padding: 0 12px;
+  border: 0; border-radius: 999px; cursor: pointer;
+  background: transparent; color: rgba(255,255,255,0.8);
+  font: inherit; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.5px;
+}
+.bs-lang-btn[aria-pressed="true"] { background: var(--champagne-gold); color: var(--deep-green); }
 .bs-hero-overlay {
   position: absolute; inset: 0;
   background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="1.5" fill="rgba(201,169,110,0.15)"/><circle cx="80" cy="40" r="2" fill="rgba(201,169,110,0.1)"/><circle cx="40" cy="80" r="1" fill="rgba(201,169,110,0.12)"/><circle cx="70" cy="70" r="1.5" fill="rgba(201,169,110,0.08)"/></svg>');
@@ -198,7 +225,9 @@ body {
 }
 .bs-stars { display: flex; gap: 8px; margin-bottom: 14px; }
 .bs-star {
-  background: none; border: none; cursor: pointer; padding: 4px;
+  /* FR-V67-11: 44x44px minimum tap target */
+  background: none; border: none; cursor: pointer;
+  min-width: 44px; min-height: 44px; padding: 4px;
   font-size: 1.7rem; color: #d8d4c8; transition: color 0.15s, transform 0.15s;
 }
 .bs-star:hover { transform: scale(1.15); }
@@ -227,7 +256,7 @@ body {
 
 .bs-scroll-hint {
   margin: 30px auto 0;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255,255,255,0.75);
   font-size: 0.72rem; letter-spacing: 1px;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   animation: bs-bounce-y 2s infinite;
@@ -328,12 +357,13 @@ body {
 .bs-outlet-icon-inline { font-size: 1.2rem; }
 .bs-outlet-type {
   font-size: 0.72rem; font-weight: 600;
-  color: var(--champagne-gold);
+  /* FR-V67-10: emas asli hanya 2.2:1 di atas putih; varian gelap ≈4.6:1 */
+  color: #8a6d3b;
   text-transform: uppercase; letter-spacing: 0.8px;
   margin: 2px 0 6px;
 }
 .bs-outlet-desc { font-size: 0.82rem; color: var(--charcoal-light); line-height: 1.55; margin-bottom: 8px; }
-.bs-outlet-hours { font-size: 0.75rem; color: #888; margin-bottom: 10px; }
+.bs-outlet-hours { font-size: 0.75rem; color: #666; margin-bottom: 10px; }
 .bs-outlet-hours .bs-time-icon { margin-right: 4px; }
 .bs-outlet-footer { margin-top: 4px; }
 .bs-outlet-action-btn {
@@ -342,10 +372,10 @@ body {
   color: var(--deep-green);
   text-decoration: none;
   border-bottom: 1.5px solid var(--champagne-gold);
-  padding-bottom: 2px;
+  min-height: 44px; padding-bottom: 2px; /* FR-V67-11 tap target */
   transition: color 0.2s ease;
 }
-.bs-outlet-action-btn:hover { color: var(--champagne-gold); }
+.bs-outlet-action-btn:hover { color: var(--gold-text); }
 
 /* ── Promotions ──────────────────────────────────────────── */
 .bs-promos-grid { display: flex; flex-direction: column; gap: 20px; }
@@ -365,6 +395,8 @@ body {
   overflow: hidden; position: relative;
 }
 .bs-promo-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.bs-promo-img-placeholder[hidden],
+.bs-outlet-img-placeholder[hidden] { display: none; }
 .bs-promo-img-placeholder {
   color: var(--champagne-gold);
   font-family: 'Playfair Display', serif;
@@ -377,7 +409,7 @@ body {
 .bs-promo-badge {
   display: inline-block;
   font-size: 0.68rem; font-weight: 700;
-  color: var(--champagne-gold);
+  color: var(--gold-text);
   text-transform: uppercase; letter-spacing: 1px;
   margin-bottom: 6px;
 }
@@ -389,9 +421,9 @@ body {
 .bs-promo-desc { font-size: 0.85rem; color: var(--charcoal-light); margin-bottom: 10px; line-height: 1.6; }
 .bs-promo-price {
   font-size: 1.05rem; font-weight: 700;
-  color: var(--champagne-gold); margin-bottom: 4px;
+  color: var(--gold-text); margin-bottom: 4px;
 }
-.bs-promo-period { font-size: 0.75rem; color: #888; margin-bottom: 16px; }
+.bs-promo-period { font-size: 0.75rem; color: #666; margin-bottom: 16px; }
 .bs-promo-period .bs-period-icon { margin-right: 4px; }
 .bs-promo-footer .bs-btn { margin-bottom: 0; }
 
@@ -469,7 +501,7 @@ body {
 /* ── Footer ──────────────────────────────────────────────── */
 .bs-footer {
   background: var(--charcoal);
-  color: rgba(255,255,255,0.55);
+  color: rgba(255,255,255,0.78);
   padding: 44px 24px 110px;
   text-align: center;
   font-size: 0.82rem;
@@ -483,6 +515,15 @@ body {
 }
 .bs-footer-hotel-name { color: var(--white); font-size: 0.95rem; margin-bottom: 6px; }
 .bs-footer-address { max-width: 340px; margin: 0 auto 4px; line-height: 1.7; }
+.bs-footer-contact { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: center; margin: 10px 0 0; }
+.bs-footer-contact-link {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 44px; padding: 0 4px;
+  color: rgba(255,255,255,0.9); text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.bs-footer-contact-link:hover,
+.bs-footer-contact-link:focus-visible { color: var(--champagne-gold-light); border-bottom-color: currentColor; }
 .bs-footer-divider {
   width: 48px; height: 2px;
   background: var(--champagne-gold);
@@ -490,7 +531,10 @@ body {
   border-radius: 2px;
 }
 .bs-footer-links { margin-bottom: 16px; }
-.bs-footer-links a { color: var(--champagne-gold); text-decoration: none; }
+.bs-footer-links a {
+  color: var(--champagne-gold-light); text-decoration: none;
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; /* FR-V67-11 tap target */
+}
 .bs-footer-links a:hover { text-decoration: underline; }
 .bs-footer-sep { margin: 0 8px; opacity: 0.4; }
 .bs-footer-copyright { line-height: 1.8; }
@@ -506,7 +550,10 @@ body {
 /* ── Floating mobile action bar ──────────────────────────── */
 .bs-mobile-action-bar {
   position: fixed;
-  bottom: 16px; left: 16px; right: 16px;
+  /* FR-V67-11: hindari home indicator iOS */
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: calc(16px + env(safe-area-inset-left));
+  right: calc(16px + env(safe-area-inset-right));
   z-index: 100;
   display: flex; gap: 10px;
   max-width: 480px; margin: 0 auto;
@@ -546,7 +593,7 @@ body {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   max-width: 560px; width: 100%;
   max-height: 88vh; overflow-y: auto;
-  padding: 36px 28px 28px;
+  padding: 36px 28px calc(28px + env(safe-area-inset-bottom));
   position: relative;
   transform: translateY(24px);
   transition: transform 0.3s ease;
@@ -554,7 +601,7 @@ body {
 .bs-modal-overlay:not([aria-hidden="true"]) .bs-modal { transform: translateY(0); }
 .bs-modal-close {
   position: absolute; top: 16px; right: 16px;
-  width: 36px; height: 36px;
+  width: 44px; height: 44px;
   border-radius: 50%; border: none;
   background: var(--ivory);
   color: var(--charcoal);
@@ -564,7 +611,7 @@ body {
   display: inline-block;
   font-size: 0.68rem; font-weight: 700;
   letter-spacing: 1.2px;
-  color: var(--champagne-gold);
+  color: var(--gold-text);
   text-transform: uppercase;
   margin-bottom: 10px;
 }
@@ -618,6 +665,7 @@ body {
   background: var(--deep-green); color: var(--white);
   font-weight: 700; font-size: 0.85rem;
   padding: 10px 18px; border-radius: 999px; text-decoration: none;
+  min-height: 44px; /* FR-V67-11 tap target */
 }
 .bs-wa-sales-cta i { color: var(--champagne-gold); }
 .bs-wa-picker-empty { text-align: center; padding: 8px 4px; }

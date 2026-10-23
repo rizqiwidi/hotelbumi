@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- CSP (BUG-22 / FR-V67-07): tanpa inline script; style inline masih
+       dipakai atribut style="" sehingga 'unsafe-inline' diizinkan untuk CSS saja. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://wa.me">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <meta name="description" id="bs-meta-desc" content="Welcome to Bumi Surabaya City Resort — a five-star city resort in the heart of Surabaya with lush tropical gardens and legendary culinary destinations.">
   <meta name="robots" content="noindex, nofollow">
@@ -21,18 +24,40 @@
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
 
-  <!-- Open Graph -->
+  <!-- Open Graph / share preview (FR-V67-13) -->
   <meta property="og:title" content="Bumi Surabaya City Resort — Digital Guest Experience">
   <meta property="og:description" content="Five-star hotel in the heart of Surabaya — luxurious stays, lush tropical gardens, and exclusive culinary experiences.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://rizqiwidi.github.io/hotelbumi/">
+  <meta property="og:image" content="https://rizqiwidi.github.io/hotelbumi/assets/images/logo-hotel.png">
+  <meta property="og:image:alt" content="Bumi Surabaya City Resort">
+  <meta name="twitter:card" content="summary">
 </head>
 <body>
+
+  <!-- FR-V67-13: tanpa JS halaman tidak bisa dirender; beri tahu tamu alih-alih spinner abadi. -->
+  <noscript>
+    <div style="padding:24px;font-family:Inter,system-ui,sans-serif;background:#1a3c2a;color:#fff;text-align:center;">
+      <p style="margin:0 0 8px;font-size:1.05rem;">This page needs JavaScript to display hotel information.</p>
+      <p style="margin:0;font-size:0.9rem;opacity:.85;">
+        Please enable JavaScript, or contact us at
+        <a href="tel:+62313545888" style="color:#ddb97a;">+62 31 354 5888</a>
+        or <a href="https://wa.me/628113388523" style="color:#ddb97a;">WhatsApp</a>.
+      </p>
+    </div>
+  </noscript>
 
   <!-- ═══════════════════════════════════════════════════════
        HONEYPOT (hidden from humans, filled by bots)
   ══════════════════════════════════════════════════════════ -->
   <div class="bs-hp-field" aria-hidden="true">
-    <input type="text" id="bs-hp-website" name="website_url_verification" tabindex="-1" autocomplete="off">
+    <input type="text" id="bs-hp-website" name="website_url_verification" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="Leave this field empty">
+  </div>
+
+  <!-- FR-V67-16: status koneksi (ditampilkan app.js saat offline) -->
+  <div id="bs-offline-bar" class="bs-offline-bar" role="status" aria-live="polite" hidden>
+    <i class="fas fa-wifi" aria-hidden="true"></i>
+    <span id="bs-offline-text">You are offline — some content may be out of date.</span>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════
@@ -52,8 +77,14 @@
   <main id="bs-main" class="bs-hidden">
 
     <!-- ── HERO SECTION ─────────────────────────────────── -->
-    <section class="bs-hero" role="banner">
+    <section class="bs-hero">
       <div class="bs-hero-overlay" aria-hidden="true"></div>
+
+      <!-- FR-V67-14: tamu bisa memilih bahasa sendiri; sebelumnya hanya bisa via ?lang= -->
+      <div class="bs-lang-switch" role="group" aria-label="Language / Bahasa">
+        <button type="button" class="bs-lang-btn" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" class="bs-lang-btn" data-lang="id" aria-pressed="false">ID</button>
+      </div>
 
       <div class="bs-hero-content">
 
@@ -181,7 +212,7 @@
         <h2 id="bs-outlets-heading" class="bs-section-title">Discover Dining</h2>
         <p id="bs-outlets-sub" class="bs-section-sub">Explore our iconic F&B outlets, each with its own culinary story.</p>
 
-        <div id="bs-outlets-grid" class="bs-outlets-grid" role="list" aria-label="Restaurant outlet list">
+        <div id="bs-outlets-grid" class="bs-outlets-grid" aria-label="Restaurant outlet list">
           <!-- Rendered dynamically by app.js -->
         </div>
       </div>
@@ -194,7 +225,7 @@
         <h2 id="bs-promos-heading" class="bs-section-title">Exclusive Offers</h2>
         <p id="bs-promos-sub" class="bs-section-sub">Handpicked culinary experiences and special moments, just for you.</p>
 
-        <div id="bs-promos-grid" class="bs-promos-grid" role="list" aria-label="Promotion list">
+        <div id="bs-promos-grid" class="bs-promos-grid" aria-label="Promotion list">
           <!-- Rendered dynamically by app.js -->
         </div>
       </div>
@@ -233,7 +264,7 @@
       <div class="bs-container">
         <h2 id="bs-social-heading" class="bs-section-title">Stay Connected</h2>
         <p id="bs-social-sub" class="bs-section-sub">Follow us for the latest stories and exclusive offers.</p>
-        <div id="bs-social-links" class="bs-social-links" role="list">
+        <div id="bs-social-links" class="bs-social-links" aria-label="Social media links">
           <!-- Rendered by app.js -->
         </div>
       </div>
@@ -280,6 +311,17 @@
           <p id="bs-address-footer" class="bs-footer-address">
             Jl. Jenderal Basuki Rachmat No.106-128, Surabaya 60271, East Java, Indonesia
           </p>
+          <!-- FR-V67-13: alamat & telepon sebelumnya hanya teks mati. -->
+          <p class="bs-footer-contact">
+            <a id="bs-footer-map-link" class="bs-footer-contact-link"
+               href="https://www.google.com/maps/search/?api=1&amp;query=Bumi+Surabaya+City+Resort"
+               target="_blank" rel="noopener noreferrer">
+              <i class="fas fa-map-marker-alt" aria-hidden="true"></i><span id="bs-footer-map-text">Get Directions</span>
+            </a>
+            <a id="bs-footer-tel-link" class="bs-footer-contact-link" href="tel:+62313545888">
+              <i class="fas fa-phone" aria-hidden="true"></i><span id="bs-footer-tel-text">+62 31 354 5888</span>
+            </a>
+          </p>
         </div>
 
         <div class="bs-footer-divider"></div>
@@ -295,7 +337,7 @@
         <p class="bs-footer-copyright">
           <span id="bs-footer-copyright-text">© 2026 Bumi Surabaya City Resort. All rights reserved.</span>
           <br>
-          <span id="bs-footer-version-tag" class="bs-version-tag">Digital Guest Experience v6.3</span>
+          <span id="bs-footer-version-tag" class="bs-version-tag">Digital Guest Experience v6.7</span>
         </p>
       </div>
     </footer>
@@ -409,15 +451,8 @@
   <script src="assets/js/guest/tracking.js"></script>
   <script src="assets/js/guest/app.js"></script>
 
-  <!-- Honeypot check: if filled, flag as bot -->
-  <script>
-    (function() {
-      var hpEl = document.getElementById('bs-hp-website');
-      if (hpEl && hpEl.value) {
-        window._bsHpValue = hpEl.value;
-      }
-    })();
-  </script>
+  <!-- Honeypot dibaca langsung saat submit oleh app.js/tracking.js;
+       skrip inline lama dihapus agar CSP tanpa 'unsafe-inline' (BUG-22). -->
 
 </body>
 </html>

@@ -1,6 +1,6 @@
-# ASSUMPTIONS.md — Catatan Asumsi, Batasan Teknis & Kuota Platform v6.2 (Fase 2)
+# ASSUMPTIONS.md — Catatan Asumsi, Batasan Teknis & Kuota Platform v6.7
 
-Dokumen ini mencatat asumsi arsitektur, batasan teknis platform, kuota layanan Google Apps Script / Google Sheets, matriks hak akses peran (RBAC), prosedur pemulihan darurat, serta rekomendasi kebijakan retensi data pada **Bumi Surabaya Digital Guest Experience v6.2 (Fase 2 — Operasional, Auditabilitas, dan Skala)**.
+Dokumen ini mencatat asumsi arsitektur, batasan teknis platform, kuota layanan Google Apps Script / Google Sheets, matriks hak akses peran (RBAC), prosedur pemulihan darurat, serta rekomendasi kebijakan retensi data pada **Bumi Surabaya Digital Guest Experience v6.7 (Fase 2 — Operasional, Auditabilitas, dan Skala)**.
 
 ---
 
@@ -29,7 +29,7 @@ Dokumen ini mencatat asumsi arsitektur, batasan teknis platform, kuota layanan G
   - `target_object`: Objek atau domain yang dimutasi (`config`, `sources`, `promotions`, dll.)
   - `status`: Hasil mutasi (`SUCCESS`, `FAILED`, `DENIED`)
   - `details`: Rincian ringkas mutasi (daftar kunci yang diubah atau alasan penolakan)
-  - `ip`: IP terdeteksi/disamarkan
+  - `ip`: Selalu `unavailable`. Web App Apps Script tidak mengekspos IP klien dan header `X-Forwarded-For` bisa dipalsukan, jadi nilai itu tidak diisi. Konsekuensinya AF-07 (shared IP) tidak akan pernah menyala di produksi — deteksi penyalahgunaan mengandalkan `device_id`, `fp`, dan pola waktu.
 - **Larangan Keras Rahasia Mentah**: Kata sandi (*plaintext password*), token autentikasi, atau salt kriptografis **dilarang keras** disimpan di dalam kolom rincian audit.
 
 ### A-03 — Prosedur Pemulihan Darurat / Break-Glass (SEC-12)

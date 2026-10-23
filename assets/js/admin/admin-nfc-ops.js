@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.4
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * admin-nfc-ops.js — Programmer Kartu NFC & Preview/Cetak QR Tunggal (FR-P1-05, FR-ADM-01, FR-CRUD-AUTO)
  */
 

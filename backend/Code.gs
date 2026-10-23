@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.0
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
  * backend/Code.gs — Kode utama Google Apps Script
  *
  * Endpoint:
@@ -17,6 +17,13 @@
  * Tab Google Sheets:
  *   Users, Config, Sources, StaffDevices, Events_YYYY_MM, MonthlyAggregates, ScriptLog
  */
+
+/**
+ * Penanda kolom `ip`. Web App Google Apps Script tidak mengekspos alamat IP
+ * klien dan header yang dikirim klien tidak boleh dipercaya (SEC-05), jadi
+ * nilai ini ditulis apa adanya alih-alih string kosong (BUG-32).
+ */
+var IP_UNAVAILABLE = 'unavailable';
 
 /* ══════════════════════════════════════════════════════════════
    HELPER: Spreadsheet & sheet
@@ -115,9 +122,13 @@ function _sanitizeRole(role) {
   return 'manager';
 }
 
+// Cache per eksekusi: _roleHasTab kini dipanggil berkali-kali per request
+// (gate get_admin_data + allowlist config), dan tiap panggilan membaca sheet.
+var _roleDefCache = {};
 function _getRoleDef(role) {
   var r = _sanitizeRole(role || 'super_admin');
   if (r === 'super_admin') return DEFAULT_ROLE_PERMISSIONS.super_admin;
+  if (_roleDefCache[r]) return _roleDefCache[r];
   try {
     var ss = getSpreadsheet();
     var cfgSheet = ss.getSheetByName('Config');
@@ -127,13 +138,15 @@ function _getRoleDef(role) {
         if (String(rows[i][0] || '') === 'role_permissions' && rows[i][1]) {
           var parsed = JSON.parse(rows[i][1]);
           if (parsed && parsed[r] && Array.isArray(parsed[r].allowed_tabs)) {
+            _roleDefCache[r] = parsed[r];
             return parsed[r];
           }
         }
       }
     }
   } catch (e) {}
-  return DEFAULT_ROLE_PERMISSIONS[r] || { can_mutate: false, allowed_tabs: ['account'] };
+  _roleDefCache[r] = DEFAULT_ROLE_PERMISSIONS[r] || { can_mutate: false, allowed_tabs: ['account'] };
+  return _roleDefCache[r];
 }
 
 function _roleHasTab(role, tabName) {
@@ -169,7 +182,9 @@ function _recordAudit(actor, role, action, targetObject, status, details, ip) {
       String(targetObject || '').substring(0, 100),
       String(status || 'SUCCESS').substring(0, 20),
       String(details || '').substring(0, 500),
-      String(ip || '').substring(0, 50)
+      // BUG-32: Web App GAS tidak mengekspos IP klien. Isi penanda eksplisit
+      // (bukan string kosong) supaya laporan tidak menyiratkan data hilang.
+      String(ip || IP_UNAVAILABLE).substring(0, 50)
     ]);
   } catch (e) {
     // Fail-safe jika gagal menulis audit, tetap catat ke ScriptLog
@@ -184,6 +199,11 @@ function _recordAudit(actor, role, action, targetObject, status, details, ip) {
 
 /**
  * Cek rate limit untuk kunci tertentu di CacheService.
+ *
+ * Catatan: CacheService tidak punya operasi increment atomik, jadi dua request
+ * yang benar-benar bersamaan bisa lolos satu kali lebih banyak. Untuk tujuan
+ * anti-abuse selisih itu tidak berarti; penjaga sebenarnya adalah batas global.
+ *
  * @param {string} key
  * @param {number} [limit=60]
  * @param {number} [windowSec=60]
@@ -198,6 +218,64 @@ function _checkRateLimit(key, limit, windowSec) {
   if (count >= max) return false;
   cache.put(rateKey, String(count + 1), ttl);
   return true;
+}
+
+/** Baca penghitung tanpa menaikkannya. */
+function _peekRateLimit(key) {
+  try {
+    return Number(CacheService.getScriptCache().get('rate_' + String(key).substring(0, 100)) || 0);
+  } catch (e) { return 0; }
+}
+
+/** Hapus penghitung rate limit (dipakai saat login berhasil — BUG-30). */
+function _clearRateLimit(key) {
+  try {
+    CacheService.getScriptCache().remove('rate_' + String(key).substring(0, 100));
+  } catch (e) {}
+}
+
+/* ── Indeks sesi per pengguna (BUG-29) ─────────────────────────
+   CacheService tidak bisa dienumerasi, jadi token yang diterbitkan dicatat
+   manual di `sessidx_<username>`. Saat sandi diganti/direset, semua token
+   pengguna itu dihapus sehingga sesi lama (termasuk milik penyerang) mati. */
+var SESSION_INDEX_MAX = 20;
+
+function _sessionIndexKey(username) {
+  return 'sessidx_' + String(username || '').toLowerCase().substring(0, 60);
+}
+
+function _trackSessionToken(username, token) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var key   = _sessionIndexKey(username);
+    var list  = [];
+    try { list = JSON.parse(cache.get(key) || '[]') || []; } catch (e) { list = []; }
+    list.push(String(token));
+    if (list.length > SESSION_INDEX_MAX) list = list.slice(-SESSION_INDEX_MAX);
+    cache.put(key, JSON.stringify(list), 21600);
+  } catch (e) {}
+}
+
+/**
+ * Cabut semua sesi milik `username`. Bila `keepToken` diberikan, token itu
+ * dipertahankan (dipakai saat pengguna mengganti sandinya sendiri).
+ */
+function _revokeUserSessions(username, keepToken) {
+  var revoked = 0;
+  try {
+    var cache = CacheService.getScriptCache();
+    var key   = _sessionIndexKey(username);
+    var list  = [];
+    try { list = JSON.parse(cache.get(key) || '[]') || []; } catch (e) { list = []; }
+    for (var i = 0; i < list.length; i++) {
+      if (keepToken && list[i] === keepToken) continue;
+      cache.remove('sess_' + list[i]);
+      revoked++;
+    }
+    if (keepToken) cache.put(key, JSON.stringify([String(keepToken)]), 21600);
+    else cache.remove(key);
+  } catch (e) {}
+  return revoked;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -240,6 +318,11 @@ function _generateSecureRandomHex(len) {
  * diterapkan penguatan berupa 1.000 iterasi digest SHA-256 ber-salt acak unik 16-hex per akun.
  * Format tersimpan: pbkdf2_sha256$1000$<digest_hex>
  *
+ * CATATAN KEJUJURAN (BUG-28): prefix `pbkdf2_sha256$` dipertahankan hanya demi
+ * kompatibilitas hash lama. Algoritmanya BUKAN PBKDF2 (tanpa HMAC, tanpa XOR
+ * salt per iterasi), melainkan iterasi SHA-256 sederhana. Kekuatannya jauh di
+ * bawah bcrypt/argon2; pertahanan utama adalah rate limit login dan panjang sandi.
+ *
  * @param {string} salt
  * @param {string} password
  * @returns {string}
@@ -263,8 +346,23 @@ function _hashPassword(salt, password) {
 }
 
 /**
+ * Bandingkan dua string hex tanpa membocorkan posisi byte pertama yang berbeda
+ * lewat waktu eksekusi (BUG-28). Panjang berbeda tetap dibedakan lebih dulu.
+ */
+function _constantTimeEquals(a, b) {
+  var x = String(a || '');
+  var y = String(b || '');
+  if (x.length !== y.length) return false;
+  var diff = 0;
+  for (var i = 0; i < x.length; i++) {
+    diff |= (x.charCodeAt(i) ^ y.charCodeAt(i));
+  }
+  return diff === 0;
+}
+
+/**
  * Verifikasi kecocokan password terhadap hash yang tersimpan.
- * Mendukung format PBKDF2-stretched dan format legacy single SHA-256 (backward compatibility).
+ * Mendukung format stretched-iterative dan format legacy single SHA-256 (backward compatibility).
  *
  * @param {string} salt
  * @param {string} password
@@ -273,8 +371,8 @@ function _hashPassword(salt, password) {
  */
 function _verifyPassword(salt, password, storedHash) {
   if (!storedHash) return false;
-  if (storedHash.indexOf('pbkdf2_sha256$') === 0) {
-    return _hashPassword(salt, password) === storedHash;
+  if (String(storedHash).indexOf('pbkdf2_sha256$') === 0) {
+    return _constantTimeEquals(_hashPassword(salt, password), storedHash);
   }
   // Verifikasi fallback untuk hash warisan single sha256 jika ada akun lama
   var raw = String(salt) + String(password);
@@ -287,7 +385,7 @@ function _verifyPassword(salt, password, storedHash) {
     if (s.length === 1) hex += '0';
     hex += s;
   }
-  return hex === storedHash;
+  return _constantTimeEquals(hex, storedHash);
 }
 
 /**
@@ -301,7 +399,7 @@ function _verifyPassword(salt, password, storedHash) {
 function _getOrCreateUsersSheet() {
   var ss = getSpreadsheet();
   var sheet = ss.getSheetByName('Users');
-  var headers = ['username', 'password_hash', 'salt', 'must_change', 'created_at', 'updated_at', 'role'];
+  var headers = ['username', 'password_hash', 'salt', 'must_change', 'created_at', 'updated_at', 'role', 'active'];
   if (!sheet) {
     sheet = ss.insertSheet('Users');
     sheet.appendRow(headers);
@@ -309,9 +407,15 @@ function _getOrCreateUsersSheet() {
          .setFontWeight('bold')
          .setBackground('#f0ece4');
     sheet.setFrozenRows(1);
-    _log('INFO', 'create_sheet', 'Tab Users dibuat dengan kolom role (SEC-02, SEC-11)', '');
-  } else if (sheet.getLastColumn() < 7) {
-    sheet.getRange(1, 7).setValue('role').setFontWeight('bold').setBackground('#f0ece4');
+    _log('INFO', 'create_sheet', 'Tab Users dibuat dengan kolom role & active (SEC-02, SEC-11, BUG-18)', '');
+  } else {
+    // Migrasi kolom bertahap agar sheet lama tetap kompatibel.
+    if (sheet.getLastColumn() < 7) {
+      sheet.getRange(1, 7).setValue('role').setFontWeight('bold').setBackground('#f0ece4');
+    }
+    if (sheet.getLastColumn() < 8) {
+      sheet.getRange(1, 8).setValue('active').setFontWeight('bold').setBackground('#f0ece4');
+    }
   }
   return sheet;
 }
@@ -347,7 +451,7 @@ function setupInitialAdmin(username, password, role) {
     Logger.log('Admin ' + u + ' (role: ' + r + ') berhasil diperbarui.');
     _recordAudit('system', 'super_admin', 'SETUP_ADMIN', 'user:' + u, 'SUCCESS', 'Admin diinisialisasi/diperbarui dengan role: ' + r, '');
   } else {
-    sheet.appendRow([u, hash, salt, false, now, now, r]);
+    sheet.appendRow([u, hash, salt, false, now, now, r, true]);
     Logger.log('Admin baru ' + u + ' (role: ' + r + ') berhasil dibuat.');
     _recordAudit('system', 'super_admin', 'CREATE_ADMIN', 'user:' + u, 'SUCCESS', 'Admin baru dibuat dengan role: ' + r, '');
   }
@@ -384,7 +488,7 @@ function setupUser(username, password, role) {
     _recordAudit('system', 'super_admin', 'UPDATE_USER', 'user:' + u, 'SUCCESS', 'Pengguna ' + u + ' diperbarui ke role ' + r + ' (must_change=true)', '');
     Logger.log('Pengguna ' + u + ' (' + r + ') diperbarui.');
   } else {
-    sheet.appendRow([u, hash, salt, true, now, now, r]);
+    sheet.appendRow([u, hash, salt, true, now, now, r, true]);
     _recordAudit('system', 'super_admin', 'CREATE_USER', 'user:' + u, 'SUCCESS', 'Pengguna baru ' + u + ' dibuat dengan role ' + r + ' (must_change=true)', '');
     Logger.log('Pengguna baru ' + u + ' (' + r + ') dibuat.');
   }
@@ -419,9 +523,12 @@ function breakGlassRecovery(targetUsername, temporaryPassword) {
     sheet.getRange(existing.rowIndex, 4).setValue(true);
     sheet.getRange(existing.rowIndex, 6).setValue(now);
     sheet.getRange(existing.rowIndex, 7).setValue('super_admin');
+    sheet.getRange(existing.rowIndex, 8).setValue(true);
   } else {
-    sheet.appendRow([u, hash, salt, true, now, now, 'super_admin']);
+    sheet.appendRow([u, hash, salt, true, now, now, 'super_admin', true]);
   }
+  // BUG-29: reset darurat juga mematikan semua sesi akun tersebut.
+  _revokeUserSessions(u, null);
 
   _recordAudit(
     'BREAK_GLASS_SYSTEM',
@@ -437,7 +544,7 @@ function breakGlassRecovery(targetUsername, temporaryPassword) {
 
 /**
  * Cari pengguna berdasarkan username (case-insensitive).
- * Membaca hingga kolom ke-7 (role) dengan fallback ke 'super_admin'.
+ * Membaca 8 kolom (role + active); sheet lama tanpa kolom active dianggap aktif.
  * @param {string} username
  * @returns {object|null}
  */
@@ -445,7 +552,7 @@ function _findUser(username) {
   var sheet = _getOrCreateUsersSheet();
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) return null;
-  var maxCol = Math.max(sheet.getLastColumn(), 7);
+  var maxCol = Math.max(sheet.getLastColumn(), 8);
   var rows = sheet.getRange(2, 1, lastRow - 1, maxCol).getValues();
   var target = String(username).toLowerCase().trim();
   for (var i = 0; i < rows.length; i++) {
@@ -458,7 +565,9 @@ function _findUser(username) {
         must_change: rows[i][3] === true || rows[i][3] === 'TRUE',
         created_at: rows[i][4],
         updated_at: rows[i][5],
-        role: _sanitizeRole(rows[i][6])
+        role: _sanitizeRole(rows[i][6]),
+        // Kolom active opsional: sheet lama tanpa kolom ini dianggap aktif (BUG-18).
+        active: (rows[i][7] === undefined || rows[i][7] === '') ? true : (rows[i][7] === true || rows[i][7] === 'TRUE')
       };
     }
   }
@@ -506,6 +615,11 @@ function _verifySession(token, allowMustChange) {
   // Gunakan role terkini dari database lembar Users
   var currentRole = user.role || sessionRole;
 
+  // BUG-18: sesi milik akun yang dinonaktifkan langsung tidak berlaku.
+  if (user.active === false) {
+    return { valid: false, error: 'Unauthorized: Akun tidak aktif' };
+  }
+
   if (user.must_change && !allowMustChange) {
     return {
       valid: false,
@@ -548,7 +662,8 @@ function doGet(e) {
     return _jsonOut({ ok: false, error: 'Aksi GET tidak dikenali: ' + action });
   } catch (err) {
     _log('ERROR', 'doGet', err.toString(), '');
-    return _jsonOut({ ok: false, error: err.toString() });
+    // BUG-34: detail internal hanya ke ScriptLog, klien dapat pesan generik.
+    return _jsonOut({ ok: false, error: 'Terjadi kesalahan pada server. Coba lagi atau hubungi administrator.' });
   }
 }
 
@@ -562,8 +677,11 @@ function doGet(e) {
  */
 function _handleGetConfig(e) {
   var bypassCache = !!(e && e.parameter && e.parameter.nocache === '1');
+  var wantSource  = String((e && e.parameter && e.parameter.source) || '').trim().toLowerCase();
   var cache = CacheService.getScriptCache();
-  if (!bypassCache) {
+  // BUG-33: payload kini bergantung pada ?source=, jadi cache hanya dipakai
+  // untuk request tanpa sumber spesifik (daftar sales + konten umum).
+  if (!bypassCache && !wantSource) {
     try {
       var cachedJson = cache.get(PUBLIC_CONFIG_CACHE_KEY);
       if (cachedJson) {
@@ -671,7 +789,6 @@ function _handleGetConfig(e) {
     }) : []
   };
 
-  // Hanya sumber AKTIF dengan field publik + masa tenggang migrasi jika aktif (API-04, SRC-02, FR-P0-05)
   var activeSources = [];
   if (srcSheet && srcSheet.getLastRow() > 1) {
     var maxCol = Math.max(srcSheet.getLastColumn(), 17);
@@ -680,10 +797,18 @@ function _handleGetConfig(e) {
       var isActive = sRows[j][5] === true || sRows[j][5] === 'TRUE';
       if (!isActive) continue;
       var sType = String(sRows[j][2] || 'staff');
+      var sCode = String(sRows[j][0] || '');
       var migMode = sRows[j][12] === true || sRows[j][12] === 'TRUE';
       var migUntil = String(sRows[j][13] || '');
+      var legacyCodes = sRows[j][7] ? (function(){ try{ return JSON.parse(sRows[j][7]); }catch(e){ return []; } })() : [];
+      var isWanted = wantSource && (
+        sCode.toLowerCase() === wantSource ||
+        (migMode && migUntil && Array.isArray(legacyCodes) &&
+         legacyCodes.some(function(lc){ return String(lc).toLowerCase() === wantSource; }))
+      );
+      if (sType !== 'sales' && !isWanted) continue;
       var pubSrc = {
-        code:             String(sRows[j][0] || ''),
+        code:             sCode,
         name:             String(sRows[j][1] || ''),
         type:             sType,
         outlet:           String(sRows[j][3] || ''),
@@ -696,7 +821,7 @@ function _handleGetConfig(e) {
       if (migMode && migUntil) {
         pubSrc.migration_mode  = true;
         pubSrc.migration_until = migUntil;
-        pubSrc.legacy_codes    = sRows[j][7] ? (function(){ try{ return JSON.parse(sRows[j][7]); }catch(e){ return []; } })() : [];
+        pubSrc.legacy_codes    = legacyCodes;
       }
       activeSources.push(pubSrc);
     }
@@ -706,7 +831,7 @@ function _handleGetConfig(e) {
     ok:      true,
     version: Date.now(),
     system_health: {
-      backend_version: 'v6.6.0-phase6',
+      backend_version: 'v6.7.0',
       server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
       timezone:        'Asia/Jakarta'
     },
@@ -805,7 +930,8 @@ function doPost(e) {
 
   } catch (err) {
     _log('ERROR', 'doPost', err.toString(), '');
-    return _jsonOut({ ok: false, error: err.toString() });
+    // BUG-34: detail internal hanya ke ScriptLog, klien dapat pesan generik.
+    return _jsonOut({ ok: false, error: 'Terjadi kesalahan pada server. Coba lagi atau hubungi administrator.' });
   }
 }
 
@@ -973,6 +1099,8 @@ function _sendLowRatingAlert(fb) {
     var alertWebhook = '';
     if (cfgSheet && cfgSheet.getLastRow() > 1) {
       var rows = cfgSheet.getRange(2, 1, cfgSheet.getLastRow() - 1, 2).getValues();
+      var topEmail = '';
+      var topWebhook = '';
       for (var i = 0; i < rows.length; i++) {
         if (rows[i][0] === 'general') {
           try {
@@ -980,9 +1108,15 @@ function _sendLowRatingAlert(fb) {
             alertEmail   = String((gen && gen.alert_email) || '').trim();
             alertWebhook = String((gen && gen.alert_webhook_url) || '').trim();
           } catch (_) {}
-          break;
+        } else if (rows[i][0] === 'alert_email') {
+          // Portal admin menyimpan kunci ini di level atas, bukan di dalam general (BUG-21).
+          try { topEmail = String(JSON.parse(rows[i][1]) || '').trim(); } catch (_) {}
+        } else if (rows[i][0] === 'alert_webhook_url') {
+          try { topWebhook = String(JSON.parse(rows[i][1]) || '').trim(); } catch (_) {}
         }
       }
+      if (!alertEmail)   alertEmail   = topEmail;
+      if (!alertWebhook) alertWebhook = topWebhook;
     }
     if (!alertEmail) {
       try {
@@ -1065,7 +1199,7 @@ function _handleListUsers(data, session) {
   var sheet = _getOrCreateUsersSheet();
   var users = [];
   if (sheet && sheet.getLastRow() > 1) {
-    var maxCol = Math.max(sheet.getLastColumn(), 7);
+    var maxCol = Math.max(sheet.getLastColumn(), 8);
     var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, maxCol).getValues();
     for (var i = 0; i < rows.length; i++) {
       if (!rows[i][0]) continue;
@@ -1074,7 +1208,8 @@ function _handleListUsers(data, session) {
         must_change: rows[i][3] === true || rows[i][3] === 'TRUE',
         created_at:  rows[i][4] || '',
         updated_at:  rows[i][5] || '',
-        role:        _sanitizeRole(rows[i][6])
+        role:        _sanitizeRole(rows[i][6]),
+        active:      (rows[i][7] === undefined || rows[i][7] === '') ? true : (rows[i][7] === true || rows[i][7] === 'TRUE')
       });
     }
   }
@@ -1091,6 +1226,8 @@ function _handleSaveUser(data, session) {
   var targetRole = _sanitizeRole(data.target_role || 'manager');
   var newPw      = String(data.new_password || '').trim();
   var mustChange = data.must_change !== undefined ? Boolean(data.must_change) : true;
+  // BUG-18: undefined = pertahankan status lama saat update, default true saat create.
+  var activeFlag = data.active !== undefined ? Boolean(data.active) : null;
 
   if (!targetUser || !/^[a-z0-9_.-]{3,40}$/.test(targetUser)) {
     return _jsonOut({ ok: false, error: 'Username harus terdiri dari 3–40 karakter huruf kecil, angka, titik, atau garis bawah.' });
@@ -1116,14 +1253,17 @@ function _handleSaveUser(data, session) {
       sheet.getRange(existing.rowIndex, 4).setValue(mustChange);
       sheet.getRange(existing.rowIndex, 6).setValue(now);
       sheet.getRange(existing.rowIndex, 7).setValue(targetRole);
-      _recordAudit(session.username, session.role, 'UPDATE_USER', 'user:' + targetUser, 'SUCCESS', 'Perbarui akun role=' + targetRole + ', must_change=' + mustChange + (newPw ? ', sandi direset' : ''), '');
+      if (activeFlag !== null) sheet.getRange(existing.rowIndex, 8).setValue(activeFlag);
+      // BUG-29: reset sandi atau penonaktifan akun harus mematikan sesi yang sudah ada.
+      if (newPw || activeFlag === false) _revokeUserSessions(targetUser, null);
+      _recordAudit(session.username, session.role, 'UPDATE_USER', 'user:' + targetUser, 'SUCCESS', 'Perbarui akun role=' + targetRole + ', must_change=' + mustChange + (activeFlag !== null ? ', active=' + activeFlag : '') + (newPw ? ', sandi direset' : ''), '');
     } else {
       if (!newPw || newPw.length < 8) {
         return _jsonOut({ ok: false, error: 'Kata sandi awal wajib diisi (minimal 8 karakter) untuk pengguna baru.' });
       }
       var newSalt = _generateSecureRandomHex(16);
       var newHash = _hashPassword(newSalt, newPw);
-      sheet.appendRow([targetUser, newHash, newSalt, mustChange, now, now, targetRole]);
+      sheet.appendRow([targetUser, newHash, newSalt, mustChange, now, now, targetRole, activeFlag === null ? true : activeFlag]);
       _recordAudit(session.username, session.role, 'CREATE_USER', 'user:' + targetUser, 'SUCCESS', 'Buat pengguna baru role=' + targetRole + ', must_change=' + mustChange, '');
     }
 
@@ -1152,6 +1292,7 @@ function _handleDeleteUser(data, session) {
       return _jsonOut({ ok: false, error: 'Pengguna tidak ditemukan.' });
     }
     sheet.deleteRow(existing.rowIndex);
+    _revokeUserSessions(targetUser, null);
     _recordAudit(session.username, session.role, 'DELETE_USER', 'user:' + targetUser, 'SUCCESS', 'Akun pengguna dihapus dari sistem', '');
     return _handleListUsers(data, session);
   } finally {
@@ -1232,9 +1373,14 @@ function _handleLogin(data) {
     return _jsonOut({ ok: false, error: 'Nama pengguna dan kata sandi wajib diisi.' });
   }
 
-  // Rate limiting (SEC-05): Mengabaikan parameter IP klien
-  var userRateKey = 'login_user_' + username;
-  if (!_checkRateLimit(userRateKey, 5, 60)) {
+  /* BUG-30: penghitung kini HANYA menaik saat login gagal dan dihapus saat
+     login berhasil. Sebelumnya setiap percobaan — termasuk yang sah — ikut
+     dihitung, sehingga siapa pun bisa mengunci akun orang lain dengan 5
+     request/menit. Sisa risiko: penyerang masih bisa menghabiskan jatah
+     percobaan sah selama ≤60 detik; itu batas atas yang diterima karena
+     Apps Script tidak mengekspos IP klien. */
+  var userRateKey = 'login_fail_' + username;
+  if (_peekRateLimit(userRateKey) >= 10) {
     _log('WARN', 'login', 'Rate limit login terlampaui untuk user: ' + username, '');
     return _jsonOut({ ok: false, error: 'Terlalu banyak percobaan login. Silakan tunggu 1 menit.' });
   }
@@ -1250,9 +1396,19 @@ function _handleLogin(data) {
   var isValid = _verifyPassword(saltToUse, password, expectedHash) && (user !== null);
 
   if (!isValid) {
+    _checkRateLimit(userRateKey, 999, 60);
     _log('WARN', 'login', 'Percobaan login gagal untuk: ' + username, '');
     _recordAudit(username || 'unknown', 'unknown', 'LOGIN', 'session', 'FAILED', 'Percobaan kata sandi tidak cocok', '');
     // Pesan kesalahan generik (SEC-04)
+    return _jsonOut({ ok: false, error: 'Nama pengguna atau kata sandi tidak valid.' });
+  }
+  _clearRateLimit(userRateKey);
+
+  // BUG-18: akun nonaktif ditolak walau sandi benar. Pesan tetap generik agar
+  // status akun tidak bocor ke penyerang.
+  if (user.active === false) {
+    _recordAudit(user.username, user.role, 'LOGIN', 'session', 'FAILED', 'Akun nonaktif mencoba login', '');
+    _log('WARN', 'login', 'Login ditolak: akun nonaktif ' + user.username, '');
     return _jsonOut({ ok: false, error: 'Nama pengguna atau kata sandi tidak valid.' });
   }
 
@@ -1265,6 +1421,7 @@ function _handleLogin(data) {
     role:     user.role
   });
   cache.put('sess_' + token, sessionPayload, 21600);
+  _trackSessionToken(user.username, token);
 
   _recordAudit(user.username, user.role, 'LOGIN', 'session', 'SUCCESS', 'Login berhasil (must_change=' + user.must_change + ')', '');
   _log('INFO', 'login', 'Login sukses: ' + user.username + ' (role=' + user.role + ', must_change=' + user.must_change + ')', '');
@@ -1321,7 +1478,10 @@ function _handleChangePassword(data) {
   sheet.getRange(user.rowIndex, 4).setValue(false);
   sheet.getRange(user.rowIndex, 6).setValue(now);
 
-  _recordAudit(user.username, session.role || 'user', 'CHANGE_PASSWORD', 'user:' + user.username, 'SUCCESS', 'Kata sandi berhasil diperbarui', '');
+  // BUG-29: sesi lain milik akun ini dicabut; sesi yang sedang dipakai tetap hidup.
+  var revokedOther = _revokeUserSessions(user.username, token);
+  _recordAudit(user.username, session.role || 'user', 'CHANGE_PASSWORD', 'user:' + user.username, 'SUCCESS',
+    'Kata sandi berhasil diperbarui' + (revokedOther ? '; ' + revokedOther + ' sesi lain dicabut' : ''), '');
   _log('INFO', 'change_password', 'Kata sandi berhasil diperbarui untuk: ' + user.username, '');
 
   return _jsonOut({
@@ -1377,6 +1537,13 @@ function _handleLogEvent(data) {
     return _jsonOut({ ok: false, error: 'Format device_id tidak valid' });
   }
 
+  /* BUG-31: device_id berasal dari klien, jadi batas per-device saja tidak
+     berarti — cukup ganti device_id untuk spam. Tambahkan batas global per
+     menit sebagai pengaman kasar; angkanya di atas trafik wajar hotel. */
+  if (!_checkRateLimit('event_global', 300, 60)) {
+    _log('WARN', 'log_event', 'Global rate limit log_event terlampaui', '');
+    return _jsonOut({ ok: false, error: 'Rate limit exceeded' });
+  }
   if (!_checkRateLimit('event_dev_' + devId, 60, 60)) {
     _log('WARN', 'log_event', 'Rate limit exceeded — device: ' + devId.substring(0, 30), '');
     return _jsonOut({ ok: false, error: 'Rate limit exceeded' });
@@ -1436,7 +1603,7 @@ function _handleLogEvent(data) {
       String(data.event       || 'unknown').substring(0, 50),
       String(data.source      || 'general').substring(0, 100),
       String(data.source_type || 'general').substring(0, 50),
-      '',
+      IP_UNAVAILABLE,
       String(data.ua          || '').substring(0, 150),
       String(data.screen      || '').substring(0, 30),
       Number(data.dwell_ms)     || 0,
@@ -1475,14 +1642,29 @@ function _handleGetAdminData(data, session) {
     }
   }
 
-  if (role === 'content_editor') {
-    delete fullConfig.fraud_thresholds;
-  }
+  // BUG-23: gate per menu, bukan sekadar cek 'content_editor'.
+  var canSeeSources  = _roleHasTab(role, 'sources') || _roleHasTab(role, 'sales-wa') || _roleHasTab(role, 'nfc');
+  var canSeeDevices  = _roleHasTab(role, 'antifraud');
+  var canSeeAnalytics= _roleHasTab(role, 'dashboard');
+  var canSeeConfig   = _roleHasTab(role, 'config');
 
-  var allSources = (role === 'content_editor') ? [] : _readSourcesSheetAll(srcSheet);
+  if (!canSeeConfig) {
+    delete fullConfig.fraud_thresholds;
+    delete fullConfig.alert_email;
+    delete fullConfig.alert_webhook_url;
+    if (fullConfig.general && typeof fullConfig.general === 'object') {
+      delete fullConfig.general.whatsapp;
+      delete fullConfig.general.alert_email;
+      delete fullConfig.general.alert_webhook_url;
+    }
+  }
+  // role_permissions tidak dihapus: isinya sudah publik di assets/js/config.js
+  // dan dipakai UI untuk merender menu sesuai peran.
+
+  var allSources = canSeeSources ? _readSourcesSheetAll(srcSheet) : [];
 
   var staffDevices = [];
-  if (role !== 'content_editor' && devSheet && devSheet.getLastRow() > 1) {
+  if (canSeeDevices && devSheet && devSheet.getLastRow() > 1) {
     var dRows = devSheet.getRange(2, 1, devSheet.getLastRow() - 1, 4).getValues();
     staffDevices = dRows.map(function(r) {
       return {
@@ -1494,7 +1676,7 @@ function _handleGetAdminData(data, session) {
     });
   }
 
-  var monthlyAgg = (role === 'content_editor') ? [] : _readMonthlyAggregates(ss);
+  var monthlyAgg = canSeeAnalytics ? _readMonthlyAggregates(ss) : [];
 
   return _jsonOut({
     ok:                 true,
@@ -1504,7 +1686,7 @@ function _handleGetAdminData(data, session) {
     monthly_aggregates: monthlyAgg,
     timestamp:          new Date().toISOString(),
     system_health: {
-      backend_version: 'v6.6.0-phase6',
+      backend_version: 'v6.7.0',
       server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
       timezone:        'Asia/Jakarta',
       current_user:    session ? session.username : '',
@@ -1548,6 +1730,61 @@ function _handleSaveAllAdminData(data, session) {
     }
   }
 
+  /* BUG-24: allowlist kunci Config per role. UI mengirim seluruh state.configData,
+     jadi kunci yang tidak berhak ditulis dibuang, bukan menolak seluruh simpan. */
+  var CONFIG_KEY_TABS = {
+    general:            ['appearance', 'config'],
+    appearance:         ['appearance'],
+    guest_sections:     ['appearance'],
+    review_settings:    ['appearance'],
+    guest_content:      ['appearance'],
+    language_mode:      ['appearance'],
+    whatsapp_settings:  ['sales-wa'],
+    promotions:         ['promos'],
+    outlets:            ['outlets'],
+    fraud_thresholds:   ['config'],
+    role_permissions:   ['config'],
+    alert_email:        ['config'],
+    alert_webhook_url:  ['config']
+  };
+  /* Sebagian besar isi `general` adalah konten (nama hotel, alamat, sosial media,
+     URL Google Review) dan memang diedit dari tab appearance. Hanya field yang
+     TIDAK punya input di tab appearance — nomor WA tujuan dan tujuan notifikasi —
+     yang dikunci ke tab config (BUG-24). */
+  var GENERAL_FIELD_TABS = {
+    whatsapp:          ['config'],
+    alert_email:       ['config'],
+    alert_webhook_url: ['config']
+  };
+  if (data.config && role !== 'super_admin') {
+    var strippedConfigKeys = [];
+    for (var ck2 in data.config) {
+      if (!data.config.hasOwnProperty(ck2)) continue;
+      var needTabs = CONFIG_KEY_TABS[ck2];
+      var permitted = needTabs ? needTabs.some(function (t) { return _roleHasTab(role, t); }) : false;
+      if (!permitted) {
+        delete data.config[ck2];
+        strippedConfigKeys.push(ck2);
+      }
+    }
+    if (data.config.general && typeof data.config.general === 'object') {
+      var generalDenied = [];
+      for (var gf in GENERAL_FIELD_TABS) {
+        if (!GENERAL_FIELD_TABS.hasOwnProperty(gf)) continue;
+        if (data.config.general[gf] === undefined) continue;
+        var gfOk = GENERAL_FIELD_TABS[gf].some(function (t) { return _roleHasTab(role, t); });
+        if (!gfOk) { delete data.config.general[gf]; generalDenied.push(gf); }
+      }
+      if (generalDenied.length > 0) {
+        strippedConfigKeys.push('general.' + generalDenied.join(',general.'));
+      }
+    }
+    if (strippedConfigKeys.length > 0) {
+      _recordAudit(actor, role, 'MUTATION_FILTERED', 'config', 'REJECTED',
+        'Kunci konfigurasi diabaikan karena di luar hak peran: ' + strippedConfigKeys.join(','), '');
+    }
+  }
+
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
@@ -1576,7 +1813,15 @@ function _handleSaveAllAdminData(data, session) {
         if (key === 'fraud_thresholds' && data.fraud_settings) {
           existingMap['fraud_thresholds'] = JSON.stringify(data.fraud_settings);
         } else if (mergedConfig[key] !== undefined) {
-          existingMap[key] = JSON.stringify(mergedConfig[key]);
+          var nextVal = mergedConfig[key];
+          // `general` digabung, bukan ditimpa: role tanpa tab config mengirim
+          // objek tanpa whatsapp/google_review_url, dan replace akan menghapusnya.
+          if (key === 'general' && nextVal && typeof nextVal === 'object') {
+            var prevGen = {};
+            try { prevGen = JSON.parse(existingMap['general'] || '{}') || {}; } catch (e) { prevGen = {}; }
+            nextVal = Object.assign({}, prevGen, nextVal);
+          }
+          existingMap[key] = JSON.stringify(nextVal);
         }
       }
       for (var ck in mergedConfig) {
