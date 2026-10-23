@@ -51,6 +51,7 @@ hotelbumi/
 │   ├── Code.gs                 ← Logika API, otorisasi RBAC backend, AuditLog, break-glass
 │   ├── Triggers.gs             ← Laporan email otomatis & trigger retensi data (dryRun)
 │   └── appsscript.json         ← Manifest Google Apps Script runtime V8
+├── PRD.md                     # Dokumen tunggal spesifikasi produk (tidak diterbitkan ke Pages)
 └── docs/
     ├── SHEETS_SETUP.md         ← Panduan struktur tab Sheets, schema RBAC & bootstrap admin
     ├── DEPLOY.md               ← Panduan ini (GitHub Pages & GAS deployment)

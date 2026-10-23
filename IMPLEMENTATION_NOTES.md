@@ -273,7 +273,7 @@ Sesuai PRD Bagian 12 (Keputusan & Pertimbangan Bisnis), item-item berikut telah 
 
 ## 10. Gelombang W4/W5 — Guest & Aksesibilitas (v6.8)
 
-Ringkasan perubahan setelah audit independen v6.8 (lihat `PRD_Perbaikan_Hotel_Bumi_Surabaya_v6.3.md` §9). Semua perubahan guest-side tanpa build step dan tanpa mengubah palet.
+Ringkasan perubahan setelah audit independen v6.8 (lihat `PRD.md` §9). Semua perubahan guest-side tanpa build step dan tanpa mengubah palet.
 
 ### A. Perbaikan Bug Guest
 - **BUG-25 (`?lang=id`)**: `getMergedSection()` kini menumpuk preset ID di atas `DEFAULTS`, lalu hanya menimpa dengan nilai server yang benar-benar berbeda dari `DEFAULTS`. Teks server berbahasa Inggris tidak lagi mengalahkan preset ID.
@@ -292,6 +292,9 @@ Ringkasan perubahan setelah audit independen v6.8 (lihat `PRD_Perbaikan_Hotel_Bu
 - **`<noscript>`**: pesan + nomor telepon + WhatsApp, menggantikan spinner abadi.
 - **`og:image` + `og:url` + `twitter:card`** untuk pratinjau tautan.
 - **Banner offline** (`#bs-offline-bar`) yang mengikuti event `online`/`offline`; bergeser di atas mobile action bar.
+
+### C-1. Reservasi Kamar — Dibatalkan atas Keputusan Pemilik (23 Oktober 2026)
+`FR-V67-13` butir 1 (widget/CTA reservasi kamar + tarif) **tidak diimplementasikan dan dibatalkan**. Pemilik menegaskan halaman tamu ini bukan kanal booking kamar; halaman dirancang untuk tamu yang sudah check-in (review, gerai F&B, promo, WA concierge). Tidak ada kode reservasi kamar yang perlu dihapus — satu-satunya field bernama reservasi (`reservation_url` per gerai di `Code.gs:833` & `app.js:561`) memang untuk reservasi **meja/menu F&B**, bukan kamar, dan tetap aktif.
 
 ### D. Admin Portal
 - `.adm-table` diberi `min-width: 640px` (wrapper sudah `overflow-x: auto`) agar tidak terhimpit di tablet.

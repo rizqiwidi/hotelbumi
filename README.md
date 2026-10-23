@@ -62,6 +62,7 @@ hotelbumi/
 │   ├── Code.gs             # Handler API doPost/doGet, sesi, hashing, allowlist config
 │   ├── Triggers.gs         # Laporan email otomatis & rekapitulasi integritas data
 │   └── appsscript.json     # Manifest konfigurasi Google Apps Script
+├── PRD.md               # Dokumen tunggal spesifikasi produk & status eksekusi
 └── docs/
     ├── SHEETS_SETUP.md     # Panduan setup Google Sheets & pembuatan akun admin
     ├── DEPLOY.md           # Panduan deployment GitHub Pages & Google Apps Script
@@ -163,4 +164,5 @@ Ikuti panduan di **[docs/DEPLOY.md](./docs/DEPLOY.md)**:
 - [SHEETS_SETUP.md](./docs/SHEETS_SETUP.md) — Panduan struktur spreadsheet database & bootstrap admin
 - [DEPLOY.md](./docs/DEPLOY.md) — Panduan deployment GitHub Pages & Apps Script
 - [ASSUMPTIONS.md](./docs/ASSUMPTIONS.md) — Batasan runtime GAS & asumsi arsitektur
+- [PRD.md](./PRD.md) — Dokumen tunggal spesifikasi produk & status eksekusi (Fase 1 s/d v6.8)
 - [IMPLEMENTATION_NOTES.md](./IMPLEMENTATION_NOTES.md) — Log implementasi teknis & catatan redeploy backend (.gs)

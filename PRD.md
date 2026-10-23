@@ -1,12 +1,15 @@
-# PRODUCT REQUIREMENTS DOCUMENT (PRD) — FASE 3 (v6.3)
-## Rencana Perbaikan Sistem, Desain Ulang Dashboard Admin Anti-Slop & CMS Pengelolaan Penuh Halaman Tamu — Bumi Surabaya Digital Guest Experience
+# PRODUCT REQUIREMENTS DOCUMENT (PRD) — Bumi Surabaya Digital Guest Experience
+## Dokumen tunggal spesifikasi & status eksekusi — Fase 1 s/d v6.8
+
+**Berkas ini adalah satu-satunya PRD proyek.** Dokumen pendahulunya (`docs/PRD.md`) sudah dilebur ke sini; isinya identik dengan §1–§8 di bawah.
 
 | Atribut Dokumen | Rincian Spesifikasi |
 | :--- | :--- |
-| **Nama Sistem & Versi** | Bumi Surabaya — Digital Guest Experience v6.3 (Remediasi, Anti-Slop Admin & Full Guest CMS) |
-| **Basis Kode yang Diaudit** | `hotelbumi-terbaru.zip` (35 berkas, ~14.534 baris kode HTML, CSS, Vanilla JS, dan Google Apps Script) |
-| **Tanggal & Status Dokumen** | 15 Oktober 2026 — Final Engineering & Product Specification (Telah Diimplementasikan) |
-| **Cakupan Spesifikasi** | 14 Remediasi Bug (`BUG-01` s/d `BUG-14`), 5 Standar Dashboard Anti-Slop (`FR-ADM-01` s/d `FR-ADM-05`), & 8 Modul CMS Tamu (`FR-CMS-01` s/d `FR-CMS-08`) |
+| **Nama Sistem** | Bumi Surabaya — Digital Guest Experience |
+| **Berkas tunggal** | `PRD.md` (root repo, tidak diterbitkan ke GitHub Pages) |
+| **Tanggal & Status** | 23 Oktober 2026 — Final Engineering & Product Specification (Telah Diimplementasikan, revisi v6.8) |
+| **Cakupan** | Fase 1 (`BUG-01` s/d `BUG-14`, `FR-ADM-01` s/d `FR-ADM-05`, `FR-CMS-01` s/d `FR-CMS-08`), Fase 4–6 (`FR-V64-01` s/d `FR-V65-05`, `FR-V66-ROLE-MENU`), dan audit independen v6.7/v6.8 (`BUG-16` s d. `BUG-38`, `FR-V67-01` s/d `FR-V67-16`) |
+| **Basis audit terakhir** | Commit `5068a9e` (v6.5/v6.6) — 17.983 baris, diverifikasi langsung ke produksi |
 
 ## Kontrak Keras Desain Halaman Tamu (Zero Visual Change Policy)
 
@@ -145,3 +148,112 @@ Menjawab kebutuhan agar **setiap role yang masuk ke dashboard hanya menampilkan 
    - Di sisi frontend (`BSAdmin.applyRoleRestrictions()`), setiap item menu `.adm-nav-item` yang tidak termasuk dalam `allowed_tabs` role pengguna yang sedang login langsung disembunyikan (`style.display = "none"`), termasuk menyembunyikan judul grup kategori (`.adm-nav-group-title`) jika seluruh menu di dalam grup tersebut tersembunyi.
    - Saat login berhasil (`BSAdmin.showPortal()`), pengguna otomatis diarahkan ke `default_tab` milik rolenya.
    - Di sisi server (`backend/Code.gs` -> `_getRoleDef(role)` & `_roleHasTab(role, tabName)`), backend membaca `role_permissions` dari lembar `Config` dan menolak akses baca/tulis apabila token sesi pengguna berasal dari role yang tidak memiliki izin atas modul tersebut.
+
+---
+
+## 9. Audit Independen v6.7 — Temuan Residual Pasca v6.6 (`BUG-16` s/d `BUG-38`, `FR-V67-01` s/d `FR-V67-16`)
+
+| Atribut Dokumen | Rincian Spesifikasi |
+| :--- | :--- |
+| **Tanggal Audit** | 23 Oktober 2026 |
+| **Metode** | Audit baris-per-baris 4 modul paralel (Guest, Admin, Backend, Gap PRD) + verifikasi langsung ke produksi (`https://rizqiwidi.github.io/hotelbumi/`, endpoint GAS `?action=get_config` → `backend_version: v6.6.0-phase6`) |
+| **Basis Kode** | Commit `5068a9e` (v6.5/v6.6) — 17.983 baris |
+| **Status** | **9 blocker produksi**, 14 bug P1, ~12 fitur belum ada |
+| **Kesimpulan Arsitektur** | Sehat. Vanilla tanpa build, anti-fraud 8 aturan lengkap, RBAC + audit trail ada. Masalah utama ada pada **wiring kontrak UI↔backend** (nama field, nama aksi, lokasi key), bukan pada konsep. |
+
+### 9.1. Blocker Produksi P0 (`BUG-16` s/d `BUG-24`)
+
+| ID | Berkas & Baris | Akar Masalah | Dampak Terverifikasi | Solusi (`FR-V67-xx`) |
+| :--- | :--- | :--- | :--- | :--- |
+| **BUG-16** | `.github/workflows/static.yml`:40 | `path: '.'` mengunggah seluruh repo | **Terverifikasi live**: `curl /backend/Code.gs` → HTTP 200. Skema sheet, logika auth, threshold fraud, PRD publik. `BUG-10`/`FR-P1-03` belum dikerjakan. | `FR-V67-01`: build `_site/` berisi hanya `index.html`, `admin/`, `assets/` sebelum `upload-pages-artifact`; tambah `404.html`; pindahkan PRD & notes ke folder `internal/` yang dikecualikan dari Pages. |
+| **BUG-17** | `admin-core.js`:444-459 vs `Code.gs`:736-803 | UI kirim `action:'track'` (aksi tidak ada di router); payload terbungkus `{id,gasUrl,payload,retries}`; HTTP 200 dianggap sukses lalu antrean dihapus | Event tamu hilang permanen saat flush DLQ; badge `Antrean Tertunda` menyesatkan. `FR-V65-04` tidak berfungsi. | `FR-V67-02`: ubah aksi UI ke `log_event` yang sudah ada di router + unwrap `ev.payload` + kirim ke `ev.gasUrl`; anggap sukses hanya bila `resp.ok === true`. |
+| **BUG-18** | `Code.gs`:296, `:441-465`, `:1226-1270` vs `admin-fraud-ops.js`:781 | Sheet `Users` 7 kolom tanpa `active`; `_findUser` & `_handleLogin` tidak cek status; UI kirim `active` yang diabaikan backend | Tombol **Nonaktifkan** (`admin-fraud-ops.js`:774-789) melapor sukses tapi akun tetap bisa login 6 jam. Tidak ada cara menonaktifkan selain hapus permanen. | `FR-V67-03`: perluas skema `Users` → 8 kolom (`active`), migrasi `getLastColumn() < 8`; `_findUser` baca kolom 8; `_handleLogin` tolak `active === false` dengan pesan generik; `_handleListUsers` kirim `active`. |
+| **BUG-19** | `Code.gs`:1074, `:1093` vs `admin-fraud-ops.js`:723, `:782`, `:849` | Server kirim `must_change`, UI baca `must_change_password`; UI kirim `must_change_password`, server baca `must_change` | Reset sandi paksa tak pernah aktif; badge "Wajib Ganti Sandi" tak pernah tampil; setiap simpan edit menghapus flag lama. `FR-V64-03` PARTIAL. | `FR-V67-04`: satukan nama field ke `must_change` di ketiga titik; tambah fallback baca `must_change_password` selama satu rilis. |
+| **BUG-20** | `config.js`:395, `tracking.js`:251 | `sessionStorage.getItem` tanpa `try` | Browser blokir storage (mode privat/ITP) → exception sebelum `onSuccess` → `#bs-loading` (`index.html`:41) tidak pernah hilang, halaman **kosong permanen**. | `FR-V67-05`: bungkus seluruh akses storage dalam helper `_safeGet`/`_safeSet` dengan fallback memori. |
+| **BUG-21** | `admin-fraud-ops.js`:287 vs `Code.gs`:980-981 | UI simpan `alert_email`/`alert_webhook_url` sebagai key `Config` terpisah; backend baca dari dalam objek `general` | Notifikasi keluhan rating ≤3 **tidak pernah terkirim** walau admin sudah mengisi. `FR-V64-02` gagal senyap. | `FR-V67-06`: UI tulis ke `config.general.alert_email`; backend tambah fallback baca key top-level untuk data lama. |
+| **BUG-22** | `index.html` & `admin/index.html` (0 hasil `Content-Security-Policy`) | Tanpa CSP; token sesi di `sessionStorage` (`auth.js`:21-38) | Satu XSS = pengambilalihan penuh sesi `super_admin`. | `FR-V67-07`: `<meta http-equiv="Content-Security-Policy">` dengan allowlist eksplisit (`fonts.googleapis.com`, `fonts.gstatic.com`, `cdnjs.cloudflare.com`, `cdn.jsdelivr.net`, `script.google.com`); pindahkan inline script `index.html`:413 ke berkas; kurangi 146 inline `style=` di `admin/index.html`. |
+| **BUG-23** | `Code.gs`:1462-1500 | `get_admin_data` hanya menghapus `fraud_thresholds` untuk `content_editor`; tidak ada gate `_roleHasTab` | `analyst_readonly` tetap menerima `alert_email`, `alert_webhook_url`, `role_permissions`, dan seluruh `sources` nonaktif. Klaim PRD §8.2 butir 2 tidak terpenuhi. | `FR-V67-08`: gate per key — `sources` butuh `_roleHasTab(role,'sources')`, `staff_devices` butuh `antifraud`, `config` butuh `config`, `monthly_aggregates` butuh `dashboard`; hapus key terlarang, jangan hanya `fraud_thresholds`. |
+| **BUG-24** | `Code.gs`:1540-1547 | `content_editor` bisa menulis `config.general` (`hotel_name`, `whatsapp`, `google_review_url`) & `alert_email` | Eskalasi wewenang: editor konten bisa mengubah nomor WA & URL review publik tanpa akses tab `config`. | `FR-V67-09`: allowlist key tulis per role; `general` hanya untuk `config`; audit `MUTATION_DENIED` pada penolakan. |
+
+### 9.2. Bug & Kelemahan P1 (`BUG-25` s/d `BUG-38`)
+
+| ID | Berkas & Baris | Temuan | Effort |
+| :--- | :--- | :--- | :--- |
+| **BUG-25** | `app.js`:84-94 | `?lang=id` rusak: `Object.assign({}, base, act)` menimpa preset ID dengan teks server yang satu bahasa. Klaim `FR-V64-06` palsu. | M |
+| **BUG-26** | `config.js`:421 vs `:395` | `CONFIG_VERSION_KEY` ditulis tapi tak pernah dibandingkan; cache `sessionStorage` per-tab tak kedaluwarsa → tamu lihat konten lama sepanjang tab hidup. | M |
+| **BUG-27** | `Triggers.gs`:590; `ASSUMPTIONS.md`:86 | Retensi data: fungsi ada, trigger belum dipasang, default `dryRun`. Klaim privasi 12/24 bulan tidak ditegakkan. | S |
+| **BUG-28** | `Code.gs`:241-268 | Hash sandi 1000 iterasi SHA-256 berlabel `pbkdf2_sha256` — menyesatkan, lemah terhadap GPU. Perbandingan pakai `===` (bukan constant-time). | M |
+| **BUG-29** | `Code.gs`:1300-1327, `:1089-1128` | `change_password` & reset via `save_user` tidak mencabut sesi lain; `breakGlassRecovery` (`:392-440`) juga tidak, padahal `SHEETS_SETUP.md`:102 menjanjikan. | S |
+| **BUG-30** | `Code.gs`:1236-1244 | Rate limit login tanpa IP → DoS: 5 request/menit mengunci user mana pun. `_checkRateLimit` read-then-write, tidak atomik. | S |
+| **BUG-31** | `Code.gs`:855, `:1380` | Rate limit feedback & log event memakai `device_id` dari klien → cukup ganti `device_id` untuk spam tak terbatas. | M |
+| **BUG-32** | `Code.gs`:1439, `:158-173` | Kolom `ip` selalu ditulis string kosong di Events & AuditLog → audit trail kehilangan nilai forensik. | S |
+| **BUG-33** | `Code.gs`:672-712 | `get_config` publik mengembalikan seluruh staf aktif + nama + jam layanan → enumerasi data personal tanpa auth. | S |
+| **BUG-34** | `Code.gs`:806-808 | `err.toString()` dikirim ke klien → bocor detail internal/quota/stack. | S |
+| **BUG-35** | `admin-core.js`:126-136, `:668` | `updateSyncStatus('saving')` tidak set `hasUnsaved`; refresh menimpa edit lokal. Satu flag global untuk semua modul. | M |
+| **BUG-36** | `admin-content.js`:572-578 | Auto-save per checkbox + tombol manual → double POST tanpa debounce, urutan respons acak. | M |
+| **BUG-37** | `app.js`:429-442 vs `Code.gs`:634-635 | Filter promo ganda: string compare di backend + `Date` di klien → promo tampil/hilang tak konsisten antar zona waktu. | S |
+| **BUG-38** | `index.html`:298, `config.js`:90, `Code.gs`:708, `tracking.js`:2, `retry-queue.js`:2 | Drift versi: v6.3 / v6.4 / v6.6.0-phase6 / v6.3 / v5.0 → salah lapor saat troubleshooting. | S |
+
+### 9.3. Desain & Aksesibilitas (`FR-V67-10` s/d `FR-V67-12`)
+
+| Kode | Area | Temuan | Perbaikan |
+| :--- | :--- | :--- | :--- |
+| **FR-V67-10** | Kontras halaman tamu (WCAG AA) | `.bs-outlet-type` emas `#c9a96e` di putih ≈2.2:1 (`guest.css`:331); `#888` jam & periode promo ≈3.5:1 (`:336`, `:394`); scroll-hint ≈3:1 (`:230`); footer `rgba(255,255,255,.55)` 0.82rem ≈4.4:1 (`:472`, `:475`) | Gelapkan ke `#8a6d3b` untuk teks emas di atas putih (≈4.6:1); `#666` untuk metadata; naikkan opasitas footer ke `.72`. **Tidak mengubah layout** — hanya nilai warna. |
+| **FR-V67-11** | Tap target & safe-area | `.bs-star` padding 4px (`guest.css`:201), `.bs-modal-close` 36×36 (`:557`); mobile bar `bottom:16px` tanpa `env(safe-area-inset-bottom)` (`:509`); modal tanpa safe-area (`:544-553`) | Semua target ≥44×44px; `bottom: calc(16px + env(safe-area-inset-bottom))`; tambah `padding-bottom` modal. |
+| **FR-V67-12** | Semantik & modal | `<html lang="en">` tak pernah diubah saat bahasa `id`; `role="radiogroup"` tanpa navigasi panah (`app.js`:749-758); `role="banner"` di `<section>` dalam `<main>` (`index.html`:52); modal tak lock scroll latar & tak `inert` (`app.js`:836-899); `role="list"` tanpa `listitem` (`index.html`:184,197,236) | `document.documentElement.lang = lang`; tambah handler ArrowLeft/Right/Space; hapus `role="banner"`; `body.style.overflow='hidden'` + `inert` saat modal buka; hapus `role="list"` redundan. |
+
+**Admin portal:** tanpa dark mode (warna hardcoded `admin.css`:746, `:1274`); `.adm-table` tanpa `min-width` (`:738-743`) → squeeze di tablet; modal hanya responsif ≤480px (`:1495-1499`); login tanpa "lupa kata sandi"; form `novalidate` tanpa error inline; 146 inline `style=` di `admin/index.html`.
+
+### 9.4. Fitur Belum Ada (`FR-V67-13` s/d `FR-V67-16`)
+
+| Kode | Modul | Fitur | Nilai Bisnis | Effort |
+| :--- | :--- | :--- | :--- | :--- |
+| **FR-V67-13** | Halaman tamu | Toggle bahasa ID/EN di UI | `?lang=` tak terlihat tamu | M |
+| **FR-V67-13** | Halaman tamu | Tautan Google Maps + `tel:` | Alamat & telepon ada di `config.js`:127 tapi tak dirender (`app.js`:669-673) | S |
+| **FR-V67-13** | Halaman tamu | Galeri properti | Aset hanya 4 foto outlet | M |
+| **FR-V67-13** | Halaman tamu | Info fasilitas (check-in/out, Wi-Fi, sarapan) | Standar bintang lima | M |
+| **FR-V67-13** | Halaman tamu | Consent analytics sebelum `visit` terkirim (`tracking.js`:277-282) | Kepatuhan privasi; modal kini informasi, bukan persetujuan | M |
+| **FR-V67-13** | Halaman tamu | Indikator offline + banner fallback; `<noscript>`; `og:image` | Fallback DEFAULTS kini tampil seolah normal; spinner abadi tanpa JS; preview share kosong | S |
+| **FR-V67-14** | Admin | Daftar & cabut sesi aktif | Butuh endpoint baru + index `sess_*` | M |
+| **FR-V67-14** | Admin | Reset sandi mandiri (lupa sandi) | Kini harus lewat `super_admin` | M |
+| **FR-V67-14** | Admin | Upload gambar (bukan input path teks) | `admin/index.html`:2060, 2153 | M |
+| **FR-V67-14** | Admin | Backup/restore penuh | Kini hanya `Config` (`admin-fraud-ops.js`:311-329) | M |
+| **FR-V67-14** | Admin | Paginasi + ekspor audit log | `admin-audit.js`:45 limit 150 | S |
+| **FR-V67-14** | Admin | Date picker periode promo | Kini teks bebas (`admin-content.js`:218) | S |
+| **FR-V67-14** | Admin | Bulk edit sumber; ekspor XLSX/PDF | Kini hanya impor CSV; hanya CSV | M |
+| **FR-V67-15** | Backend | Endpoint `track` resmi idempoten untuk DLQ; rate limit berbasis IP + Turnstile untuk `log_event`/`submit_feedback`; allowlist key `Config` | Prasyarat `BUG-17`, `BUG-31` | M |
+| **FR-V67-16** | Infra | PWA (`manifest.json` + Service Worker) — `FR-V65-05` butir 1 | Opsional | M |
+
+### 9.5. Urutan Eksekusi yang Disarankan
+
+| Gelombang | Item | Prasyarat | Estimasi |
+| :--- | :--- | :--- | :--- |
+| **W1 — Blocker** | `BUG-16` (CI), `BUG-20` (storage), `BUG-22` (CSP) | — | 1–2 hari |
+| **W2 — Kontrak data** | `BUG-18`, `BUG-19`, `BUG-21`, `BUG-17`, `BUG-23`, `BUG-24` | W1 | 3–4 hari |
+| **W3 — P1 backend** | `BUG-27`, `BUG-28`, `BUG-29`, `BUG-30`, `BUG-31`, `BUG-32`, `BUG-33`, `BUG-34` | W2 | 1 minggu |
+| **W4 — Guest & a11y** | `BUG-25`, `BUG-26`, `BUG-37`, `FR-V67-10/11/12` | W2 | 1 minggu |
+| **W5 — Fitur** | `FR-V67-13` (guest), `FR-V67-14` (admin) | W4 | 2–3 minggu |
+| **W6 — Opsional** | `FR-V67-15`, `FR-V67-16` | W5 | sesuai kebutuhan |
+
+**Catatan koreksi audit:** temuan awal "#bs-staff-badge hilang" (`app.js`:240-271) **bukan bug**. Elemen dihapus sengaja pada commit `41bc7bc` ("Hapus badge Served-by di hero"). Tindakan: hapus kode mati `app.js`:240-271 agar tidak menyesatkan audit berikutnya.
+
+---
+
+## 10. Status Eksekusi (Diperbarui 23 Oktober 2026)
+
+| Gelombang | Item | Status |
+| :--- | :--- |
+| **W1 — Blocker** | `BUG-16` (CI `_site/`), `BUG-20` (storage aman), `BUG-22` (CSP) | ✅ Selesai |
+| **W2 — Kontrak data** | `BUG-17`, `BUG-18`, `BUG-19`, `BUG-21`, `BUG-23`, `BUG-24` | ✅ Selesai |
+| **W3 — P1 backend** | `BUG-27` s/d `BUG-34` | ✅ Selesai |
+| **W4 — Guest & a11y** | `BUG-25`, `BUG-26`, `BUG-37`, `BUG-38`, `FR-V67-10/11/12` | ✅ Selesai |
+| **W5 — Fitur guest** | `FR-V67-13` (toggle bahasa, Maps, `tel:`, `<noscript>`, `og:image`, indikator offline, banner fallback) | ✅ Selesai (butir dibatalkan/ditunda lihat catatan di bawah) |
+| **W5 — Fitur admin** | `FR-V67-14` (sesi aktif, reset sandi mandiri, upload gambar, backup penuh, paginasi audit, date picker, bulk edit) | ✅ Selesai |
+| **W6 — Opsional** | `FR-V67-15` (idempotensi `event_id` pada `log_event`), `FR-V67-16` (PWA `manifest.json` + service worker) | ✅ Selesai |
+
+**Catatan W5 guest — keputusan pemilik (23 Oktober 2026):** Reservasi kamar + tarif (`FR-V67-13` butir 1) **dibatalkan**. Hotel tidak menginginkan kanal booking di halaman tamu ini; halaman memang dirancang untuk tamu yang sudah check-in (review, gerai F&B, promo, WA concierge). Field `reservation_url` pada gerai tetap dipertahankan karena dipakai untuk reservasi **meja/menu F&B**, bukan kamar. Butir lain yang belum dikerjakan dan menunggu keputusan pemilik: galeri properti (butir 4, butuh foto resmi), info fasilitas check-in/out & Wi-Fi (butir 5, butuh data operasional), dan consent analytics sebelum event `visit` terkirim (butir 6, butuh kebijakan privasi hotel).
+
+**Catatan W6 — Turnstile tidak dipasang.** `FR-V67-15` juga menyebut Turnstile; CAPTCHA Cloudflare belum aktif karena butuh akun + site key milik hotel. Pengaman setara yang sudah berjalan: rate limit global `log_event` 300/menit + 60/menit per `device_id`, rate limit `submit_feedback` 3/perangkat/24 jam, honeypot (AF-06), dan idempotensi `event_id`. Pasang Turnstile hanya jika spam tetap lolos setelah itu.
+
+**Verifikasi W4/W5/W6:** `node --check` seluruh modul (`assets/js/**`, `backend/*.gs`, `sw.js`) lolos; 14 skrip smoke JSDOM/backend lolos tanpa galat (guest, admin, bahasa, modal+radiogroup, footer, filter promo, paginasi audit, sesi, bulk sumber, lupa sandi, service worker, login/rate limit W3). Bukti visual browser belum diambil — Chromium arm64 tidak tersedia di lingkungan build.
+
