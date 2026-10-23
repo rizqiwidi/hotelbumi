@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.8
  * config.js — Konstanta dasar, fallback defaults, skema penuh Guest CMS & Kamus Dwibahasa ID/EN (FR-CMS-01 s/d FR-CMS-08, FR-V64-06)
  * Hanya berisi nilai publik yang aman; TIDAK ada token/rahasia.
  */
@@ -7,7 +7,7 @@
 (function(window) {
   'use strict';
 
-  /** URL backend Google Apps Script produksi v6.7 */
+  /** URL backend Google Apps Script produksi v6.8 */
   var GAS_URL = 'https://script.google.com/macros/s/AKfycbwrx5XUk37A3uhIpqNjKR9u87Z5hfg6LcBBVkUKFfgKi16YZPrde37ks7r4IsHu__cL/exec';
 
   var GAS_URL_KEY        = 'bs_gas_url';
@@ -125,7 +125,7 @@
       footer_map_label:         'Petunjuk Arah',
       footer_show_admin_link:   true,
       footer_copyright:         '© 2026 Bumi Surabaya City Resort. Seluruh hak cipta dilindungi.',
-      footer_version_tag:       'Digital Guest Experience v6.7',
+      footer_version_tag:       'Digital Guest Experience v6.8',
 
       privacy_badge:            'STANDAR PRIVASI RESOR KELAS DUNIA',
       privacy_title:            'Kebijakan Privasi & Penggunaan Data Tamu',
@@ -291,7 +291,7 @@
       footer_map_label:         'Get Directions',
       footer_show_admin_link:   true,
       footer_copyright:         '© 2026 Bumi Surabaya City Resort. All rights reserved.',
-      footer_version_tag:       'Digital Guest Experience v6.7',
+      footer_version_tag:       'Digital Guest Experience v6.8',
 
       privacy_badge:            'WORLD-CLASS RESORT PRIVACY STANDARD',
       privacy_title:            'Guest Privacy & Data Use Policy',

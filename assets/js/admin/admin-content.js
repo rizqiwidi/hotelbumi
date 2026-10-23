@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.8
  * admin-content.js — Manajemen gerai F&B, promosi, 8 toggle visibilitas seksi, sales WA & live draft preview (FR-CRUD-AUTO)
  *
  * Setiap aksi CRUD (Tambah/Edit/Toggle/Hapus Gerai & Promosi, Toggle Visibilitas Seksi, Simpan WA) OTOMATIS tersimpan ke Google Sheets!

@@ -1,6 +1,6 @@
-# ASSUMPTIONS.md — Catatan Asumsi, Batasan Teknis & Kuota Platform v6.7
+# ASSUMPTIONS.md — Catatan Asumsi, Batasan Teknis & Kuota Platform v6.8
 
-Dokumen ini mencatat asumsi arsitektur, batasan teknis platform, kuota layanan Google Apps Script / Google Sheets, matriks hak akses peran (RBAC), prosedur pemulihan darurat, serta rekomendasi kebijakan retensi data pada **Bumi Surabaya Digital Guest Experience v6.7 (Fase 2 — Operasional, Auditabilitas, dan Skala)**.
+Dokumen ini mencatat asumsi arsitektur, batasan teknis platform, kuota layanan Google Apps Script / Google Sheets, matriks hak akses peran (RBAC), prosedur pemulihan darurat, serta rekomendasi kebijakan retensi data pada **Bumi Surabaya Digital Guest Experience v6.8 (Fase 2 — Operasional, Auditabilitas, dan Skala)**.
 
 ---
 

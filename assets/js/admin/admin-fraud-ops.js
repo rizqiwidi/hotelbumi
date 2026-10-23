@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.8
  * admin-fraud-ops.js — Audit Anomali, Perangkat Staf, Alert & Backup Konfigurasi, Manajemen Role & Visibilitas Menu Sidebar, serta Manajemen Akun RBAC (FR-P0-03, FR-P0-06, FR-V64-02, FR-V64-03, FR-V64-05, FR-V66-ROLE-MENU)
  */
 

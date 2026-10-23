@@ -7,7 +7,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Portal Manajemen — Bumi Surabaya City Resort v6.7</title>
+  <title>Portal Manajemen — Bumi Surabaya City Resort v6.8</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,7 +40,7 @@
       </div>
       <div class="adm-login-badge">PORTAL MANAJEMEN RESOR</div>
       <h1>Bumi Surabaya</h1>
-      <p>Digital Guest Experience &amp; Attribution Platform v6.7</p>
+      <p>Digital Guest Experience &amp; Attribution Platform v6.8</p>
     </div>
 
     <div id="adm-lockout-msg" class="adm-alert adm-alert-danger" style="display:none;"></div>
@@ -92,6 +92,37 @@
       <button type="submit" id="adm-login-btn" class="adm-btn adm-btn-primary adm-btn-full adm-btn-lg">
         Masuk ke Portal Manajemen
       </button>
+
+      <button type="button" id="adm-forgot-btn" class="adm-link-btn">Lupa kata sandi?</button>
+    </form>
+
+    <!-- Reset Sandi Mandiri (FR-V67-14) — dua langkah, tanpa membocorkan keberadaan akun -->
+    <form id="adm-forgot-form" novalidate style="display:none;margin-top:8px;">
+      <p class="adm-field-hint" style="margin-bottom:12px;">
+        Masukkan username terdaftar. Kode 6 digit dikirim ke email akun tersebut dan berlaku 10 menit.
+      </p>
+      <div id="adm-forgot-msg" class="adm-alert" style="display:none;"></div>
+
+      <div class="adm-form-group">
+        <label for="adm-forgot-username">Username</label>
+        <input type="text" id="adm-forgot-username" class="adm-input" autocomplete="username" spellcheck="false" required>
+      </div>
+
+      <div id="adm-forgot-step2" style="display:none;">
+        <div class="adm-form-group">
+          <label for="adm-forgot-code">Kode 6 Digit</label>
+          <input type="text" id="adm-forgot-code" class="adm-input" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code" required>
+        </div>
+        <div class="adm-form-group">
+          <label for="adm-forgot-newpw">Kata Sandi Baru</label>
+          <input type="password" id="adm-forgot-newpw" class="adm-input" minlength="8" autocomplete="new-password" placeholder="Minimal 8 karakter" required>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button type="submit" id="adm-forgot-submit-btn" class="adm-btn adm-btn-primary adm-btn-full">Kirim Kode Reset</button>
+        <button type="button" id="adm-forgot-cancel-btn" class="adm-btn adm-btn-secondary">Batal</button>
+      </div>
     </form>
 
     <div class="adm-login-footer">
@@ -147,7 +178,7 @@
     <div class="adm-sidebar-header">
       <div class="adm-sidebar-logo">
         <img src="../assets/images/logo-hotel.png" alt="Bumi Surabaya" class="adm-sidebar-brand-img" width="150">
-        <span class="adm-sidebar-ver">v6.7</span>
+        <span class="adm-sidebar-ver">v6.8</span>
       </div>
       <button id="adm-sidebar-close" class="adm-sidebar-close" aria-label="Tutup sidebar">✕</button>
     </div>
@@ -301,10 +332,10 @@
         <span id="adm-health-status" class="adm-health-badge adm-health-online"><span class="adm-status-dot-sm"></span> Backend Siap</span>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Frontend:</span> <strong id="adm-health-frontend-ver">v6.7.0</strong>
+        <span class="adm-health-label">Frontend:</span> <strong id="adm-health-frontend-ver">v6.8.0</strong>
       </div>
       <div class="adm-health-item">
-        <span class="adm-health-label">Backend:</span> <strong id="adm-health-backend-ver">v6.7.0</strong>
+        <span class="adm-health-label">Backend:</span> <strong id="adm-health-backend-ver">v6.8.0</strong>
       </div>
       <div class="adm-health-item">
         <span class="adm-health-label">Waktu Server:</span> <span id="adm-health-server-time">—</span>
@@ -577,10 +608,20 @@
           <span id="adm-sources-count-info" class="adm-sources-count-info"></span>
         </div>
 
+        <div id="adm-sources-bulk-bar" class="adm-bulk-bar" style="display:none;" role="region" aria-label="Aksi massal sumber">
+          <span id="adm-sources-bulk-count" class="adm-bulk-count"></span>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" id="adm-bulk-activate-btn">Aktifkan</button>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" id="adm-bulk-deactivate-btn">Nonaktifkan</button>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" id="adm-bulk-outlet-btn">Ubah Gerai…</button>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-danger adm-btn-mutate" id="adm-bulk-delete-btn">Hapus</button>
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary" id="adm-bulk-clear-btn">Batal Pilih</button>
+        </div>
+
         <div class="adm-table-wrap">
           <table class="adm-table" id="adm-sources-list-table" aria-label="Daftar staf dan sumber">
             <thead>
               <tr>
+                <th class="adm-col-check"><input type="checkbox" id="adm-sources-select-all" aria-label="Pilih semua sumber yang tampil"></th>
                 <th>Kode URL</th>
                 <th>Nama</th>
                 <th>Tipe</th>
@@ -1050,6 +1091,10 @@
           <div class="adm-form-group">
             <label for="adm-cms-logo-url">Path / URL Gambar Logo Hotel (Hero &amp; Footer)</label>
             <input type="text" id="adm-cms-logo-url" class="adm-input" placeholder="assets/images/logo-hotel.png">
+            <div class="adm-upload-row">
+              <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-upload-target="adm-cms-logo-url">Unggah Logo</button>
+              <span class="adm-field-hint">JPEG/PNG/WebP, maks 2 MB.</span>
+            </div>
           </div>
           <div class="adm-form-group">
             <label for="adm-cms-hero-bg-url">Path / URL Gambar Latar Hero (Opsional)</label>
@@ -1472,7 +1517,7 @@
           </div>
           <div class="adm-form-group">
             <label for="adm-cms-ftr-version">Teks Tag Versi di Bawah Footer</label>
-            <input type="text" id="adm-cms-ftr-version" class="adm-input" placeholder="Digital Guest Experience v6.7">
+            <input type="text" id="adm-cms-ftr-version" class="adm-input" placeholder="Digital Guest Experience v6.8">
           </div>
         </div>
 
@@ -1698,7 +1743,7 @@
             <li>Akun aktif: <strong id="adm-acc-current-user">admin</strong></li>
             <li>Otentikasi: Session Token Kriptografis Server-Side (Masa berlaku 6 jam)</li>
             <li>Hashing Kredensial: Salted Iterative SHA-256 (1.000 putaran per pengguna)</li>
-            <li>Versi Sistem: <strong>Digital Guest Experience v6.7</strong></li>
+            <li>Versi Sistem: <strong>Digital Guest Experience v6.8</strong></li>
           </ul>
         </div>
       </div>
@@ -1890,6 +1935,7 @@
             </select>
             <input type="text" id="adm-audit-search" class="adm-input" placeholder="Cari aktor / objek / detail..." style="width:200px;padding:6px 10px;font-size:0.8rem;" aria-label="Cari aktor, objek, atau detail audit">
             <span id="adm-audit-count-info" style="font-size:0.78rem;color:var(--charcoal-muted);"></span>
+            <button type="button" class="adm-btn adm-btn-secondary" id="adm-audit-export-btn">Ekspor CSV</button>
             <button class="adm-btn adm-btn-secondary" id="adm-audit-refresh-btn">Perbarui Log</button>
           </div>
         </div>
@@ -1909,6 +1955,43 @@
             </thead>
             <tbody id="adm-audit-tbody">
               <tr><td colspan="7" class="bs-empty">Klik "Perbarui Log" untuk memuat riwayat audit dari server.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="adm-table-footer">
+          <button type="button" class="adm-btn adm-btn-secondary" id="adm-audit-prev-btn" disabled>Sebelumnya</button>
+          <span id="adm-audit-page-info" class="adm-field-hint" aria-live="polite">Halaman 1</span>
+          <button type="button" class="adm-btn adm-btn-secondary" id="adm-audit-next-btn" disabled>Berikutnya</button>
+        </div>
+      </div>
+
+      <!-- Sesi Aktif & Pencabutan (FR-V67-14) -->
+      <div class="adm-card" style="margin-top:20px;">
+        <div class="adm-card-header">
+          <div>
+            <h2 class="adm-card-title">Sesi Aktif</h2>
+            <p class="adm-card-subtitle">Token sesi berlaku 6 jam. Mencabut sesi memaksa perangkat tersebut login ulang.</p>
+          </div>
+          <div class="adm-card-actions">
+            <span id="adm-sess-count-info" class="adm-field-hint"></span>
+            <button type="button" class="adm-btn adm-btn-secondary" id="adm-sess-refresh-btn">Perbarui Sesi</button>
+          </div>
+        </div>
+
+        <div class="adm-table-wrap">
+          <table class="adm-table" aria-label="Tabel sesi aktif">
+            <thead>
+              <tr>
+                <th>Pengguna</th>
+                <th>Peran</th>
+                <th>Penanda Sesi</th>
+                <th>Login (WIB)</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="adm-sess-tbody">
+              <tr><td colspan="5" class="bs-empty">Klik "Perbarui Sesi" untuk memuat sesi aktif.</td></tr>
             </tbody>
           </table>
         </div>
@@ -2061,6 +2144,10 @@
       <div class="adm-form-group">
         <label for="adm-otl-image">Path / URL Foto Gerai <span class="adm-required">*</span></label>
         <input type="text" id="adm-otl-image" class="adm-input" list="adm-otl-image-list" placeholder="assets/images/outlets/arumanis.jpg atau https://..." required>
+        <div class="adm-upload-row">
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-upload-target="adm-otl-image">Unggah Gambar</button>
+          <span class="adm-field-hint">JPEG/PNG/WebP, maks 2 MB. Hasil unggah mengisi kolom di atas.</span>
+        </div>
         <datalist id="adm-otl-image-list">
           <option value="assets/images/outlets/arumanis.jpg">Arumanis (assets/images/outlets/arumanis.jpg)</option>
           <option value="assets/images/outlets/delikopi.svg">DeliKopi (assets/images/outlets/delikopi.svg)</option>
@@ -2154,6 +2241,10 @@
       <div class="adm-form-group">
         <label for="adm-prm-image">Path / URL Gambar Promosi</label>
         <input type="text" id="adm-prm-image" class="adm-input" placeholder="assets/images/outlets/arumanis.jpg atau https://...">
+        <div class="adm-upload-row">
+          <button type="button" class="adm-btn adm-btn-xs adm-btn-secondary adm-btn-mutate" data-upload-target="adm-prm-image">Unggah Gambar</button>
+          <span class="adm-field-hint">JPEG/PNG/WebP, maks 2 MB.</span>
+        </div>
       </div>
       <div class="adm-form-group">
         <label for="adm-prm-desc">Deskripsi Promosi</label>

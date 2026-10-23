@@ -1,4 +1,4 @@
-# Bumi Surabaya — Digital Guest Experience v6.7
+# Bumi Surabaya — Digital Guest Experience v6.8
 
 Platform pelacakan tamu dan atribusi staf berbasis **NFC / QR Code** untuk Hotel Bumi Surabaya City Resort.
 
@@ -34,6 +34,8 @@ Platform pelacakan tamu dan atribusi staf berbasis **NFC / QR Code** untuk Hotel
 ```
 hotelbumi/
 ├── index.html              # Halaman tamu publik (GitHub Pages root)
+├── manifest.json           # Manifest PWA (ikon, warna tema, mode standalone)
+├── sw.js                   # Service worker: cache aset statis halaman tamu
 ├── admin/
 │   └── index.html          # Portal manajemen administrator (/admin/)
 ├── assets/
@@ -110,6 +112,7 @@ Ikuti panduan di **[docs/DEPLOY.md](./docs/DEPLOY.md)**:
 - ✅ **Pemilih Bahasa EN/ID**: Tombol di hero; pilihan tamu disimpan di `localStorage` dan menang atas `language_mode` admin, tanpa reload (FR-V67-14).
 - ✅ **Kontak Langsung**: Tautan Google Maps dan `tel:` di footer, dirender dari `general.address`/`general.phone` (FR-V67-13).
 - ✅ **Fallback Tanpa JS & Offline**: `<noscript>` berisi nomor telepon, banner offline otomatis, dan fallback gambar rusak ke emoji tanpa inline handler (FR-V67-13/15/16).
+- ✅ **PWA Instalable**: `manifest.json` + service worker men-cache aset statis (logo, foto gerai, CSS); navigasi network-first, portal admin sengaja tidak di-cache (FR-V67-16).
 
 ### Admin Portal (`/admin/`)
 - ✅ **Status Sinkronisasi Jujur**: Indikator status penyimpanan cloud terpadu (*Belum disimpan*, *Menyimpan...*, *Tersimpan*, *Gagal menyimpan*) dengan tombol **Coba Lagi (Retry)** dan peringatan `beforeunload` saat ada perubahan belum tersimpan (SRC-01 s/d SRC-03).
@@ -120,6 +123,9 @@ Ikuti panduan di **[docs/DEPLOY.md](./docs/DEPLOY.md)**:
 - ✅ **Web NFC Multi-Tahap**: Pengecekan kompatibilitas browser, panduan fallback iOS/Desktop (via NFC Tools), dan visualisasi 4 tahap penulisan (QRN-03, QRN-04).
 - ✅ **Normalisasi QR Code & Cetak**: Pembuatan URL QR tanpa double-slash dan tata letak cetak stiker/kartu dengan margin rapi (QRN-01, QRN-02).
 - ✅ **Palet Desain Terkunci**: Menjaga integritas identitas kemewahan Hotel Bumi Surabaya (Deep Emerald `#1a3c2a`, Champagne Gold `#c9a96e`, Warm Ivory `#faf8f5`) (PRD 6.1, CNT-07).
+- ✅ **Sesi Aktif & Reset Sandi Mandiri**: Daftar sesi per pengguna dengan tombol cabut; alur lupa sandi dua langkah berbasis kode email (FR-V67-14).
+- ✅ **Audit Terpaginasi**: Paginasi server-side 100 baris + ekspor CSV yang mengikuti filter aktif (bukan hanya halaman terlihat) (FR-V67-14).
+- ✅ **Upload Gambar & Bulk Edit Sumber**: Unggah gambar outlet/promo/CMS langsung ke Drive; pilih beberapa sumber sekaligus untuk aksi massal (FR-V67-14).
 
 ### Spesifikasi Terpadu Anti-Fraud (8 Aturan — AF-01 s/d AF-08)
 

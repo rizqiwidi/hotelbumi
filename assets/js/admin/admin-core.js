@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.8
  * admin-core.js — Central state manager, SVG icon system (FR-ADM-01), Dynamic Role & Sidebar Menu Visibility (FR-V66-ROLE-MENU) & health signals
  */
 
@@ -406,7 +406,7 @@
       }
     } catch (_) {}
 
-    if (feVerEl) feVerEl.textContent = 'v6.7.0';
+    if (feVerEl) feVerEl.textContent = 'v6.8.0';
 
     if (backendHealth && backendHealth.backend_version) {
       if (statusEl) {
@@ -527,7 +527,7 @@
       if (typeof BSAdmin.fraud.renderRoles === 'function') BSAdmin.fraud.renderRoles();
       if (typeof BSAdmin.fraud.loadUsers === 'function')   BSAdmin.fraud.loadUsers();
     }
-    if (name === 'audit'      && BSAdmin.audit)      BSAdmin.audit.load();
+    if (name === 'audit'      && BSAdmin.audit)      { BSAdmin.audit.load(true); BSAdmin.audit.loadSessions(); }
     if (name === 'feedback'   && BSAdmin.feedback)   BSAdmin.feedback.load();
   }
   BSAdmin.switchTab = switchTab;

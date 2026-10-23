@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.8
  * backend/Code.gs — Kode utama Google Apps Script
  *
  * Endpoint:
@@ -244,35 +244,79 @@ function _sessionIndexKey(username) {
   return 'sessidx_' + String(username || '').toLowerCase().substring(0, 60);
 }
 
-function _trackSessionToken(username, token) {
+function _trackSessionToken(username, token, loginAt) {
   try {
     var cache = CacheService.getScriptCache();
     var key   = _sessionIndexKey(username);
     var list  = [];
     try { list = JSON.parse(cache.get(key) || '[]') || []; } catch (e) { list = []; }
-    list.push(String(token));
+    list.push({ t: String(token), at: String(loginAt || '') });
     if (list.length > SESSION_INDEX_MAX) list = list.slice(-SESSION_INDEX_MAX);
     cache.put(key, JSON.stringify(list), 21600);
   } catch (e) {}
 }
 
 /**
+ * Baca indeks sesi aktif milik sebuah username.
+ * Entri berformat lama (string token polos) tetap didukung agar tidak melempar
+ * seluruh daftar sesi saat deploy.
+ * @returns {Array<{t:string, at:string}>}
+ */
+function _readSessionIndex(username) {
+  try {
+    var raw = CacheService.getScriptCache().get(_sessionIndexKey(username));
+    if (!raw) return [];
+    var parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(function (entry) {
+      if (typeof entry === 'string') return { t: entry, at: '' };
+      return { t: String(entry && entry.t || ''), at: String(entry && entry.at || '') };
+    }).filter(function (entry) { return entry.t; });
+  } catch (e) { return []; }
+}
+
+/**
+ * Daftar sesi aktif sebuah pengguna. Token hanya pernah ditampilkan dalam
+ * bentuk 8 karakter awal supaya cukup untuk dicocokkan/dicabut tanpa
+ * membocorkan kredensial penuh ke klien.
+ * @param {string} username
+ * @returns {Array<{token_preview:string, login_at:string, current:boolean}>}
+ */
+function _listActiveSessions(username, currentToken) {
+  var cache = CacheService.getScriptCache();
+  var out   = [];
+  var entries = _readSessionIndex(username);
+  for (var i = 0; i < entries.length; i++) {
+    if (!cache.get('sess_' + entries[i].t)) continue;
+    out.push({
+      token_preview: entries[i].t.substring(0, 8),
+      login_at:      entries[i].at,
+      current:      !!currentToken && entries[i].t === String(currentToken)
+    });
+  }
+  return out;
+}
+
+/**
  * Cabut semua sesi milik `username`. Bila `keepToken` diberikan, token itu
  * dipertahankan (dipakai saat pengguna mengganti sandinya sendiri).
+ * @param {string} [targetToken] - cabut hanya satu token tertentu.
+ * @returns {number} jumlah sesi yang dicabut
  */
-function _revokeUserSessions(username, keepToken) {
+function _revokeUserSessions(username, keepToken, targetToken) {
   var revoked = 0;
   try {
     var cache = CacheService.getScriptCache();
     var key   = _sessionIndexKey(username);
-    var list  = [];
-    try { list = JSON.parse(cache.get(key) || '[]') || []; } catch (e) { list = []; }
+    var list  = _readSessionIndex(username);
+    var kept  = [];
     for (var i = 0; i < list.length; i++) {
-      if (keepToken && list[i] === keepToken) continue;
-      cache.remove('sess_' + list[i]);
+      if (keepToken && list[i].t === keepToken) { kept.push(list[i]); continue; }
+      if (targetToken && list[i].t !== targetToken) { kept.push(list[i]); continue; }
+      cache.remove('sess_' + list[i].t);
       revoked++;
     }
-    if (keepToken) cache.put(key, JSON.stringify([String(keepToken)]), 21600);
+    if (kept.length > 0) cache.put(key, JSON.stringify(kept), 21600);
     else cache.remove(key);
   } catch (e) {}
   return revoked;
@@ -399,7 +443,7 @@ function _verifyPassword(salt, password, storedHash) {
 function _getOrCreateUsersSheet() {
   var ss = getSpreadsheet();
   var sheet = ss.getSheetByName('Users');
-  var headers = ['username', 'password_hash', 'salt', 'must_change', 'created_at', 'updated_at', 'role', 'active'];
+  var headers = ['username', 'password_hash', 'salt', 'must_change', 'created_at', 'updated_at', 'role', 'active', 'email'];
   if (!sheet) {
     sheet = ss.insertSheet('Users');
     sheet.appendRow(headers);
@@ -407,7 +451,7 @@ function _getOrCreateUsersSheet() {
          .setFontWeight('bold')
          .setBackground('#f0ece4');
     sheet.setFrozenRows(1);
-    _log('INFO', 'create_sheet', 'Tab Users dibuat dengan kolom role & active (SEC-02, SEC-11, BUG-18)', '');
+    _log('INFO', 'create_sheet', 'Tab Users dibuat dengan kolom role, active & email (SEC-02, SEC-11, BUG-18, FR-V67-14)', '');
   } else {
     // Migrasi kolom bertahap agar sheet lama tetap kompatibel.
     if (sheet.getLastColumn() < 7) {
@@ -415,6 +459,9 @@ function _getOrCreateUsersSheet() {
     }
     if (sheet.getLastColumn() < 8) {
       sheet.getRange(1, 8).setValue('active').setFontWeight('bold').setBackground('#f0ece4');
+    }
+    if (sheet.getLastColumn() < 9) {
+      sheet.getRange(1, 9).setValue('email').setFontWeight('bold').setBackground('#f0ece4');
     }
   }
   return sheet;
@@ -544,7 +591,7 @@ function breakGlassRecovery(targetUsername, temporaryPassword) {
 
 /**
  * Cari pengguna berdasarkan username (case-insensitive).
- * Membaca 8 kolom (role + active); sheet lama tanpa kolom active dianggap aktif.
+ * Membaca 9 kolom (role, active, email); sheet lama tanpa kolom aktif dianggap aktif.
  * @param {string} username
  * @returns {object|null}
  */
@@ -552,7 +599,7 @@ function _findUser(username) {
   var sheet = _getOrCreateUsersSheet();
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) return null;
-  var maxCol = Math.max(sheet.getLastColumn(), 8);
+  var maxCol = Math.max(sheet.getLastColumn(), 9);
   var rows = sheet.getRange(2, 1, lastRow - 1, maxCol).getValues();
   var target = String(username).toLowerCase().trim();
   for (var i = 0; i < rows.length; i++) {
@@ -567,7 +614,8 @@ function _findUser(username) {
         updated_at: rows[i][5],
         role: _sanitizeRole(rows[i][6]),
         // Kolom active opsional: sheet lama tanpa kolom ini dianggap aktif (BUG-18).
-        active: (rows[i][7] === undefined || rows[i][7] === '') ? true : (rows[i][7] === true || rows[i][7] === 'TRUE')
+        active: (rows[i][7] === undefined || rows[i][7] === '') ? true : (rows[i][7] === true || rows[i][7] === 'TRUE'),
+        email: String(rows[i][8] || '').trim()
       };
     }
   }
@@ -831,7 +879,7 @@ function _handleGetConfig(e) {
     ok:      true,
     version: Date.now(),
     system_health: {
-      backend_version: 'v6.7.0',
+      backend_version: 'v6.8.0',
       server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
       timezone:        'Asia/Jakarta'
     },
@@ -882,6 +930,15 @@ function doPost(e) {
       return _handleChangePassword(data);
     }
 
+    /* ── 2b. Reset sandi mandiri (publik, dibatasi rate limit + kode email) ── */
+    if (action === 'request_password_reset') {
+      return _handleRequestPasswordReset(data);
+    }
+
+    if (action === 'confirm_password_reset') {
+      return _handleConfirmPasswordReset(data);
+    }
+
     /* ── 3. Endpoint Terproteksi Sesi Admin (SEC-01, SEC-11) ── */
     var session = _verifySession(data.token, false);
     if (!session.valid) {
@@ -923,6 +980,18 @@ function doPost(e) {
 
     if (action === 'delete_user') {
       return _handleDeleteUser(data, session);
+    }
+
+    if (action === 'list_sessions') {
+      return _handleListSessions(data, session);
+    }
+
+    if (action === 'revoke_session') {
+      return _handleRevokeSession(data, session);
+    }
+
+    if (action === 'upload_image') {
+      return _handleUploadImage(data, session);
     }
 
     _log('WARN', 'doPost', 'Aksi tidak dikenali: ' + action, '');
@@ -1189,6 +1258,270 @@ function _handleLogout(data) {
   return _jsonOut({ ok: true });
 }
 
+/* ══════════════════════════════════════════════════════════════
+   Handler: list_sessions / revoke_session (FR-V67-14)
+══════════════════════════════════════════════════════════════ */
+
+/**
+ * Daftar sesi aktif. super_admin melihat seluruh pengguna sekaligus; peran lain
+ * hanya melihat sesinya sendiri. Token tidak pernah dikirim utuh.
+ */
+function _handleListSessions(data, session) {
+  var role     = session ? session.role : '';
+  var isSuper  = role === 'super_admin';
+  var target   = String(data.target_username || '').trim().toLowerCase();
+  var users    = [];
+  var sheet    = _getOrCreateUsersSheet();
+
+  if (sheet.getLastRow() > 1) {
+    var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      var u = String(rows[i][0]).trim();
+      if (!u) continue;
+      if (!isSuper) { if (u.toLowerCase() !== String(session.username).toLowerCase()) continue; }
+      else if (target && u.toLowerCase() !== target) continue;
+      users.push({
+        username: u,
+        role:     _sanitizeRole(rows[i][6]),
+        active:   (rows[i][7] === undefined || rows[i][7] === '') ? true : (rows[i][7] === true || rows[i][7] === 'TRUE'),
+        sessions: _listActiveSessions(u, data.token)
+      });
+    }
+  }
+
+  return _jsonOut({ ok: true, users: users, ttl_hours: 6, generated_at: new Date().toISOString() });
+}
+
+/**
+ * Cabut sesi. Mode:
+ *  - `target_username` + `scope:'all'` → super_admin mencabut semua sesi pengguna itu.
+ *  - `token_preview` → cabut sesi dengan awalan token tersebut (milik sendiri,
+ *    atau milik pengguna lain bila pemanggil super_admin).
+ */
+function _handleRevokeSession(data, session) {
+  var role    = session ? session.role : '';
+  var isSuper = role === 'super_admin';
+  var actor   = session ? session.username : 'unknown';
+  var target  = String(data.target_username || actor).trim().toLowerCase();
+  var scope   = String(data.scope || 'one');
+
+  if (!isSuper && target !== String(actor).toLowerCase()) {
+    _recordAudit(actor, role, 'SESSION_REVOKE_DENIED', 'user:' + target, 'REJECTED', 'Ditolak: mencabut sesi pengguna lain', '');
+    return _jsonOut({ ok: false, error: 'Akses ditolak: Anda hanya dapat mencabut sesi milik sendiri.' });
+  }
+
+  var revoked = 0;
+  if (scope === 'all') {
+    revoked = _revokeUserSessions(target, null);
+  } else {
+    var preview = String(data.token_preview || '').trim();
+    if (!preview || preview.length < 8) {
+      return _jsonOut({ ok: false, error: 'Penanda sesi tidak valid.' });
+    }
+    var matches = _readSessionIndex(target).filter(function (e) { return e.t.substring(0, 8) === preview; });
+    if (matches.length === 0) {
+      return _jsonOut({ ok: false, error: 'Sesi tidak ditemukan atau sudah berakhir.' });
+    }
+    for (var i = 0; i < matches.length; i++) {
+      revoked += _revokeUserSessions(target, null, matches[i].t);
+    }
+  }
+
+  _recordAudit(actor, role, 'SESSION_REVOKE', 'user:' + target, 'SUCCESS',
+    'Mencabut ' + revoked + ' sesi (scope=' + scope + ')', '');
+  return _jsonOut({ ok: true, revoked: revoked });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Handler: request_password_reset / confirm_password_reset (FR-V67-14)
+   Reset mandiri lewat kode sekali-pakai yang dikirim ke email terdaftar.
+   Tanpa email terdaftar, jalur ini tidak dapat dipakai — pemilik harus
+   memakai breakGlassRecovery() dari Apps Script Editor.
+══════════════════════════════════════════════════════════════ */
+
+var RESET_CODE_TTL   = 600;  // 10 menit
+var RESET_MAX_TRIES  = 5;
+
+function _resetKey(username) {
+  return 'pwreset_' + String(username || '').toLowerCase().substring(0, 60);
+}
+
+function _handleRequestPasswordReset(data) {
+  var username = String(data.username || '').trim().toLowerCase();
+  // Respons selalu sama: jangan bocorkan keberadaan akun/email.
+  var generic = { ok: true, message: 'Jika akun memiliki email terdaftar, kode reset telah dikirim.' };
+  if (!username) return _jsonOut(generic);
+
+  if (!_checkRateLimit('pwreset_' + username, 3, 900)) {
+    return _jsonOut({ ok: false, error: 'Terlalu banyak permintaan reset. Coba lagi dalam 15 menit.' });
+  }
+
+  var user = _findUser(username);
+  if (!user || !user.email || user.active === false) {
+    _recordAudit(username, 'unknown', 'PASSWORD_RESET_REQUEST', 'user:' + username, 'FAILED',
+      'Tidak ada email terdaftar atau akun nonaktif', '');
+    return _jsonOut(generic);
+  }
+
+  // 6 digit dari sumber acak kriptografis; Math.random() tidak dipakai (SEC-03).
+  var code = ('000000' + (parseInt(_generateSecureRandomHex(6), 16) % 1000000)).slice(-6);
+
+  try {
+    CacheService.getScriptCache().put(_resetKey(username), JSON.stringify({ code: code, tries: 0 }), RESET_CODE_TTL);
+  } catch (e) {
+    return _jsonOut({ ok: false, error: 'Gagal menyimpan kode reset. Coba lagi.' });
+  }
+
+  try {
+    GmailApp.sendEmail(user.email, 'Kode Reset Kata Sandi — Bumi Surabaya Portal',
+      'Kode reset Anda: ' + code + '\n\nKode berlaku 10 menit dan hanya dapat dipakai sekali.',
+      { htmlBody: '<div style="font-family:Arial,sans-serif;max-width:480px;">' +
+        '<h2 style="color:#1f3b2c;font-size:18px;">Reset Kata Sandi Portal</h2>' +
+        '<p>Masukkan kode berikut di halaman login portal manajemen:</p>' +
+        '<p style="font-size:28px;letter-spacing:6px;font-weight:bold;color:#1f3b2c;">' + code + '</p>' +
+        '<p style="font-size:12px;color:#728078;">Kode berlaku 10 menit dan hanya dapat dipakai sekali. ' +
+        'Abaikan email ini bila Anda tidak meminta reset.</p></div>' });
+  } catch (err) {
+    _log('WARN', 'password_reset_mail_failed', err.toString(), '');
+    return _jsonOut({ ok: false, error: 'Gagal mengirim email reset. Hubungi administrator.' });
+  }
+
+  _recordAudit(username, user.role, 'PASSWORD_RESET_REQUEST', 'user:' + username, 'SUCCESS', 'Kode reset dikirim ke email terdaftar', '');
+  return _jsonOut(generic);
+}
+
+function _handleConfirmPasswordReset(data) {
+  var username = String(data.username || '').trim().toLowerCase();
+  var code     = String(data.code || '').trim();
+  var newPw    = String(data.new_password || '');
+
+  if (!username || !code || !newPw) {
+    return _jsonOut({ ok: false, error: 'Username, kode, dan kata sandi baru wajib diisi.' });
+  }
+  if (newPw.length < 8) {
+    return _jsonOut({ ok: false, error: 'Kata sandi baru minimal 8 karakter.' });
+  }
+
+  var cache = CacheService.getScriptCache();
+  var key   = _resetKey(username);
+  var raw   = cache.get(key);
+  if (!raw) {
+    return _jsonOut({ ok: false, error: 'Kode reset tidak valid atau sudah kedaluwarsa.' });
+  }
+
+  var rec;
+  try { rec = JSON.parse(raw); } catch (e) { rec = null; }
+  if (!rec || !rec.code) {
+    return _jsonOut({ ok: false, error: 'Kode reset tidak valid atau sudah kedaluwarsa.' });
+  }
+
+  if (_constantTimeEquals(String(rec.code), code) !== true) {
+    rec.tries = (rec.tries || 0) + 1;
+    if (rec.tries >= RESET_MAX_TRIES) {
+      cache.remove(key);
+      _recordAudit(username, 'unknown', 'PASSWORD_RESET_CONFIRM', 'user:' + username, 'FAILED', 'Kode salah melebihi batas; kode dihapus', '');
+      return _jsonOut({ ok: false, error: 'Terlalu banyak percobaan. Minta kode baru.' });
+    }
+    cache.put(key, JSON.stringify(rec), RESET_CODE_TTL);
+    _recordAudit(username, 'unknown', 'PASSWORD_RESET_CONFIRM', 'user:' + username, 'FAILED', 'Kode reset tidak cocok', '');
+    return _jsonOut({ ok: false, error: 'Kode reset tidak cocok.' });
+  }
+
+  var user = _findUser(username);
+  if (!user || user.active === false) {
+    cache.remove(key);
+    return _jsonOut({ ok: false, error: 'Akun tidak ditemukan atau nonaktif.' });
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet   = _getOrCreateUsersSheet();
+    var newSalt = _generateSecureRandomHex(16);
+    var newHash = _hashPassword(newSalt, newPw);
+    sheet.getRange(user.rowIndex, 2).setValue(newHash);
+    sheet.getRange(user.rowIndex, 3).setValue(newSalt);
+    sheet.getRange(user.rowIndex, 4).setValue(false);
+    sheet.getRange(user.rowIndex, 6).setValue(new Date());
+    cache.remove(key);
+    _revokeUserSessions(username, null);
+  } finally {
+    lock.releaseLock();
+  }
+
+  _recordAudit(username, user.role, 'PASSWORD_RESET_CONFIRM', 'user:' + username, 'SUCCESS', 'Sandi direset mandiri via kode email; seluruh sesi dicabut', '');
+  return _jsonOut({ ok: true, message: 'Kata sandi berhasil direset. Silakan masuk kembali.' });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Handler: upload_image (FR-V67-14)
+   Menyimpan gambar base64 ke Google Drive dan mengembalikan URL publik.
+   Batas 2 MB setelah decode, hanya JPEG/PNG/WebP.
+══════════════════════════════════════════════════════════════ */
+
+var UPLOAD_MAX_BYTES = 2 * 1024 * 1024;
+var UPLOAD_MIME_MAP  = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
+
+function _handleUploadImage(data, session) {
+  var role = session ? session.role : '';
+  var canUpload = role === 'super_admin' ||
+    _roleHasTab(role, 'appearance') || _roleHasTab(role, 'outlets') || _roleHasTab(role, 'promos');
+  if (!canUpload) {
+    _recordAudit(session.username, role, 'UPLOAD_DENIED', 'image', 'REJECTED', 'Ditolak: peran tidak memiliki akses konten', '');
+    return _jsonOut({ ok: false, error: 'Akses ditolak: peran Anda tidak diizinkan mengunggah gambar.' });
+  }
+
+  var mime = String(data.mime_type || '').toLowerCase();
+  var ext  = UPLOAD_MIME_MAP[mime];
+  if (!ext) {
+    return _jsonOut({ ok: false, error: 'Format gambar harus JPEG, PNG, atau WebP.' });
+  }
+
+  var b64 = String(data.data_base64 || '');
+  if (!b64) return _jsonOut({ ok: false, error: 'Data gambar kosong.' });
+  // Perkiraan ukuran sebelum decode (4/3 rasio base64) supaya tidak membuang kuota.
+  if (Math.floor(b64.length * 3 / 4) > UPLOAD_MAX_BYTES) {
+    return _jsonOut({ ok: false, error: 'Ukuran gambar melebihi 2 MB.' });
+  }
+
+  var bytes;
+  try {
+    bytes = Utilities.base64Decode(b64);
+  } catch (e) {
+    return _jsonOut({ ok: false, error: 'Data gambar tidak dapat dibaca.' });
+  }
+  if (bytes.length > UPLOAD_MAX_BYTES) {
+    return _jsonOut({ ok: false, error: 'Ukuran gambar melebihi 2 MB.' });
+  }
+
+  var folderName = 'BumiSurabaya-Assets';
+  var folder;
+  try {
+    var folders = DriveApp.getFoldersByName(folderName);
+    folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+  } catch (err) {
+    _log('WARN', 'upload_folder_failed', err.toString(), '');
+    return _jsonOut({ ok: false, error: 'Folder penyimpanan gambar tidak dapat diakses. Periksa izin Drive.' });
+  }
+
+  var baseName = String(data.file_name || 'gambar').replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 40) || 'gambar';
+  var fileName = baseName + '-' + _generateSecureRandomHex(8) + ext;
+
+  var file;
+  try {
+    file = folder.createFile(Utilities.newBlob(bytes, mime, fileName));
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (err) {
+    _log('WARN', 'upload_save_failed', err.toString(), '');
+    return _jsonOut({ ok: false, error: 'Gagal menyimpan gambar ke Drive.' });
+  }
+
+  var url = 'https://drive.google.com/uc?export=view&id=' + file.getId();
+  _recordAudit(session.username, role, 'UPLOAD_IMAGE', 'file:' + fileName, 'SUCCESS',
+    'Gambar ' + Math.round(bytes.length / 1024) + ' KB diunggah', '');
+  return _jsonOut({ ok: true, url: url, file_id: file.getId(), name: fileName });
+}
+
 /**
  * Handler: list_users, save_user, delete_user (RBAC User Management CRUD — FR-V64-03)
  */
@@ -1199,7 +1532,7 @@ function _handleListUsers(data, session) {
   var sheet = _getOrCreateUsersSheet();
   var users = [];
   if (sheet && sheet.getLastRow() > 1) {
-    var maxCol = Math.max(sheet.getLastColumn(), 8);
+    var maxCol = Math.max(sheet.getLastColumn(), 9);
     var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, maxCol).getValues();
     for (var i = 0; i < rows.length; i++) {
       if (!rows[i][0]) continue;
@@ -1209,7 +1542,8 @@ function _handleListUsers(data, session) {
         created_at:  rows[i][4] || '',
         updated_at:  rows[i][5] || '',
         role:        _sanitizeRole(rows[i][6]),
-        active:      (rows[i][7] === undefined || rows[i][7] === '') ? true : (rows[i][7] === true || rows[i][7] === 'TRUE')
+        active:      (rows[i][7] === undefined || rows[i][7] === '') ? true : (rows[i][7] === true || rows[i][7] === 'TRUE'),
+        email:       String(rows[i][8] || '').trim()
       });
     }
   }
@@ -1228,6 +1562,11 @@ function _handleSaveUser(data, session) {
   var mustChange = data.must_change !== undefined ? Boolean(data.must_change) : true;
   // BUG-18: undefined = pertahankan status lama saat update, default true saat create.
   var activeFlag = data.active !== undefined ? Boolean(data.active) : null;
+  var emailFlag  = data.email !== undefined ? String(data.email || '').trim().toLowerCase() : null;
+
+  if (emailFlag !== null && emailFlag !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailFlag)) {
+    return _jsonOut({ ok: false, error: 'Format email tidak valid.' });
+  }
 
   if (!targetUser || !/^[a-z0-9_.-]{3,40}$/.test(targetUser)) {
     return _jsonOut({ ok: false, error: 'Username harus terdiri dari 3–40 karakter huruf kecil, angka, titik, atau garis bawah.' });
@@ -1254,6 +1593,7 @@ function _handleSaveUser(data, session) {
       sheet.getRange(existing.rowIndex, 6).setValue(now);
       sheet.getRange(existing.rowIndex, 7).setValue(targetRole);
       if (activeFlag !== null) sheet.getRange(existing.rowIndex, 8).setValue(activeFlag);
+      if (emailFlag !== null) sheet.getRange(existing.rowIndex, 9).setValue(emailFlag);
       // BUG-29: reset sandi atau penonaktifan akun harus mematikan sesi yang sudah ada.
       if (newPw || activeFlag === false) _revokeUserSessions(targetUser, null);
       _recordAudit(session.username, session.role, 'UPDATE_USER', 'user:' + targetUser, 'SUCCESS', 'Perbarui akun role=' + targetRole + ', must_change=' + mustChange + (activeFlag !== null ? ', active=' + activeFlag : '') + (newPw ? ', sandi direset' : ''), '');
@@ -1263,7 +1603,7 @@ function _handleSaveUser(data, session) {
       }
       var newSalt = _generateSecureRandomHex(16);
       var newHash = _hashPassword(newSalt, newPw);
-      sheet.appendRow([targetUser, newHash, newSalt, mustChange, now, now, targetRole, activeFlag === null ? true : activeFlag]);
+      sheet.appendRow([targetUser, newHash, newSalt, mustChange, now, now, targetRole, activeFlag === null ? true : activeFlag, emailFlag || '']);
       _recordAudit(session.username, session.role, 'CREATE_USER', 'user:' + targetUser, 'SUCCESS', 'Buat pengguna baru role=' + targetRole + ', must_change=' + mustChange, '');
     }
 
@@ -1421,7 +1761,7 @@ function _handleLogin(data) {
     role:     user.role
   });
   cache.put('sess_' + token, sessionPayload, 21600);
-  _trackSessionToken(user.username, token);
+  _trackSessionToken(user.username, token, Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"));
 
   _recordAudit(user.username, user.role, 'LOGIN', 'session', 'SUCCESS', 'Login berhasil (must_change=' + user.must_change + ')', '');
   _log('INFO', 'login', 'Login sukses: ' + user.username + ' (role=' + user.role + ', must_change=' + user.must_change + ')', '');
@@ -1582,7 +1922,9 @@ function _handleLogEvent(data) {
       return _jsonOut({ ok: true, action: 'no_matching_visit' });
     }
 
-    // Idempotensi (API-03, GUE-11)
+    // Idempotensi (API-03, GUE-11, FR-V67-15): hanya 200 baris terakhir diperiksa
+    // karena retry terjadi dalam hitungan menit, bukan lintas bulan. Jendela
+    // >200 butuh index event_id terpisah — naikkan saat volumenya memang besar.
     var curLastRow = sheet.getLastRow();
     if (curLastRow > 1) {
       var checkRows = Math.min(200, curLastRow - 1);
@@ -1686,7 +2028,7 @@ function _handleGetAdminData(data, session) {
     monthly_aggregates: monthlyAgg,
     timestamp:          new Date().toISOString(),
     system_health: {
-      backend_version: 'v6.7.0',
+      backend_version: 'v6.8.0',
       server_time:     Utilities.formatDate(new Date(), 'Asia/Jakarta', "yyyy-MM-dd'T'HH:mm:ssXXX"),
       timezone:        'Asia/Jakarta',
       current_user:    session ? session.username : '',
@@ -1920,34 +2262,52 @@ function _handleGetAuditLogs(data, session) {
   var ss       = getSpreadsheet();
   var sheet    = ss.getSheetByName('AuditLog');
   var logsList = [];
-  var limit    = Math.min(Number(data.limit) || 200, 500);
+  var limit    = Math.min(Math.max(Number(data.limit) || 100, 1), 500);
+  var offset   = Math.max(Number(data.offset) || 0, 0);
+  var filterAct = String(data.action_filter || '').trim().toUpperCase();
+  var searchQ   = String(data.search || '').trim().toLowerCase();
+  var totalRows = 0;
 
   if (sheet && sheet.getLastRow() > 1) {
-    var totalRows = sheet.getLastRow() - 1;
-    var readRows  = Math.min(totalRows, limit);
-    var startRow  = totalRows - readRows + 2;
-    var rows      = sheet.getRange(startRow, 1, readRows, 8).getValues();
-
-    for (var i = rows.length - 1; i >= 0; i--) {
+    totalRows = sheet.getLastRow() - 1;
+    // Baca dari bawah ke atas (terbaru dulu) supaya offset tetap stabil
+    // walau baris baru ditambahkan di akhir sheet.
+    var all = sheet.getRange(2, 1, totalRows, 8).getValues();
+    for (var i = all.length - 1; i >= 0; i--) {
+      var row = all[i];
+      if (filterAct && String(row[3] || '').toUpperCase() !== filterAct) continue;
+      if (searchQ) {
+        var hay = (String(row[1] || '') + ' ' + String(row[2] || '') + ' ' +
+                   String(row[4] || '') + ' ' + String(row[6] || '')).toLowerCase();
+        if (hay.indexOf(searchQ) === -1) continue;
+      }
       logsList.push({
-        timestamp:     rows[i][0],
-        ts_server:     rows[i][0],
-        actor:         rows[i][1],
-        role:          rows[i][2],
-        action:        rows[i][3],
-        target_object: rows[i][4],
-        status:        rows[i][5],
-        details:       rows[i][6],
-        ip:            rows[i][7]
+        timestamp:     row[0],
+        ts_server:     row[0],
+        actor:         row[1],
+        role:          row[2],
+        action:        row[3],
+        target_object: row[4],
+        status:        row[5],
+        details:       row[6],
+        ip:            row[7]
       });
     }
   }
 
+  var matched = logsList.length;
+  var page    = logsList.slice(offset, offset + limit);
+
   return _jsonOut({
     ok:         true,
-    logs:       logsList,
-    audit_logs: logsList,
-    total:      logsList.length
+    logs:       page,
+    audit_logs: page,
+    total:      page.length,
+    matched:    matched,
+    total_rows: totalRows,
+    offset:     offset,
+    limit:      limit,
+    has_more:   offset + page.length < matched
   });
 }
 

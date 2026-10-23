@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.8
  * admin-init.js — Bootstrapper, Lifecycle, Mobile Drawer Backdrop & Koordinasi Event Portal Admin (FR-P0-03, FR-ADM-01, FR-V65-01)
  */
 
@@ -11,7 +11,11 @@
   var $id = BSAdmin.$id || function (id) { return document.getElementById(id); };
   var icon = BSAdmin.icon || function () { return ''; };
 
+  var _booted = false;
+
   function initApp() {
+    if (_booted) return;
+    _booted = true;
     var sidebar         = $id('adm-sidebar');
     var sidebarBackdrop = $id('adm-sidebar-backdrop');
     var sidebarToggle   = $id('adm-sidebar-toggle');
@@ -174,6 +178,94 @@
       });
     }
 
+    /* ── 4b. Reset Sandi Mandiri (FR-V67-14) ── */
+    var forgotBtn   = $id('adm-forgot-btn');
+    var forgotForm  = $id('adm-forgot-form');
+    var forgotStep2 = $id('adm-forgot-step2');
+    var forgotMsg   = $id('adm-forgot-msg');
+    var forgotSubmit = $id('adm-forgot-submit-btn');
+    var resetRequested = false;
+
+    function forgotMsgShow(text, kind) {
+      if (!forgotMsg) return;
+      forgotMsg.textContent = text;
+      forgotMsg.className = 'adm-alert adm-alert-' + (kind === 'error' ? 'danger' : 'warn');
+      forgotMsg.style.display = '';
+    }
+
+    if (forgotBtn && forgotForm) {
+      forgotBtn.addEventListener('click', function () {
+        forgotForm.style.display = '';
+        if (loginForm) loginForm.style.display = 'none';
+        resetRequested = false;
+        if (forgotStep2) forgotStep2.style.display = 'none';
+        if (forgotSubmit) forgotSubmit.textContent = 'Kirim Kode Reset';
+        var u = $id('adm-forgot-username');
+        if (u && $id('adm-username') && $id('adm-username').value) u.value = $id('adm-username').value.trim();
+        if (u) u.focus();
+      });
+    }
+
+    var forgotCancel = $id('adm-forgot-cancel-btn');
+    if (forgotCancel) {
+      forgotCancel.addEventListener('click', function () {
+        if (forgotForm) forgotForm.style.display = 'none';
+        if (loginForm) loginForm.style.display = '';
+        if (forgotMsg) forgotMsg.style.display = 'none';
+        resetRequested = false;
+        if (forgotStep2) forgotStep2.style.display = 'none';
+        if (forgotSubmit) forgotSubmit.textContent = 'Kirim Kode Reset';
+      });
+    }
+
+    if (forgotForm) {
+      forgotForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var username = ($id('adm-forgot-username').value || '').trim();
+        if (!username) { forgotMsgShow('Username wajib diisi.', 'error'); return; }
+
+        if (!resetRequested) {
+          if (forgotSubmit) { forgotSubmit.disabled = true; forgotSubmit.textContent = 'Mengirim…'; }
+          BSApi.requestPasswordReset(username).then(function (res) {
+            if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal meminta kode reset.');
+            resetRequested = true;
+            if (forgotStep2) forgotStep2.style.display = '';
+            if (forgotSubmit) forgotSubmit.textContent = 'Simpan Kata Sandi Baru';
+            forgotMsgShow('Bila username terdaftar memiliki email, kode 6 digit sudah dikirim. Kode berlaku 10 menit.', 'warn');
+            var codeEl = $id('adm-forgot-code');
+            if (codeEl) codeEl.focus();
+          }).catch(function (err) {
+            forgotMsgShow(err.message, 'error');
+          }).finally(function () {
+            if (forgotSubmit) forgotSubmit.disabled = false;
+          });
+          return;
+        }
+
+        var code = ($id('adm-forgot-code').value || '').trim();
+        var newPw = ($id('adm-forgot-newpw').value || '').trim();
+        if (!/^\d{6}$/.test(code)) { forgotMsgShow('Kode harus 6 digit angka.', 'error'); return; }
+        if (newPw.length < 8) { forgotMsgShow('Kata sandi baru minimal 8 karakter.', 'error'); return; }
+
+        if (forgotSubmit) { forgotSubmit.disabled = true; forgotSubmit.textContent = 'Menyimpan…'; }
+        BSApi.confirmPasswordReset(username, code, newPw).then(function (res) {
+          if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal menyimpan kata sandi baru.');
+          BSAdmin.showToast('Kata sandi diperbarui. Silakan masuk dengan kata sandi baru.', 'success');
+          if (forgotForm) forgotForm.style.display = 'none';
+          if (loginForm) loginForm.style.display = '';
+          if (forgotMsg) forgotMsg.style.display = 'none';
+          resetRequested = false;
+          if (forgotStep2) forgotStep2.style.display = 'none';
+          if ($id('adm-username')) $id('adm-username').value = username;
+          if ($id('adm-password')) { $id('adm-password').value = ''; $id('adm-password').focus(); }
+        }).catch(function (err) {
+          forgotMsgShow(err.message, 'error');
+        }).finally(function () {
+          if (forgotSubmit) { forgotSubmit.disabled = false; forgotSubmit.textContent = 'Simpan Kata Sandi Baru'; }
+        });
+      });
+    }
+
     /* ── 5. Form Logout ── */
     if (logoutBtn) {
       logoutBtn.addEventListener('click', function () {
@@ -219,6 +311,37 @@
     if (BSAdmin.audit && typeof BSAdmin.audit.init === 'function') BSAdmin.audit.init();
     if (BSAdmin.feedback && typeof BSAdmin.feedback.init === 'function') BSAdmin.feedback.init();
     if (BSAdmin.nfc && typeof BSAdmin.nfc.init === 'function') BSAdmin.nfc.init();
+
+    /* ── 8b. Unggah Gambar ke Drive (FR-V67-14) ── */
+    document.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('[data-upload-target]') : null;
+      if (!btn) return;
+      var targetInput = $id(btn.getAttribute('data-upload-target'));
+      if (!targetInput) return;
+
+      var picker = document.createElement('input');
+      picker.type = 'file';
+      picker.accept = 'image/jpeg,image/png,image/webp';
+      picker.addEventListener('change', function () {
+        var file = picker.files && picker.files[0];
+        if (!file) return;
+        var originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Mengunggah…';
+        BSApi.uploadImage(file).then(function (res) {
+          if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal mengunggah gambar.');
+          targetInput.value = res.url;
+          targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+          BSAdmin.showToast('Gambar terunggah: ' + res.name, 'success');
+        }).catch(function (err) {
+          BSAdmin.showToast(err.message, 'error');
+        }).finally(function () {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        });
+      });
+      picker.click();
+    });
 
     /* ── 9. Auto-Resume Sesi ── */
     if (window.BSAuth && BSAuth.isLoggedIn()) {

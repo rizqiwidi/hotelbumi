@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v6.7
+ * BUMI SURABAYA v6.8
  * staff-manager.js — CRUD staf, rotasi kode, status kartu & inisialisasi sumber lengkap (FR-P0-04, FR-P0-05)
  *
  * Manages the in-memory sources array and syncs to Google Sheets via BSApi.

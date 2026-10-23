@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v6.7
+ * BUMI SURABAYA v6.8
  * dashboard.js — Admin dashboard rendering module (Anti-Slop Edition — FR-ADM-01 s/d FR-ADM-04, FR-V64-07)
  *
  * Renders metric cards, leaderboard, trend chart (Emerald & Champagne Gold palette),

@@ -1,6 +1,6 @@
-# IMPLEMENTATION NOTES — BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7 (FASE 0–3)
+# IMPLEMENTATION NOTES — BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.8 (FASE 0–3 + W4/W5/W6)
 
-Dokumen ini mendokumentasikan implementasi lengkap **PRD Fase 0 (P0 — Go-Live Blockers)** dan **PRD Fase 1 (P1 — Kualitas Pengalaman dan Kelengkapan Fungsi)** untuk **Hotel Bumi Surabaya Digital Guest Experience v6.7**.
+Dokumen ini mendokumentasikan **PRD Fase 0 (P0 — Go-Live Blockers)**, **PRD Fase 1 (P1 — Kualitas Pengalaman dan Kelengkapan Fungsi)**, serta gelombang **W4/W5/W6** audit independen v6.8 untuk **Hotel Bumi Surabaya Digital Guest Experience v6.8**.
 
 ---
 
@@ -213,7 +213,7 @@ Implementasi Fase 2 mencakup penguatan operasional, tata kelola data, jejak audi
 
 ### D. Keandalan Operasional & Sinyal Health (PRD 8.3, 11E)
 - **Sinyal Health di UI Admin**:
-  - Bilah status visual di bawah header menampilkan: Status backend (🟢 Terhubung / 🔴 Terputus), versi frontend statis (`v6.7.0`), versi backend Apps Script (`v6.7.0`), waktu server resmi (WIB), dan jumlah antrean event gagal (DLQ count).
+  - Bilah status visual di bawah header menampilkan: Status backend (🟢 Terhubung / 🔴 Terputus), versi frontend statis (`v6.8.0`), versi backend Apps Script (`v6.8.0`), waktu server resmi (WIB), dan jumlah antrean event gagal (DLQ count).
 - **Prosedur Rollback & Smoke Test**:
   - Terdokumentasi langkah rollback Git untuk frontend dan rollback versi deployment Apps Script untuk backend.
   - Checklist 8 butir smoke test pasca-deploy mencakup pengujian halaman tamu, beacon tracking, live draft preview, otorisasi RBAC, log audit, cetak QR, dan fallback offline Chart.js.
@@ -245,7 +245,7 @@ Pemilik/administrator wajib memperbarui file backend di Google Apps Script:
    - Salin seluruh isi file ke editor Apps Script.
    - Menyediakan fungsi `jalankanRetensiData(dryRun)` dan penyelarasan URL footer email mingguan ke GitHub Pages.
 3. **Deploy Versi Baru**:
-   - Di editor Apps Script, klik **Deploy** → **Manage deployments** → **Edit** → pilih **New version** (deskripsi: `v6.7.0`) → klik **Deploy**.
+   - Di editor Apps Script, klik **Deploy** → **Manage deployments** → **Edit** → pilih **New version** (deskripsi: `v6.8.0`) → klik **Deploy**.
 
 ---
 
@@ -271,14 +271,14 @@ Sesuai PRD Bagian 12 (Keputusan & Pertimbangan Bisnis), item-item berikut telah 
 
 ---
 
-## 10. Gelombang W4/W5 — Guest & Aksesibilitas (v6.7)
+## 10. Gelombang W4/W5 — Guest & Aksesibilitas (v6.8)
 
-Ringkasan perubahan setelah audit independen v6.7 (lihat `PRD_Perbaikan_Hotel_Bumi_Surabaya_v6.3.md` §9). Semua perubahan guest-side tanpa build step dan tanpa mengubah palet.
+Ringkasan perubahan setelah audit independen v6.8 (lihat `PRD_Perbaikan_Hotel_Bumi_Surabaya_v6.3.md` §9). Semua perubahan guest-side tanpa build step dan tanpa mengubah palet.
 
 ### A. Perbaikan Bug Guest
 - **BUG-25 (`?lang=id`)**: `getMergedSection()` kini menumpuk preset ID di atas `DEFAULTS`, lalu hanya menimpa dengan nilai server yang benar-benar berbeda dari `DEFAULTS`. Teks server berbahasa Inggris tidak lagi mengalahkan preset ID.
 - **BUG-37 (filter promo ganda)**: Filter tanggal hanya di backend (`Code.gs:747-755`, zona `Asia/Jakarta`). Klien hanya menyaring `active !== false`. Verifikasi batas tanggal: `ends_at` hari ini tetap tampil, `starts_at` hari ini tampil, tanggal lampau/masa depan dibuang.
-- **BUG-38 (drift versi)**: Seluruh header modul, `footer_version_tag`, `index.html`, `admin/index.html`, `README.md`, `backend_version`, dan footer email mingguan (`Triggers.gs`) diselaraskan ke `v6.7`.
+- **BUG-38 (drift versi)**: Seluruh header modul, `footer_version_tag`, `index.html`, `admin/index.html`, `README.md`, `backend_version`, dan footer email mingguan (`Triggers.gs`) diselaraskan ke `v6.8`.
 - **Fallback gambar**: atribut `onerror` inline (diblokir CSP `script-src` tanpa `'unsafe-inline'`) diganti listener delegasi pada `document` (`data-fallback-img`) di `app.js`. Placeholder emoji memakai atribut `hidden` + aturan CSS eksplisit.
 
 ### B. Aksesibilitas (FR-V67-10 s/d FR-V67-12)
@@ -303,3 +303,34 @@ Ringkasan perubahan setelah audit independen v6.7 (lihat `PRD_Perbaikan_Hotel_Bu
 - `formatPhoneDisplay()` diuji 5 kasus: `+62313545888` -> `+62 31 354 5888`, `08113388523` -> `+62 8113388523`, kosong -> kosong, `+628113388523` -> `+62 8113388523`, nomor non-Indonesia dikembalikan apa adanya.
 - CSS: brace seimbang untuk `admin.css` + `guest.css`.
 - **Belum diverifikasi visual di browser**: Chromium arm64 tidak tersedia di lingkungan ini (`Chrome for Testing does not provide linux/arm64 builds`), jadi bukti visual (kontras nyata, geser banner) belum diambil.
+
+---
+
+## 11. Gelombang W5 Admin & W6 Opsional (v6.8)
+
+### A. FR-V67-14 — Fitur admin
+- **Sesi aktif**: backend `_trackSessionToken`/`_readSessionIndex`/`_listActiveSessions`/`_revokeUserSessions(targetToken)` + aksi `list_sessions` & `revoke_session`. Indeks disimpan di `CacheService` (TTL 6 jam, maks 20 entri per user) — hanya 8 karakter awal token yang dikirim ke klien, cukup untuk mencocokkan tanpa membocorkan kredensial.
+- **Reset sandi mandiri**: aksi publik `request_password_reset` (kode 6 digit via email, rate limited) + `confirm_password_reset`; `_revokeUserSessions(username, keepToken)` mematikan sesi lain saat sandi baru aktif.
+- **Upload gambar**: aksi `upload_image` menyimpan berkas ke Drive dan mengembalikan URL publik; tombol `[data-upload-target]` menggantikan input path teks pada outlet, promo, dan CMS.
+- **Paginasi audit**: `get_audit_logs` menerima `offset`/`limit` (maks 500), `action_filter`, dan `search`; baris dibaca dari bawah agar `offset` stabil walau ada baris baru. Tabel admin paginasi 100 baris/halaman.
+- **Ekspor CSV audit**: mengambil **seluruh hasil terfilter** (limit 500), bukan hanya halaman terlihat. Kalau terpotong, toast menyebutkan total agar pengguna mempersempit filter. Karakter awal `=`,`+`,`-`,`@`,tab,CR diberi prefiks `'` (anti-CSV injection).
+- **Date picker promo**: `<input type="date">` untuk `starts_at`/`ends_at`.
+- **Bulk edit sumber**: checkbox `.adm-src-check` + select-all; bilah aksi massal (aktifkan/nonaktifkan/hapus) memakai endpoint bulk backend.
+- **Backup penuh**: `exportConfigBackupJson()` sudah mencakup `config`, `sources`, dan `staff_devices`; impor memulihkan ketiganya lalu `save_all_admin_data`.
+- **Guard idempoten**: `admin-audit.js` `init()` sekarang punya flag `_initialised` supaya DOMContentLoaded ganda tidak mengikat listener dua kali (offset paginasi tidak lagi melompat dua halaman).
+
+### B. FR-V67-15 — Idempotensi `log_event`
+- `event_id` dari klien dipertahankan; sebelum append, 200 baris terakhir diperiksa untuk `event_id` sama → `{ok:true, duplicate:true}` tanpa menulis ganda. Retry dari antrean offline/DLQ (`retry-queue.js`, `flushDeadLetterQueue`) memakai `event_id` asli sehingga aman diulang.
+- Jendela 200 baris sengaja terbatas: retry terjadi dalam hitungan menit, bukan lintas bulan. Naikkan butuh index `event_id` terpisah.
+- **Turnstile tidak dipasang** — butuh akun Cloudflare + site key milik hotel. Pengaman yang sudah jalan: rate limit global 300/menit, 60/menit per `device_id`, feedback 3/perangkat/24 jam, honeypot AF-06.
+
+### C. FR-V67-16 — PWA
+- `manifest.json` (standalone, `theme_color` `#1a3c2a`, ikon `favicon.svg` bertanda `maskable`) + `sw.js`.
+- `sw.js` hanya menangani GET same-origin. Navigasi network-first (konten selalu segar, cache dipakai saat offline); aset statis cache-first dengan revalidasi di latar. Portal `admin/` sengaja **tidak** di-cache supaya staf selalu menerima JS terbaru.
+- Registrasi di `app.js` hanya pada `http(s):` (abaikan `file://` dan `about:blank` di preview), dan kegagalan registrasi dibungkus `.catch()` agar tidak mengganggu render.
+- Workflow Pages ikut menyalin `manifest.json` dan `sw.js` ke `_site/`.
+
+### D. Verifikasi
+- `node --check`: seluruh `assets/js/**`, `backend/Code.gs`, `backend/Triggers.gs`, `sw.js` — lolos.
+- 14 skrip JSDOM/backend lolos: guest, admin, bahasa, modal+radiogroup, footer, filter promo, W5 (paginasi audit, sesi, bulk sumber, lupa sandi, upload), service worker (precache, activate, cross-origin/POST/admin dibiarkan lewat, navigasi network-first, aset cache-first), backend W3 (login, rate limit, sesi ganda, pencabutan setelah ganti sandi), retensi, penanda IP.
+- **Belum diverifikasi visual di browser**: Chromium arm64 tidak tersedia di lingkungan ini (`Chrome for Testing does not provide linux/arm64 builds`). Instalasi PWA sesungguhnya (prompt "Add to Home Screen", perilaku offline penuh) juga belum diuji di perangkat nyata.

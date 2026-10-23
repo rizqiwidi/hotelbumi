@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v6.7
+ * BUMI SURABAYA v6.8
  * auth.js — Login session, server-side logout & credentials management (FR-V64-04)
  */
 

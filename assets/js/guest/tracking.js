@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v6.7
+ * BUMI SURABAYA v6.8
  * tracking.js — Event tracker, session storage, beacon unload
  *
  * Menangani:

@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v6.7
+ * BUMI SURABAYA v6.8
  * api.js — Admin API client to Google Apps Script
  *
  * Seluruh request admin menggunakan POST dengan token di BODY (bukan URL).
@@ -88,8 +88,10 @@
     return get(p);
   }
 
-  function getAuditLogs(limit) {
-    return post({ action: 'get_audit_logs', limit: limit || 200 });
+  function getAuditLogs(limitOrOpts) {
+    var opts = (typeof limitOrOpts === 'object' && limitOrOpts !== null)
+      ? limitOrOpts : { limit: limitOrOpts || 100 };
+    return post(Object.assign({ action: 'get_audit_logs' }, opts));
   }
 
   function getFeedbackData(filters) {
@@ -113,6 +115,53 @@
     return post({ action: 'delete_user', target_username: username });
   }
 
+  /** Sesi aktif & pencabutan (FR-V67-14) */
+  function listSessions(targetUsername) {
+    return post({ action: 'list_sessions', target_username: targetUsername || '' });
+  }
+
+  function revokeSession(payload) {
+    return post(Object.assign({ action: 'revoke_session' }, payload || {}));
+  }
+
+  /** Reset sandi mandiri (FR-V67-14) — dua endpoint publik, tanpa token. */
+  function requestPasswordReset(username) {
+    return post({ action: 'request_password_reset', username: username });
+  }
+
+  function confirmPasswordReset(username, code, newPassword) {
+    return post({ action: 'confirm_password_reset', username: username, code: code, new_password: newPassword });
+  }
+
+  /** Unggah gambar ke Google Drive (FR-V67-14). */
+  function uploadImage(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file) { reject(new Error('Berkas tidak dipilih.')); return; }
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+        reject(new Error('Format gambar harus JPEG, PNG, atau WebP.'));
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        reject(new Error('Ukuran gambar melebihi 2 MB.'));
+        return;
+      }
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('Berkas tidak dapat dibaca.')); };
+      reader.onload = function (evt) {
+        var dataUrl = String(evt.target.result || '');
+        var comma = dataUrl.indexOf(',');
+        if (comma === -1) { reject(new Error('Data gambar tidak valid.')); return; }
+        post({
+          action:      'upload_image',
+          mime_type:   file.type,
+          file_name:   String(file.name || 'gambar').replace(/\.[^.]+$/, ''),
+          data_base64: dataUrl.substring(comma + 1)
+        }).then(resolve).catch(reject);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   window.BSApi = {
     post:                post,
     get:                 get,
@@ -128,7 +177,12 @@
     markFeedbackHandled: markFeedbackHandled,
     listUsers:           listUsers,
     saveUser:            saveUser,
-    deleteUser:          deleteUser
+    deleteUser:          deleteUser,
+    listSessions:        listSessions,
+    revokeSession:       revokeSession,
+    requestPasswordReset:  requestPasswordReset,
+    confirmPasswordReset:  confirmPasswordReset,
+    uploadImage:         uploadImage
   };
 
 })(window);

@@ -1,6 +1,6 @@
-# SHEETS_SETUP.md — Panduan Setup Google Spreadsheet sebagai Database v6.7
+# SHEETS_SETUP.md — Panduan Setup Google Spreadsheet sebagai Database v6.8
 
-Dokumen ini menjelaskan struktur skema Google Spreadsheet, konfigurasi hak akses pengguna (RBAC), jejak audit (*AuditLog*), dan pemulihan darurat (*break-glass*) untuk platform **Bumi Surabaya Digital Guest Experience v6.7**.
+Dokumen ini menjelaskan struktur skema Google Spreadsheet, konfigurasi hak akses pengguna (RBAC), jejak audit (*AuditLog*), dan pemulihan darurat (*break-glass*) untuk platform **Bumi Surabaya Digital Guest Experience v6.8**.
 
 > [!IMPORTANT]
 > Backend (`Code.gs`) akan secara otomatis membuat tab yang belum ada saat pertama kali dipanggil (termasuk tab `AuditLog` dan kolom `role` pada tab `Users`). Namun pemilik spreadsheet disarankan memverifikasi struktur awal dan membuat akun admin utama via `setupInitialAdmin`.

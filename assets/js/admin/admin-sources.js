@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.8
  * admin-sources.js — Manajemen sumber, staf hotel, sales WA, rotasi kode, titik NFC, pencarian instan & Impor/Ekspor CSV (FR-CRUD-AUTO, FR-V64-05, FR-V65-02)
  *
  * Setiap aksi CRUD (Tambah, Edit, Rotasi, Aktif/Nonaktif, Hapus, Impor CSV) OTOMATIS tersimpan ke Google Sheets!
@@ -46,6 +46,94 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
+   * 1b. Seleksi & Aksi Massal Sumber (FR-V67-14)
+   * ───────────────────────────────────────────────────────────── */
+  var selectedSources = {};
+
+  function selectedCodes() {
+    return Object.keys(selectedSources).filter(function (c) { return selectedSources[c]; });
+  }
+
+  function updateBulkBar() {
+    var codes = selectedCodes();
+    var bar = $id('adm-sources-bulk-bar');
+    var countEl = $id('adm-sources-bulk-count');
+    if (bar) bar.style.display = codes.length ? '' : 'none';
+    if (countEl) countEl.textContent = codes.length + ' sumber dipilih';
+
+    var selectAll = $id('adm-sources-select-all');
+    if (selectAll) {
+      var boxes = document.querySelectorAll('.adm-src-check');
+      var allChecked = boxes.length > 0;
+      for (var i = 0; i < boxes.length; i++) {
+        if (!boxes[i].checked) { allChecked = false; break; }
+      }
+      selectAll.checked = allChecked;
+      selectAll.indeterminate = !allChecked && codes.length > 0;
+    }
+  }
+
+  function clearSelection() {
+    selectedSources = {};
+    document.querySelectorAll('.adm-src-check').forEach(function (cb) { cb.checked = false; });
+    updateBulkBar();
+  }
+
+  function runBulk(mutator, successMsg) {
+    if (!BSAdmin.checkPermission('save_sources')) {
+      BSAdmin.showToast('Peran Anda tidak memiliki izin mengubah sumber.', 'warning');
+      return;
+    }
+    var codes = selectedCodes();
+    if (codes.length === 0) return;
+
+    try {
+      codes.forEach(mutator);
+    } catch (err) {
+      BSAdmin.showToast('Aksi massal gagal: ' + err.message, 'error');
+      return;
+    }
+
+    clearSelection();
+    refreshAllSourceViews();
+    autoSyncSources(successMsg.replace('{n}', codes.length));
+  }
+
+  function bulkSetActive(active) {
+    runBulk(
+      function (code) { BSStaffManager.updateSource(code, { active: active }); },
+      '{n} sumber ' + (active ? 'diaktifkan' : 'dinonaktifkan') + ' dan disimpan ke server.'
+    );
+  }
+
+  function bulkSetOutlet() {
+    var codes = selectedCodes();
+    if (codes.length === 0) return;
+    if (BSAdmin.content && typeof BSAdmin.content.populateOutletDropdowns === 'function') {
+      BSAdmin.content.populateOutletDropdowns();
+    }
+    var outlets = (BSAdmin.state && BSAdmin.state.config && BSAdmin.state.config.outlets) || [];
+    var names = outlets.map(function (o, i) { return (i + 1) + '. ' + (o.name || o.id || ''); });
+    var answer = window.prompt('Ubah gerai untuk ' + codes.length + ' sumber.\n' + names.join('\n') + '\n\nKetik nama gerai (kosongkan untuk menghapus):', '');
+    if (answer === null) return;
+    var outlet = String(answer).trim();
+    runBulk(
+      function (code) { BSStaffManager.updateSource(code, { outlet: outlet }); },
+      '{n} sumber dipindahkan ke gerai "' + (outlet || '—') + '".'
+    );
+  }
+
+  function bulkDelete() {
+    var codes = selectedCodes();
+    if (codes.length === 0) return;
+    if (!confirm('Hapus ' + codes.length + ' sumber secara permanen? Tindakan ini tidak dapat dibatalkan.')) return;
+    runBulk(
+      function (code) { BSStaffManager.deleteSource(code); },
+      '{n} sumber dihapus dan disinkronkan ke server.'
+    );
+  }
+
+  /* ─────────────────────────────────────────────────────────────
    * 2. Render Tabel Sumber (dengan Filter Tipe & Pencarian Instan — FR-V65-02)
    * ───────────────────────────────────────────────────────────── */
   function renderSourcesTable() {
@@ -75,7 +163,7 @@
     }
 
     if (sources.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="bs-empty">' +
+      tbody.innerHTML = '<tr><td colspan="10" class="bs-empty">' +
         (allSources.length === 0
           ? 'Belum ada data sumber. Klik "+ Tambah Staf / Titik" atau "Impor CSV".'
           : 'Tidak ada sumber yang cocok dengan pencarian / filter.') +
@@ -95,7 +183,9 @@
         : '<span class="adm-badge-err">Nonaktif</span>';
       var waDisp = s.whatsapp ? ('<code style="font-size:0.76rem;">' + esc(s.whatsapp) + '</code>') : '—';
 
+      var checked = selectedSources[s.code] ? ' checked' : '';
       return '<tr>' +
+        '<td class="adm-col-check"><input type="checkbox" class="adm-src-check" data-src-code="' + esc(s.code) + '" aria-label="Pilih sumber ' + esc(s.name) + '"' + checked + '></td>' +
         '<td><code style="font-size:0.78rem;">' + esc(s.code) + '</code></td>' +
         '<td><strong>' + esc(s.name) + '</strong></td>' +
         '<td><span class="adm-role-tag">' + esc(s.type) + '</span></td>' +
@@ -490,6 +580,35 @@
         }
       });
     }
+
+    /* ── Aksi massal (FR-V67-14) ── */
+    var selectAll = $id('adm-sources-select-all');
+    if (selectAll) {
+      selectAll.addEventListener('change', function () {
+        var on = selectAll.checked;
+        document.querySelectorAll('.adm-src-check').forEach(function (cb) {
+          cb.checked = on;
+          selectedSources[cb.getAttribute('data-src-code')] = on;
+        });
+        updateBulkBar();
+      });
+    }
+
+    var sourcesTbody = $id('adm-sources-tbody');
+    if (sourcesTbody) {
+      sourcesTbody.addEventListener('change', function (e) {
+        var cb = e.target.closest ? e.target.closest('.adm-src-check') : null;
+        if (!cb) return;
+        selectedSources[cb.getAttribute('data-src-code')] = cb.checked;
+        updateBulkBar();
+      });
+    }
+
+    if ($id('adm-bulk-activate-btn'))   $id('adm-bulk-activate-btn').addEventListener('click', function () { bulkSetActive(true); });
+    if ($id('adm-bulk-deactivate-btn')) $id('adm-bulk-deactivate-btn').addEventListener('click', function () { bulkSetActive(false); });
+    if ($id('adm-bulk-outlet-btn'))     $id('adm-bulk-outlet-btn').addEventListener('click', bulkSetOutlet);
+    if ($id('adm-bulk-delete-btn'))     $id('adm-bulk-delete-btn').addEventListener('click', bulkDelete);
+    if ($id('adm-bulk-clear-btn'))      $id('adm-bulk-clear-btn').addEventListener('click', clearSelection);
   }
 
   BSAdmin.sources = {

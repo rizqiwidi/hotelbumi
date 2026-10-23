@@ -1,6 +1,6 @@
-# DEPLOY.md — Panduan Deployment, Rollback & Pemulihan Platform v6.7
+# DEPLOY.md — Panduan Deployment, Rollback & Pemulihan Platform v6.8
 
-Panduan operasional dan deployment resmi untuk **Bumi Surabaya Digital Guest Experience v6.7 (Fase 2 — Operasional, Auditabilitas, dan Skala)**.
+Panduan operasional dan deployment resmi untuk **Bumi Surabaya Digital Guest Experience v6.8 (Fase 2 — Operasional, Auditabilitas, dan Skala)**.
 
 > [!IMPORTANT]
 > **Arsitektur Deployment Aktual**:
@@ -9,11 +9,13 @@ Panduan operasional dan deployment resmi untuk **Bumi Surabaya Digital Guest Exp
 
 ---
 
-## 1. Struktur Direktori Repository v6.7 (Modular & Tanpa Build Step)
+## 1. Struktur Direktori Repository v6.8 (Modular & Tanpa Build Step)
 
 ```
 hotelbumi/
 ├── index.html                  ← Halaman tamu publik (GitHub Pages root)
+├── manifest.json               ← Manifest PWA (ikon, warna tema, start_url)
+├── sw.js                       ← Service worker cache aset statis halaman tamu
 ├── admin/
 │   └── index.html              ← Portal admin resmi (/admin/)
 ├── assets/
@@ -73,7 +75,7 @@ Setiap ada perubahan pada file `backend/Code.gs` atau `backend/Triggers.gs`, pem
 5. Buat Deployment Baru / Perbarui Versi:
    - Klik tombol **Deploy** → **Manage deployments**.
    - Pilih deployment Web App aktif, klik ikon pensil (**Edit**).
-   - Pada dropdown **Version**, pilih **New version**. Beri catatan deskripsi: `v6.7.0 — RBAC, AuditLog, health signals, W4/W5 guest`.
+   - Pada dropdown **Version**, pilih **New version**. Beri catatan deskripsi: `v6.8.0 — sesi aktif, reset sandi, upload gambar, paginasi audit, bulk sumber, PWA`.
    - Klik **Deploy**.
    - Salin **Web App URL** (URL berakhiran `/exec`).
 
@@ -102,8 +104,8 @@ Setelah login ke portal admin, periksa bilah **Sinyal Health & Keandalan Operasi
 - **Status Backend**:
   - `🟢 Backend Terhubung`: Backend merespons normal dengan versi yang cocok.
   - `🔴 Backend Terputus / Belum Diuji`: URL backend belum diisi atau terjadi kegagalan jaringan.
-- **Frontend Version**: Menampilkan versi klien statis (`v6.7.0`).
-- **Backend Version**: Menampilkan versi yang dilaporkan oleh Google Apps Script (`v6.7.0`).
+- **Frontend Version**: Menampilkan versi klien statis (`v6.8.0`).
+- **Backend Version**: Menampilkan versi yang dilaporkan oleh Google Apps Script (`v6.8.0`).
 - **Waktu Server**: Menampilkan timestamp resmi server Google Apps Script (WIB) untuk mendeteksi drift jam lokal.
 - **Dead-Letter Queue (DLQ)**:
   - `0 event gagal`: Seluruh beacon tamu berhasil dikirim ke server.

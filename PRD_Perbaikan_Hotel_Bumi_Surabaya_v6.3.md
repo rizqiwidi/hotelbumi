@@ -240,15 +240,18 @@ Menjawab kebutuhan agar **setiap role yang masuk ke dashboard hanya menampilkan 
 ## 10. Status Eksekusi (Diperbarui 23 Oktober 2026)
 
 | Gelombang | Item | Status |
-| :--- | :--- | :--- |
+| :--- | :--- |
 | **W1 — Blocker** | `BUG-16` (CI `_site/`), `BUG-20` (storage aman), `BUG-22` (CSP) | ✅ Selesai |
 | **W2 — Kontrak data** | `BUG-17`, `BUG-18`, `BUG-19`, `BUG-21`, `BUG-23`, `BUG-24` | ✅ Selesai |
 | **W3 — P1 backend** | `BUG-27` s/d `BUG-34` | ✅ Selesai |
 | **W4 — Guest & a11y** | `BUG-25`, `BUG-26`, `BUG-37`, `BUG-38`, `FR-V67-10/11/12` | ✅ Selesai |
 | **W5 — Fitur guest** | `FR-V67-13` (Maps, `tel:`, `<noscript>`, `og:image`, indikator offline), `FR-V67-14` (toggle bahasa) | ✅ Selesai |
-| **W5 — Fitur admin** | `FR-V67-14` (sesi aktif, reset sandi mandiri, upload gambar, backup penuh, paginasi audit, date picker, bulk edit) | ⏳ Belum |
-| **W6 — Opsional** | `FR-V67-15` (endpoint `track` idempoten, Turnstile), `FR-V67-16` (PWA) | ⏳ Belum |
+| **W5 — Fitur admin** | `FR-V67-14` (sesi aktif, reset sandi mandiri, upload gambar, backup penuh, paginasi audit, date picker, bulk edit) | ✅ Selesai |
+| **W6 — Opsional** | `FR-V67-15` (idempotensi `event_id` pada `log_event`), `FR-V67-16` (PWA `manifest.json` + service worker) | ✅ Selesai |
 
 **Catatan W5 guest:** widget/CTA reservasi kamar dan galeri properti (`FR-V67-13` butir 1 dan 4) belum dikerjakan — keduanya butuh keputusan pemilik soal kanal booking (Booking.com/WhatsApp/telepon) dan aset foto resmi.
 
-**Verifikasi W4/W5:** `node --check` seluruh modul lolos; smoke JSDOM (guest, admin, bahasa, modal+radiogroup, footer, filter promo) lolos tanpa galat. Bukti visual browser belum diambil — Chromium arm64 tidak tersedia di lingkungan build.
+**Catatan W6 — Turnstile tidak dipasang.** `FR-V67-15` juga menyebut Turnstile; CAPTCHA Cloudflare belum aktif karena butuh akun + site key milik hotel. Pengaman setara yang sudah berjalan: rate limit global `log_event` 300/menit + 60/menit per `device_id`, rate limit `submit_feedback` 3/perangkat/24 jam, honeypot (AF-06), dan idempotensi `event_id`. Pasang Turnstile hanya jika spam tetap lolos setelah itu.
+
+**Verifikasi W4/W5/W6:** `node --check` seluruh modul (`assets/js/**`, `backend/*.gs`, `sw.js`) lolos; 14 skrip smoke JSDOM/backend lolos tanpa galat (guest, admin, bahasa, modal+radiogroup, footer, filter promo, paginasi audit, sesi, bulk sumber, lupa sandi, service worker, login/rate limit W3). Bukti visual browser belum diambil — Chromium arm64 tidak tersedia di lingkungan build.
+

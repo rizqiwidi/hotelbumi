@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.8
  * admin-appearance.js — Full Guest Page CMS Workspace & Bilingual ID/EN Presets (FR-CMS-01 s/d FR-CMS-08, FR-V64-06, FR-CRUD-AUTO)
  *
  * Setiap tombol Simpan Zona, Preset Bahasa (ID/EN), Mode Bahasa, dan Reset Standar OTOMATIS tersimpan ke Google Sheets!
@@ -123,7 +123,7 @@
     setVal('adm-cms-ftr-privacy-lbl',  gc.footer_privacy_label || 'Privacy & Data Use Policy');
     setVal('adm-cms-ftr-admin-lbl',    gc.footer_admin_label || 'Management Portal');
     setVal('adm-cms-ftr-copyright',    gc.footer_copyright || '© 2026 Bumi Surabaya City Resort. All rights reserved.');
-    setVal('adm-cms-ftr-version',      gc.footer_version_tag || 'Digital Guest Experience v6.7');
+    setVal('adm-cms-ftr-version',      gc.footer_version_tag || 'Digital Guest Experience v6.8');
     if ($id('adm-cms-ftr-show-admin')) {
       $id('adm-cms-ftr-show-admin').checked = gc.footer_show_admin_link !== false;
     }

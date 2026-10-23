@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.7
+ * BUMI SURABAYA DIGITAL GUEST EXPERIENCE v6.8
  * backend/Triggers.gs — Cron job terjadwal
  *
  * Dua trigger utama:
@@ -554,7 +554,7 @@ function _buildEmailBody(summary) {
       anomalyHtml,
       '<div style="margin-top:24px;padding:16px;background:#f0ece4;border-radius:8px;">',
         '<p style="margin:0;font-size:13px;color:#888;">',
-          'Email ini dikirim otomatis oleh sistem Digital Guest Experience v6.7. ',
+          'Email ini dikirim otomatis oleh sistem Digital Guest Experience v6.8. ',
           'Untuk detail lengkap, buka portal admin di: ',
           '<a href="https://rizqiwidi.github.io/hotelbumi/admin/" style="color:#c9a96e;">',
             'Portal Admin Bumi Surabaya',

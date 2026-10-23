@@ -38,7 +38,7 @@ jobs:
       - name: Stage public files only
         run: |
           mkdir -p _site
-          cp index.html 404.html _site/
+          cp index.html 404.html manifest.json sw.js _site/
           cp -R admin assets _site/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

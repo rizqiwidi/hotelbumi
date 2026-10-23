@@ -1,5 +1,5 @@
 /**
- * BUMI SURABAYA v6.7
+ * BUMI SURABAYA v6.8
  * app.js — Logika presentasi tampilan tamu, Full Guest Page CMS & Dwibahasa Otomatis ID/EN (FR-CMS-01 s/d FR-CMS-07, FR-V64-06)
  *
  * KONTRAK KERAS: Tidak mengubah tone warna ataupun tata letak halaman tamu (guest.css).
@@ -704,7 +704,7 @@
     setText($('#bs-privacy-link'),          gc.footer_privacy_label   || 'Privacy & Data Use Policy');
     setText($('#bs-footer-admin-link'),     gc.footer_admin_label     || 'Management Portal');
     setText($('#bs-footer-copyright-text'), gc.footer_copyright       || '© 2026 Bumi Surabaya City Resort. All rights reserved.');
-    setText($('#bs-footer-version-tag'),    gc.footer_version_tag     || 'Digital Guest Experience v6.7');
+    setText($('#bs-footer-version-tag'),    gc.footer_version_tag     || 'Digital Guest Experience v6.8');
 
     var adminLink = $('#bs-footer-admin-link') || $('.bs-footer-admin');
     var footerSep = $('#bs-footer-sep')        || $('.bs-footer-sep');
@@ -1281,6 +1281,14 @@
     } else {
       checkPreviewDraft();
       renderAll();
+    }
+
+    /* PWA (FR-V67-16): hanya di HTTPS/localhost; gagal daftar tidak boleh
+       mengganggu render halaman. */
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {});
+      });
     }
   }
 
